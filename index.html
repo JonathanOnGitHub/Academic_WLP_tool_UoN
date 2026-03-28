@@ -658,17 +658,19 @@
           <button class="btn-action" id="combFteBtn">🎯 FTE Settings</button>
           <button class="btn-action" id="combDetailBtn" disabled title="Select staff rows below">📄 Detailed Report</button>
           <button class="btn-action" id="combExportBtn">⬇ Export XLSX</button>
+          <button class="btn-action" id="combModelExportBtn" title="Save tags, rules & settings to a JSON file">💾 Export Model</button>
+          <label class="btn-action" style="cursor:pointer" title="Load tags, rules & settings from a previously exported JSON file">📂 Import Model<input type="file" id="combModelImportInput" accept=".json" style="display:none"></label>
         </div>
       </div>
       <div class="fte-settings" id="fteSettings">
         <h3>FTE Target Settings</h3>
         <div class="fte-set-group">
           <label>Annual target (hrs)</label>
-          <input type="number" id="fteTarget" value="1200" min="100" max="3000" step="10">
-          <span class="hint">excl. 25% R&S allowance</span>
+          <input type="number" id="fteTarget" value="1600" min="100" max="3000" step="10">
+          <span class="hint">full year target; use FTE fractions for research-active staff</span>
         </div>
         <div class="fte-set-group" style="align-self:flex-end">
-          <span class="hint" style="font-size:0.72rem;color:var(--muted)">Per-person FTE fraction set in each row's tag popover (+ tag button)</span>
+          <span class="hint" style="font-size:0.72rem;color:var(--muted)">Per-person FTE fractions set via tag rules below, or manually in each row's tag popover</span>
         </div>
       </div>
       <div class="merge-info" id="combMergeInfo"></div>
@@ -698,6 +700,7 @@
               <th title="Added to teaching contact hours multiplier">Teaching load bonus</th>
               <th title="Added to global prep ratio">Teaching prep bonus</th>
               <th title="Added to project hours multiplier">Project bonus</th>
+              <th title="Multiplied into personal FTE target (e.g. 0.75 = 75% of base target). Multiple tag fractions multiply together.">FTE fraction</th>
               <th>Rule expires</th>
               <th></th>
             </tr></thead>
@@ -708,6 +711,7 @@
             <div class="rules-add-group"><label>Teaching load</label><input type="number" id="ruleNewTL" value="0" min="0" step="0.1" placeholder="0"></div>
             <div class="rules-add-group"><label>Teaching prep</label><input type="number" id="ruleNewTP" value="0" min="0" step="0.1" placeholder="0"></div>
             <div class="rules-add-group"><label>Project</label><input type="number" id="ruleNewProj" value="0" min="0" step="0.1" placeholder="0"></div>
+            <div class="rules-add-group"><label>FTE fraction</label><input type="number" id="ruleNewFte" value="1" min="0.1" max="1" step="0.05" placeholder="1"><span class="hint">e.g. 0.75</span></div>
             <div class="rules-add-group"><label>Rule expires (optional)</label><input type="date" id="ruleNewExpiry"></div>
             <button class="btn-rules-add" id="ruleAddBtn">+ Add rule</button>
           </div>
@@ -747,8 +751,8 @@
   <button class="tag-popover-close" id="tagPopoverClose">✕</button>
   <h4 id="tagPopoverTitle">Tags</h4>
   <div class="fte-fraction-row">
-    <label>FTE fraction <span style="font-weight:400;color:var(--muted)">(1.0 = full time)</span></label>
-    <input type="number" id="tagPopoverFte" value="1.0" min="0.1" max="1.0" step="0.05">
+    <label>FTE manual override <span style="font-weight:400;color:var(--muted)">(overrides tag fractions; blank = use tags)</span></label>
+    <input type="number" id="tagPopoverFte" value="" min="0.05" max="1.0" step="0.05" placeholder="auto">
   </div>
   <div class="tag-existing" id="tagPopoverExisting"></div>
   <div class="tag-popover-input-row">
@@ -1477,15 +1481,40 @@ const tagRules=new Map();
 let activeTagFilter=null;
 
 // FTE state
-let fteTarget=1200; // global target hours (excl. 25% R&S)
-const staffFte=new Map(); // canonical → fraction (0.1–1.0), default 1.0
-function getFte(canonical){return staffFte.get(normKey(canonical))??1.0;}
+let fteTarget=1600; // global target hours (full year; research-active staff use FTE fraction)
+const staffFte=new Map(); // normKey → manual override fraction (takes priority over tag fractions)
+
+// Compute effective FTE fraction for a person:
+// 1. If manual override set, use that.
+// 2. Otherwise, multiply all active tag rule FTE fractions together.
+// 3. Default 1.0.
+function getEffectiveFte(canonical){
+  const nk=normKey(canonical);
+  // Manual override takes priority
+  const manual=staffFte.get(nk);
+  if(manual!=null)return manual;
+  // Multiply tag fractions
+  const today=todayDate();
+  let combined=1.0;
+  let anyTagFraction=false;
+  activeTagsForPerson(canonical).forEach(tag=>{
+    const rule=tagRules.get(tag);
+    if(!rule)return;
+    if(rule.expiry&&rule.expiry<today)return;
+    if(rule.fte!=null&&rule.fte!==1){
+      combined*=rule.fte;
+      anyTagFraction=true;
+    }
+  });
+  return anyTagFraction?combined:1.0;
+}
+function getFte(canonical){return getEffectiveFte(canonical);}
 function setFte(canonical,fraction){
   const nk=normKey(canonical);
-  if(fraction===1.0||fraction===null)staffFte.delete(nk);
-  else staffFte.set(nk,Math.min(1.0,Math.max(0.1,fraction)));
+  if(fraction===1.0||fraction===null||isNaN(fraction))staffFte.delete(nk);
+  else staffFte.set(nk,Math.min(1.0,Math.max(0.05,+fraction)));
 }
-function personalTarget(canonical){return fteTarget*getFte(canonical);}
+function personalTarget(canonical){return fteTarget*getEffectiveFte(canonical);}
 function fteClass(pct){
   if(pct<80)return'fte-under';
   if(pct<=100)return'fte-ok';
@@ -1505,8 +1534,10 @@ function fteBarHtml(canonical,totalHours){
   // Target marker sits at 100/130 = 76.9% of the bar width
   const markerLeft=(100/130*100).toFixed(2);
   const target=personalTarget(canonical);
-  const fte=getFte(canonical);
-  const tip=`${totalHours.toFixed(1)}h of ${target.toFixed(0)}h target (${fte<1?fte+' FTE · ':''}${fteTarget}h base)`;
+  const fte=getEffectiveFte(canonical);
+  const isManual=staffFte.get(normKey(canonical))!=null;
+  const fteSource=isManual?'manual override':'tag rules';
+  const tip=`${totalHours.toFixed(1)}h of ${target.toFixed(0)}h target (${fteTarget}h × ${fte.toFixed(2)} FTE via ${fteSource})`;
   return`<div class="fte-wrap" title="${tip}">
     <span class="fte-pct ${cls}">${pct}%</span>
     <div class="fte-bar-outer">
@@ -1697,7 +1728,7 @@ function renderRulesEditor(){
   const today=todayDate();
   const tbody=document.getElementById('rulesTbody');
   if(tagRules.size===0){
-    tbody.innerHTML=`<tr><td colspan="6" style="color:var(--muted);font-style:italic;padding:0.8rem">No rules defined yet — add one below.</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="7" style="color:var(--muted);font-style:italic;padding:0.8rem">No rules defined yet — add one below.</td></tr>`;
   }else{
     tbody.innerHTML=[...tagRules.entries()].map(([tag,rule])=>{
       const expired=rule.expiry&&rule.expiry<today;
@@ -1709,12 +1740,13 @@ function renderRulesEditor(){
         <td><input type="number" class="rule-tl" data-tag="${enc}" value="${rule.tlLoad||0}" min="0" step="0.1" style="width:62px"></td>
         <td><input type="number" class="rule-tp" data-tag="${enc}" value="${rule.tlPrep||0}" min="0" step="0.1" style="width:62px"></td>
         <td><input type="number" class="rule-proj" data-tag="${enc}" value="${rule.proj||0}" min="0" step="0.1" style="width:62px"></td>
+        <td><input type="number" class="rule-fte" data-tag="${enc}" value="${rule.fte??1}" min="0.1" max="1" step="0.05" style="width:62px" title="FTE fraction: multiplies into personal target. 0.75 = 75% of base target."></td>
         <td><input type="date" class="rule-expiry" data-tag="${enc}" value="${expiryStr}"></td>
         <td><button class="rule-del" data-tag="${enc}" title="Delete rule">🗑</button></td>
       </tr>`;
     }).join('');
     // Wire up live edits
-    tbody.querySelectorAll('.rule-tl,.rule-tp,.rule-proj').forEach(inp=>{
+    tbody.querySelectorAll('.rule-tl,.rule-tp,.rule-proj,.rule-fte').forEach(inp=>{
       inp.addEventListener('change',()=>{
         const tag=decodeURIComponent(inp.dataset.tag);
         const row=tbody.querySelector(`tr[data-rule-tag="${inp.dataset.tag}"]`);
@@ -1722,7 +1754,8 @@ function renderRulesEditor(){
         r.tlLoad=+row.querySelector('.rule-tl').value||0;
         r.tlPrep=+row.querySelector('.rule-tp').value||0;
         r.proj=+row.querySelector('.rule-proj').value||0;
-        recomputeCombData();combRender();
+        r.fte=+row.querySelector('.rule-fte').value||1;
+        recomputeCombData();saveTagState();combRender();
       });
     });
     tbody.querySelectorAll('.rule-expiry').forEach(inp=>{
@@ -1758,14 +1791,16 @@ document.getElementById('ruleAddBtn').addEventListener('click',()=>{
   const tlLoad=+document.getElementById('ruleNewTL').value||0;
   const tlPrep=+document.getElementById('ruleNewTP').value||0;
   const proj=+document.getElementById('ruleNewProj').value||0;
+  const fte=+document.getElementById('ruleNewFte').value||1;
   const expiryVal=document.getElementById('ruleNewExpiry').value;
   const expiry=expiryVal?new Date(expiryVal):null;
-  tagRules.set(tag,{tlLoad,tlPrep,proj,expiry});
+  tagRules.set(tag,{tlLoad,tlPrep,proj,fte,expiry});
   // Clear inputs
   document.getElementById('ruleNewTag').value='';
   document.getElementById('ruleNewTL').value='0';
   document.getElementById('ruleNewTP').value='0';
   document.getElementById('ruleNewProj').value='0';
+  document.getElementById('ruleNewFte').value='1';
   document.getElementById('ruleNewExpiry').value='';
   renderRulesEditor();renderTagFilterBar();recomputeCombData();saveTagState();combRender();
 });
@@ -1803,7 +1838,8 @@ function openTagPopover(canonical,anchorEl){
   document.getElementById('tagPopoverTitle').textContent=canonical;
   document.getElementById('tagPopoverInput').value='';
   // Populate FTE fraction
-  document.getElementById('tagPopoverFte').value=getFte(canonical).toFixed(2);
+  const manualFte=staffFte.get(normKey(canonical));
+  document.getElementById('tagPopoverFte').value=manualFte!=null?manualFte.toFixed(2):'';
   renderTagPopoverContent();
   const rect=anchorEl.getBoundingClientRect();
   pop.style.display='block';
@@ -1860,7 +1896,8 @@ function closeTagPopover(){document.getElementById('tagPopover').style.display='
 document.getElementById('tagPopoverClose').addEventListener('click',closeTagPopover);
 document.getElementById('tagPopoverFte').addEventListener('change',e=>{
   if(!tagPopoverCanonical)return;
-  setFte(tagPopoverCanonical,+e.target.value||1.0);
+  const val=e.target.value.trim();
+  setFte(tagPopoverCanonical,val===''?null:+val);
   saveTagState();combRender();
 });
 document.getElementById('tagPopoverAdd').addEventListener('click',()=>{
@@ -1969,7 +2006,7 @@ document.getElementById('combSelectAll').addEventListener('change',e=>{const che
 
 // FTE settings
 document.getElementById('combFteBtn').addEventListener('click',()=>document.getElementById('fteSettings').classList.toggle('open'));
-document.getElementById('fteTarget').addEventListener('change',e=>{fteTarget=+e.target.value||1200;combRender();});
+document.getElementById('fteTarget').addEventListener('change',e=>{fteTarget=+e.target.value||1600;saveTagState();combRender();});
 
 // ── Detailed Report generation ────────────────────────────────────────────────
 function generateDetailedReport(canonicals){
@@ -2275,51 +2312,56 @@ document.getElementById('combExportBtn').addEventListener('click',()=>{
 updateCombStatus();
 
 // ═══════════════════════════════════════════════════════
-// PERSISTENCE — tags & rules (no workload data)
+// PERSISTENCE — tags, rules & settings (no workload data)
 // ═══════════════════════════════════════════════════════
-const STORAGE_KEY_TAGS='al_staff_tags';
-const STORAGE_KEY_RULES='al_tag_rules';
+const STORAGE_KEY_TAGS='al_staff_tags_v2';
+const STORAGE_KEY_RULES='al_tag_rules_v2';
+const STORAGE_KEY_SETTINGS='al_settings_v1';
 
 function normKey(canonical){return normaliseName(canonical);}
 
 function saveTagState(){
-  try{
-    // Tags saved under normKey; FTE fraction stored alongside as third element
-    const tagsArr=[...staffTags.entries()].map(([canonical,tagMap])=>{
-      const nk=normKey(canonical);
-      return[
-        nk,
-        [...tagMap.entries()].map(([tag,info])=>[tag,info.expiry?info.expiry.toISOString():null]),
-        staffFte.get(nk)??null  // FTE fraction, null = default 1.0
-      ];
-    });
-    // Also save FTE fractions for people who have a fraction but no tags
-    staffFte.forEach((frac,nk)=>{
-      if(!tagsArr.find(e=>e[0]===nk))tagsArr.push([nk,[],frac]);
-    });
-    const rulesArr=[...tagRules.entries()].map(([tag,rule])=>[
-      tag,
-      {tlLoad:rule.tlLoad,tlPrep:rule.tlPrep,proj:rule.proj,expiry:rule.expiry?rule.expiry.toISOString():null}
-    ]);
-    window.storage.set(STORAGE_KEY_TAGS,JSON.stringify(tagsArr));
-    window.storage.set(STORAGE_KEY_RULES,JSON.stringify(rulesArr));
-  }catch(e){}
+  // Save tags (keyed by normKey), manual FTE overrides, rules, and global settings
+  const tagsArr=[...staffTags.entries()].map(([canonical,tagMap])=>{
+    const nk=normKey(canonical);
+    return[
+      nk,
+      [...tagMap.entries()].map(([tag,info])=>[tag,info.expiry?info.expiry.toISOString():null]),
+      staffFte.get(nk)??null
+    ];
+  });
+  // Include manual FTE overrides for people with no tags
+  staffFte.forEach((frac,nk)=>{
+    if(!tagsArr.find(e=>e[0]===nk))tagsArr.push([nk,[],frac]);
+  });
+  const rulesArr=[...tagRules.entries()].map(([tag,rule])=>[
+    tag,
+    {tlLoad:rule.tlLoad||0,tlPrep:rule.tlPrep||0,proj:rule.proj||0,fte:rule.fte??1,expiry:rule.expiry?rule.expiry.toISOString():null}
+  ]);
+  const settings={fteTarget};
+  // Fire all three saves; log any failures
+  window.storage.set(STORAGE_KEY_TAGS,JSON.stringify(tagsArr))
+    .catch(e=>console.warn('AL: tags save failed',e));
+  window.storage.set(STORAGE_KEY_RULES,JSON.stringify(rulesArr))
+    .catch(e=>console.warn('AL: rules save failed',e));
+  window.storage.set(STORAGE_KEY_SETTINGS,JSON.stringify(settings))
+    .catch(e=>console.warn('AL: settings save failed',e));
 }
 
-let _pendingTagsByNormKey=new Map();   // normKey → {tagMap, fte}
+let _pendingTagsByNormKey=new Map(); // normKey → {tagMap, manualFte}
 
 function reattachStoredTags(){
   if(_pendingTagsByNormKey.size===0)return;
   combData.forEach(d=>{
     const nk=normKey(d.canonical);
     if(_pendingTagsByNormKey.has(nk)){
-      const{tagMap,fte}=_pendingTagsByNormKey.get(nk);
+      const{tagMap,manualFte}=_pendingTagsByNormKey.get(nk);
       if(!staffTags.has(d.canonical))staffTags.set(d.canonical,new Map());
       tagMap.forEach((info,tag)=>{
         if(!staffTags.get(d.canonical).has(tag))
           staffTags.get(d.canonical).set(tag,info);
       });
-      if(fte!==null)staffFte.set(nk,fte);
+      if(manualFte!=null)staffFte.set(nk,manualFte);
       _pendingTagsByNormKey.delete(nk);
     }
   });
@@ -2327,38 +2369,150 @@ function reattachStoredTags(){
 }
 
 async function loadTagState(){
+  let anyLoaded=false;
+  // Load settings first (fteTarget needed before render)
   try{
-    const[tagsRes,rulesRes]=await Promise.all([
-      window.storage.get(STORAGE_KEY_TAGS).catch(()=>null),
-      window.storage.get(STORAGE_KEY_RULES).catch(()=>null)
-    ]);
+    const settingsRes=await window.storage.get(STORAGE_KEY_SETTINGS);
+    if(settingsRes){
+      const s=JSON.parse(settingsRes.value);
+      if(s.fteTarget){
+        fteTarget=s.fteTarget;
+        document.getElementById('fteTarget').value=fteTarget;
+      }
+      anyLoaded=true;
+    }
+  }catch(e){console.warn('AL: settings load failed',e);}
+
+  // Load rules
+  try{
+    const rulesRes=await window.storage.get(STORAGE_KEY_RULES);
     if(rulesRes){
       JSON.parse(rulesRes.value).forEach(([tag,rule])=>{
-        tagRules.set(tag,{tlLoad:rule.tlLoad||0,tlPrep:rule.tlPrep||0,proj:rule.proj||0,expiry:rule.expiry?new Date(rule.expiry):null});
+        tagRules.set(tag,{
+          tlLoad:rule.tlLoad||0,
+          tlPrep:rule.tlPrep||0,
+          proj:rule.proj||0,
+          fte:rule.fte??1,
+          expiry:rule.expiry?new Date(rule.expiry):null
+        });
       });
+      anyLoaded=true;
     }
+  }catch(e){console.warn('AL: rules load failed',e);}
+
+  // Load tags (parked until merge provides canonical names)
+  try{
+    const tagsRes=await window.storage.get(STORAGE_KEY_TAGS);
     if(tagsRes){
       JSON.parse(tagsRes.value).forEach(entry=>{
-        const[nk,tagEntries,fte]=entry;
+        const[nk,tagEntries,manualFte]=entry;
+        const tagMap=new Map();
+        tagEntries.forEach(([tag,expiryISO])=>
+          tagMap.set(tag,{expiry:expiryISO?new Date(expiryISO):null})
+        );
+        _pendingTagsByNormKey.set(nk,{tagMap,manualFte:manualFte??null});
+      });
+      anyLoaded=true;
+    }
+  }catch(e){console.warn('AL: tags load failed',e);}
+
+  if(anyLoaded){
+    renderRulesEditor();
+    renderTagFilterBar();
+    const el=document.createElement('div');
+    el.style.cssText='position:fixed;bottom:1rem;right:1rem;background:#041e42;color:white;padding:8px 14px;border-radius:8px;font-size:0.78rem;z-index:9999;opacity:0;transition:opacity 0.3s';
+    const pending=_pendingTagsByNormKey.size;
+    el.textContent=pending>0
+      ?`✓ Settings restored · ${pending} staff group${pending!==1?'s':''} ready to reattach on merge`
+      :'✓ Settings restored';
+    document.body.appendChild(el);
+    requestAnimationFrame(()=>{
+      el.style.opacity='1';
+      setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),400);},2800);
+    });
+  }
+}
+
+// ── localStorage shim for window.storage ─────────────────────────────────────
+window.storage = {
+  set(key, value) {
+    try { localStorage.setItem(key, value); return Promise.resolve(); }
+    catch(e) { return Promise.reject(e); }
+  },
+  get(key) {
+    try {
+      const v = localStorage.getItem(key);
+      return Promise.resolve(v != null ? {value: v} : null);
+    } catch(e) { return Promise.reject(e); }
+  }
+};
+
+// ── Model export / import ─────────────────────────────────────────────────────
+function exportModel(){
+  const tagsArr=[...staffTags.entries()].map(([canonical,tagMap])=>{
+    const nk=normKey(canonical);
+    return[nk,[...tagMap.entries()].map(([tag,info])=>[tag,info.expiry?info.expiry.toISOString():null]),staffFte.get(nk)??null];
+  });
+  staffFte.forEach((frac,nk)=>{
+    if(!tagsArr.find(e=>e[0]===nk))tagsArr.push([nk,[],frac]);
+  });
+  const rulesArr=[...tagRules.entries()].map(([tag,rule])=>[
+    tag,{tlLoad:rule.tlLoad||0,tlPrep:rule.tlPrep||0,proj:rule.proj||0,fte:rule.fte??1,expiry:rule.expiry?rule.expiry.toISOString():null}
+  ]);
+  const payload={version:1,exportedAt:new Date().toISOString(),tags:tagsArr,rules:rulesArr,settings:{fteTarget}};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='academic_load_model.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importModel(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const payload=JSON.parse(e.target.result);
+      if(!payload.version||!payload.tags||!payload.rules)throw new Error('Unrecognised format');
+      // Restore rules
+      tagRules.clear();
+      payload.rules.forEach(([tag,rule])=>{
+        tagRules.set(tag,{tlLoad:rule.tlLoad||0,tlPrep:rule.tlPrep||0,proj:rule.proj||0,fte:rule.fte??1,expiry:rule.expiry?new Date(rule.expiry):null});
+      });
+      // Restore FTE target
+      if(payload.settings?.fteTarget){
+        fteTarget=payload.settings.fteTarget;
+        document.getElementById('fteTarget').value=fteTarget;
+      }
+      // Restore tags (may need reattachment if data not yet loaded)
+      _pendingTagsByNormKey.clear();
+      staffTags.clear();
+      staffFte.clear();
+      payload.tags.forEach(([nk,tagEntries,manualFte])=>{
         const tagMap=new Map();
         tagEntries.forEach(([tag,expiryISO])=>tagMap.set(tag,{expiry:expiryISO?new Date(expiryISO):null}));
-        _pendingTagsByNormKey.set(nk,{tagMap,fte:fte??null});
+        _pendingTagsByNormKey.set(nk,{tagMap,manualFte:manualFte??null});
       });
-    }
-    if(tagsRes||rulesRes){
+      reattachStoredTags();
+      saveTagState();
+      recomputeCombData();
       renderRulesEditor();
       renderTagFilterBar();
-      const el=document.createElement('div');
-      el.style.cssText='position:fixed;bottom:1rem;right:1rem;background:#041e42;color:white;padding:8px 14px;border-radius:8px;font-size:0.78rem;z-index:9999;opacity:0;transition:opacity 0.3s';
-      const pending=_pendingTagsByNormKey.size;
-      el.textContent=pending>0
-        ?`✓ Rules & FTE settings restored · ${pending} staff group${pending!==1?'s':''} ready to reattach on merge`
-        :'✓ Rules & FTE settings restored';
-      document.body.appendChild(el);
-      requestAnimationFrame(()=>{el.style.opacity='1';setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),400);},2800);});
-    }
-  }catch(e){}
+      const msg=document.createElement('div');
+      msg.style.cssText='position:fixed;bottom:1rem;right:1rem;background:#1a7a4a;color:white;padding:8px 14px;border-radius:8px;font-size:0.78rem;z-index:9999;opacity:0;transition:opacity 0.3s';
+      msg.textContent='✓ Model imported successfully';
+      document.body.appendChild(msg);
+      requestAnimationFrame(()=>{msg.style.opacity='1';setTimeout(()=>{msg.style.opacity='0';setTimeout(()=>msg.remove(),400);},2800);});
+    }catch(err){alert('Import failed: '+err.message);}
+  };
+  reader.readAsText(file);
 }
+
+document.getElementById('combModelExportBtn').addEventListener('click',exportModel);
+document.getElementById('combModelImportInput').addEventListener('change',function(){
+  if(this.files[0])importModel(this.files[0]);
+  this.value='';
+});
 
 loadTagState();
 
@@ -2370,7 +2524,7 @@ loadTagState();
 <div style="padding:20px;max-width:1200px;margin:auto">
 
 <h2>Citizenship Roles</h2>
-<p>Paste SharePoint tables for <a href="https://uniofnottm.sharepoint.com/sites/SchoolofPharmacy/SitePages/Research-Academic-Leadership-and-Management-Roles.aspx?CT=1774605637185&OR=OWA-NTB-Mail&CID=90d5fcc2-8dbc-12d9-c6d6-c6bf0af853eb">Teaching</a>, <a href="https://uniofnottm.sharepoint.com/sites/SchoolofPharmacy/SitePages/Research-Leadership-and-Management-Roles.aspx?CT=1774605633448&OR=OWA-NTB-Mail&CID=36a72f4c-95fd-d9b1-8100-635be73592d6">Research</a>, and <a href="https://uniofnottm.sharepoint.com/sites/SchoolofPharmacy/SitePages/School-and-Citizenship-Roles.aspx?CT=1774605628301&OR=OWA-NTB-Mail&CID=3b271af2-00b7-7dfd-3c9a-224a359cbdda">School/Citizenship</a> roles.</p>
+<p>Paste SharePoint tables for Teaching, Research, and School/Citizenship roles.</p>
 
 <h3>Teaching Roles</h3>
 <textarea id="cit-teaching" style="width:100%;height:120px"></textarea>
