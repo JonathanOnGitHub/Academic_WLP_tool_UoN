@@ -218,6 +218,33 @@
   .res-hrs-bar-fill{height:100%;background:var(--mid-blue);border-radius:4px;}
   .res-fte-badge{display:inline-block;font-size:0.68rem;font-weight:600;border-radius:10px;padding:2px 8px;background:var(--light-blue);color:var(--mid-blue);}
 
+  /* PGR SUPERVISION TABLE */
+  .pgr-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
+  .pgr-table th{background:var(--navy);color:white;padding:9px 12px;font-weight:500;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;}
+  .pgr-table th:hover{background:#0a2a5a;}
+  .pgr-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+  .pgr-table tr:hover td{background:#f5f0ff;}
+  .pgr-table .name-f{font-weight:500;font-family:'Source Serif 4',serif;font-size:0.88rem;}
+  .pgr-table .num{font-family:'IBM Plex Mono',monospace;text-align:right;}
+  .pgr-table .tot{font-family:'IBM Plex Mono',monospace;text-align:right;font-weight:600;color:var(--navy);}
+  .pgr-table tfoot td{font-weight:600;background:#f5f0ff;border-top:2px solid var(--purple);}
+  .pgr-student-chip{display:inline-block;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-size:0.72rem;margin:2px;white-space:nowrap;}
+  .pgr-student-chip.phd{border-left:3px solid var(--purple);}
+  .pgr-student-chip.mres{border-left:3px solid var(--teal);}
+  .pgr-student-chip.ft{color:var(--text);}
+  .pgr-student-chip.pt{color:var(--muted);font-style:italic;}
+  .pgr-badge{display:inline-block;font-size:0.65rem;font-weight:600;border-radius:10px;padding:1px 7px;margin-left:3px;}
+  .pgr-badge-phd{background:var(--purple-light);color:var(--purple);}
+  .pgr-badge-mres{background:var(--teal-light);color:var(--teal);}
+  .pgr-settings-bar{background:#f5f0ff;border:1px solid #d8b4fe;border-radius:10px;padding:1rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:flex-end;gap:1.5rem;flex-wrap:wrap;}
+  .pgr-settings-bar h3{font-size:0.85rem;font-weight:600;color:var(--purple);margin-bottom:0;width:100%;}
+  .pgr-set-group{display:flex;flex-direction:column;gap:3px;}
+  .pgr-set-group label{font-size:0.72rem;color:var(--muted);font-weight:500;}
+  .pgr-set-group input[type=number]{padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.82rem;font-family:'IBM Plex Mono',monospace;width:90px;}
+  .pgr-set-group .hint{font-size:0.65rem;color:var(--muted);font-style:italic;}
+  .pgr-recalc-btn{background:var(--purple);color:white;border:none;border-radius:6px;padding:6px 14px;font-size:0.8rem;font-weight:500;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;align-self:flex-end;}
+  .pgr-recalc-btn:hover{background:#5b17a0;}
+
   /* MMI session card */
   .mmi-session-card{background:var(--bg);border-left:3px solid var(--purple);border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:0.8rem;}
   .mmi-session-card .ms-title{font-weight:600;color:var(--navy);margin-bottom:3px;}
@@ -420,7 +447,7 @@
     <div class="logo-mark">AL</div>
     <div>
       <div class="header-title">Academic Load — Combined View</div>
-      <div class="header-sub">Teaching · Tutorial · Projects · MMIs · Research · Merged totals</div>
+      <div class="header-sub">Teaching · Tutorial · Projects · MMIs · Research · PGR · Merged totals</div>
     </div>
   </div>
   <div class="header-badge">100% browser-based · data never leaves your device</div>
@@ -434,6 +461,7 @@
     <button class="main-tab-btn" data-panel="panel-mmi">🩺 MMIs <span class="tab-badge" id="badge-mmi">—</span></button>
     <button class="main-tab-btn" data-panel="panel-citizenship">🏛 Citizenship <span class="tab-badge" id="badge-citizenship">—</span></button>
     <button class="main-tab-btn" data-panel="panel-research">🔬 Staff Research Hours <span class="tab-badge" id="badge-research">—</span></button>
+    <button class="main-tab-btn" data-panel="panel-pgr">🎓 PGR Supervision <span class="tab-badge" id="badge-pgr">—</span></button>
 <button class="main-tab-btn" data-panel="panel-combined">⚡ Combined Totals <span class="tab-badge" id="badge-combined">—</span></button>
   </div>
 
@@ -658,7 +686,7 @@
     <div id="res-landing">
       <div class="landing-grid">
         <div class="landing-hero" style="background:linear-gradient(135deg,#042a3a,#0a7a9a)">
-          <div class="hero-eyebrow">Tab 6 of 7</div>
+          <div class="hero-eyebrow">Tab 6 of 8</div>
           <h1 class="hero-h1">Staff Research Hours</h1>
           <p class="hero-desc">Upload the staff research hours spreadsheet (XLSX). Displays FTE, project count, and current/next year hours per staff member, and feeds into the Combined Totals view.</p>
           <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">Staff Identifier · Name · Department · Sum of Max FTE · Project Count · Hrs Per Week · Current Year Hours · Next Year Hours</strong></div>
@@ -722,7 +750,108 @@
     </div>
   </div>
 
-  <!-- ═══ TAB 7 (was 5): COMBINED TOTALS ═══ -->
+  <!-- ═══ TAB 7: PGR SUPERVISION ═══ -->
+  <div class="main-tab-panel" id="panel-pgr">
+    <div id="pgr-landing">
+      <div class="landing-grid">
+        <div class="landing-hero" style="background:linear-gradient(135deg,#2d1b69,#6b21a8)">
+          <div class="hero-eyebrow">Tab 7 of 8</div>
+          <h1 class="hero-h1">PGR Supervision</h1>
+          <p class="hero-desc">Upload the PGR student spreadsheet. Calculates per-supervisor hours based on percentage allocation, student programme (PhD / MRes), and mode (full-time / part-time). Only students whose supervision period includes today's date are counted. Assistant supervisors are excluded.</p>
+          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">First Name · Surname · Start date · ESD · End date · Thesis Submitted Date · Plan/Programme · PI · % PI · 2nd–5th Supervisor &amp; % · Assistant Supervisor · Mode</strong></div>
+        </div>
+        <div class="landing-panel">
+          <h2 class="panel-h2">Upload PGR Spreadsheet</h2>
+          <p class="panel-sub">XLSX or XLS file. Headers expected on row 1.</p>
+          <div class="drop-zone" id="pgrDropZone" style="border-color:var(--purple);background:var(--purple-light)">
+            <input type="file" id="pgrFileInput" accept=".xlsx,.xls">
+            <div class="drop-icon">🎓</div>
+            <h3>Drop XLSX file here</h3>
+            <p>or click to browse</p>
+          </div>
+          <div class="error-msg" id="pgrError"></div>
+          <div style="background:var(--purple-light);border:1px solid #d8b4fe;border-radius:8px;padding:1rem;margin-top:0.5rem">
+            <div style="font-size:0.78rem;font-weight:600;color:var(--purple);margin-bottom:0.7rem">⚙️ Hour rates (1.0 FTE equivalent)</div>
+            <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
+              <div class="pgr-set-group">
+                <label>PhD hours/yr (1.0 FTE)</label>
+                <input type="number" id="pgrPhdHours" value="100" min="1" max="500" step="5">
+                <span class="hint">pro-rated by % allocation &amp; mode</span>
+              </div>
+              <div class="pgr-set-group">
+                <label>MRes hours/yr (1.0 FTE)</label>
+                <input type="number" id="pgrMResHours" value="100" min="1" max="500" step="5">
+                <span class="hint">pro-rated by % allocation &amp; mode</span>
+              </div>
+              <div class="pgr-set-group">
+                <label>Part-time multiplier</label>
+                <input type="number" id="pgrPtMultiplier" value="0.5" min="0.1" max="1.0" step="0.05">
+                <span class="hint">applied to part-time students</span>
+              </div>
+            </div>
+          </div>
+          <button class="btn-primary" id="pgrAnalyseBtn" disabled style="margin-top:1rem">🎓 Calculate PGR Supervision</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="pgr-content" style="display:none">
+      <div class="analyser-header">
+        <div class="analyser-title-block"><h2>PGR Supervision Workload</h2><div class="analyser-meta" id="pgrMeta"></div></div>
+        <div class="analyser-actions">
+          <button class="btn-action" id="pgrBtnBack">← Back</button>
+          <button class="btn-action" id="pgrBtnSettings">⚙ Settings</button>
+          <button class="btn-action" id="pgrBtnExport">⬇ Export XLSX</button>
+        </div>
+      </div>
+
+      <div class="pgr-settings-bar" id="pgrInlineSettings" style="display:none">
+        <h3>Hour rates — adjust and click Recalculate</h3>
+        <div class="pgr-set-group"><label>PhD hrs/yr (1.0 FTE)</label><input type="number" id="pgrPhdHours2" min="1" max="500" step="5"><span class="hint">hrs per full-time PhD at 100%</span></div>
+        <div class="pgr-set-group"><label>MRes hrs/yr (1.0 FTE)</label><input type="number" id="pgrMResHours2" min="1" max="500" step="5"><span class="hint">hrs per full-time MRes at 100%</span></div>
+        <div class="pgr-set-group"><label>Part-time multiplier</label><input type="number" id="pgrPtMultiplier2" min="0.1" max="1" step="0.05"><span class="hint">fraction applied to PT students</span></div>
+        <button class="pgr-recalc-btn" id="pgrRecalcBtn">↻ Recalculate</button>
+      </div>
+
+      <div class="stats-bar" id="pgrStatsBar"></div>
+
+      <div style="background:#f5f0ff;border:1px solid #d8b4fe;border-radius:8px;padding:0.6rem 1rem;margin-bottom:1rem;font-size:0.78rem;color:var(--purple)">
+        ℹ️ Only students currently active (today between Start Date and End Date, or thesis not yet submitted) are counted. Part-time students use the multiplier above. Assistant supervisors are excluded.
+      </div>
+
+      <div class="search-row">
+        <input type="text" id="pgrSearch" placeholder="Filter by supervisor name…">
+        <select id="pgrSortSel">
+          <option value="hours-desc">Total hrs ↓</option>
+          <option value="hours-asc">Total hrs ↑</option>
+          <option value="students-desc">Active students ↓</option>
+          <option value="name-asc">Name A–Z</option>
+        </select>
+      </div>
+
+      <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
+        <table class="pgr-table">
+          <thead><tr>
+            <th data-pgrsort="name" style="cursor:pointer;user-select:none">Supervisor ↕</th>
+            <th data-pgrsort="phd" style="cursor:pointer;user-select:none;text-align:right">PhD students ↕</th>
+            <th data-pgrsort="mres" style="cursor:pointer;user-select:none;text-align:right">MRes students ↕</th>
+            <th data-pgrsort="students" style="cursor:pointer;user-select:none;text-align:right">Active total ↕</th>
+            <th data-pgrsort="hours" style="cursor:pointer;user-select:none;text-align:right">Total hrs/yr ↕</th>
+            <th style="min-width:200px">Active students</th>
+          </tr></thead>
+          <tbody id="pgrTbody"></tbody>
+          <tfoot id="pgrFoot"></tfoot>
+        </table>
+      </div>
+
+      <div style="margin-top:1.5rem">
+        <h3 style="font-family:'Source Serif 4',serif;color:var(--navy);font-size:1rem;margin-bottom:0.8rem">Excluded / Inactive Students</h3>
+        <div id="pgrExcludedList" style="font-size:0.78rem;color:var(--muted)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 8 (Combined Totals) ═══ -->
   <div class="main-tab-panel" id="panel-combined">
     <div class="combined-upload-bar">
       <h3>Combined Academic Load</h3>
@@ -734,6 +863,7 @@
         <span class="status-pill" id="comb-status-mmi">MMIs</span>
         <span class="status-pill" id="comb-status-cit">Citizenship</span>
         <span class="status-pill" id="comb-status-res">Research Hours</span>
+        <span class="status-pill" id="comb-status-pgr">PGR Supervision</span>
       </div>
       <button class="btn-primary" id="combMergeBtn" style="width:auto;padding:0.65rem 1.8rem" disabled>⚡ Merge &amp; Calculate</button>
     </div>
@@ -771,6 +901,7 @@
           <option value="mmi-desc">MMI ↓</option>
           <option value="citizenship-desc">Citizenship ↓</option>
           <option value="research-desc">Research ↓</option>
+          <option value="pgr-desc">PGR Supervision ↓</option>
           <option value="name-asc">Name A–Z</option>
         </select>
       </div>
@@ -822,6 +953,7 @@
             <th data-combsort="mmi" style="cursor:pointer;user-select:none;text-align:right">MMI ↕</th>
             <th data-combsort="citizenship" style="cursor:pointer;user-select:none;text-align:right">Citizenship ↕</th>
             <th data-combsort="research" style="cursor:pointer;user-select:none;text-align:right">Research ↕</th>
+            <th data-combsort="pgr" style="cursor:pointer;user-select:none;text-align:right">PGR ↕</th>
             <th data-combsort="total" style="cursor:pointer;user-select:none;text-align:right">Total ↕</th>
             <th data-combsort="fte" style="cursor:pointer;user-select:none;min-width:170px">FTE % ↕</th>
             <th>Sources</th>
@@ -1561,7 +1693,7 @@ document.getElementById('mmiBtnExport').addEventListener('click',()=>{
 // TAB 5 — COMBINED TOTALS
 // ═══════════════════════════════════════════════════════
 let combData=[],combSortKey='total-desc';
-const SRC_LABELS={tl:'📅 Teaching',tut:'👥 Tutorial',proj:'🎓 Project',mmi:'🩺 MMI',cit:'🏛 Citizenship',res:'🔬 Research'};
+const SRC_LABELS={tl:'📅 Teaching',tut:'👥 Tutorial',proj:'🎓 Project',mmi:'🩺 MMI',cit:'🏛 Citizenship',res:'🔬 Research',pgr:'🎓 PGR Supervision'};
 // staffTags: canonical → Map<tagName, {expiry: Date|null}>
 const staffTags=new Map();
 // tagRules: tagName → {tlLoad, tlPrep, proj, expiry: Date|null}
@@ -1641,6 +1773,8 @@ function updateCombStatus(){
   const hasCit=Object.keys(citizenshipTotals).length>0;
   const resHours=typeof window.getResHoursTotals==='function'?window.getResHoursTotals():{};
   const hasRes=Object.keys(resHours).length>0;
+  const pgrHours=typeof window.getPgrTotals==='function'?window.getPgrTotals():{};
+  const hasPgr=Object.keys(pgrHours).length>0;
   const pill=(id,loaded,loadedText,defaultText)=>{const el=document.getElementById(id);if(!el)return;el.className='status-pill'+(loaded?' loaded':'');el.textContent=loaded?loadedText:defaultText;};
   pill('comb-status-tl',hasTL,`Teaching: ${tlAllStaff.length} staff`,'Teaching Load');
   pill('comb-status-tut',hasTUT,`Tutorial: ${tutAllTutors.length} tutors`,'Tutorial Workload');
@@ -1648,13 +1782,15 @@ function updateCombStatus(){
   pill('comb-status-mmi',hasMmi,`MMI: ${mmiResults.filter(r=>r.isActiveStaff).length} staff`,'MMIs');
   pill('comb-status-cit',hasCit,`Citizenship: ${Object.keys(citizenshipTotals).length} staff`,'Citizenship');
   pill('comb-status-res',hasRes,`Research: ${Object.keys(resHours).length} staff`,'Research Hours');
-  document.getElementById('combMergeBtn').disabled=!(hasTL||hasTUT||hasProj||hasMmi||hasCit||hasRes);
+  pill('comb-status-pgr',hasPgr,`PGR: ${Object.keys(pgrHours).length} supervisors`,'PGR Supervision');
+  document.getElementById('combMergeBtn').disabled=!(hasTL||hasTUT||hasProj||hasMmi||hasCit||hasRes||hasPgr);
 }
 
 // Recompute hours for all combData entries using current bonuses (no re-merge)
 function recomputeCombData(){
   purgeExpiredAssignments();
   const resHoursTotals=typeof window.getResHoursTotals==='function'?window.getResHoursTotals():{};
+  const pgrTotals=typeof window.getPgrTotals==='function'?window.getPgrTotals():{};
   combData.forEach(d=>{
     const contactH=d.tlName?tlAllWeeks.reduce((s,w)=>s+calcHours(tlStaffData[d.tlName]?.[w],tlRealisticMode),0):0;
     const projBase=d.projName?(projAllResults.find(r=>r.name===d.projName)?.total||0):0;
@@ -1662,7 +1798,8 @@ function recomputeCombData(){
     d.tlHours=d.tlName?tlTotal:0;
     d.projHours=d.projName?projTotal:0;
     d.resHours=d.resName?(resHoursTotals[d.resName]||0):0;
-    d.total=d.tlHours+d.tutHours+d.projHours+d.mmiHours+d.citHours+d.resHours;
+    d.pgrHours=d.pgrName?(pgrTotals[d.pgrName]||0):0;
+    d.total=d.tlHours+d.tutHours+d.projHours+d.mmiHours+d.citHours+d.resHours+d.pgrHours;
     d._bonuses=computeBonuses(d.canonical);
   });
 }
@@ -1680,9 +1817,12 @@ document.getElementById('combMergeBtn').addEventListener('click',()=>{
   const resHoursTotals=typeof window.getResHoursTotals==='function'?window.getResHoursTotals():{};
   const resNames=Object.keys(resHoursTotals);
   if(resNames.length>0)lists.push({source:'res',names:resNames});
+  const pgrTotals=typeof window.getPgrTotals==='function'?window.getPgrTotals():{};
+  const pgrNames=Object.keys(pgrTotals);
+  if(pgrNames.length>0)lists.push({source:'pgr',names:pgrNames});
   const groups=mergeNameLists(lists);
   combData=groups.map(g=>{
-    const tlName=g.sources['tl']||null,tutName=g.sources['tut']||null,projName=g.sources['proj']||null,mmiName=g.sources['mmi']||null,citName=g.sources['cit']||null,resName=g.sources['res']||null;
+    const tlName=g.sources['tl']||null,tutName=g.sources['tut']||null,projName=g.sources['proj']||null,mmiName=g.sources['mmi']||null,citName=g.sources['cit']||null,resName=g.sources['res']||null,pgrName=g.sources['pgr']||null;
     const contactH=tlName?tlAllWeeks.reduce((s,w)=>s+calcHours(tlStaffData[tlName]?.[w],tlRealisticMode),0):0;
     const projBase=projName?(projAllResults.find(r=>r.name===projName)?.total||0):0;
     const{tlTotal,projTotal}=applyBonuses(g.canonical,contactH,projBase);
@@ -1692,10 +1832,11 @@ document.getElementById('combMergeBtn').addEventListener('click',()=>{
     const mmiHours=mmiName?(mmiResults.find(r=>r.name===mmiName)?.totalHours||0):0;
     const citHours=citName?(citizenshipTotals[citName]||0):0;
     const resHours=resName?(resHoursTotals[resName]||0):0;
-    const total=tlHours+tutHours+projHours+mmiHours+citHours+resHours;
+    const pgrHours=pgrName?(pgrTotals[pgrName]||0):0;
+    const total=tlHours+tutHours+projHours+mmiHours+citHours+resHours+pgrHours;
     const matchType=Object.keys(g.sources).length>1?(g.matchType||'exact'):'only';
     const _bonuses=computeBonuses(g.canonical);
-    return{canonical:g.canonical,tlName,tutName,projName,mmiName,citName,resName,tlHours,tutHours,projHours,mmiHours,citHours,resHours,total,matchType,score:g.score,sources:g.sources,_bonuses};
+    return{canonical:g.canonical,tlName,tutName,projName,mmiName,citName,resName,pgrName,tlHours,tutHours,projHours,mmiHours,citHours,resHours,pgrHours,total,matchType,score:g.score,sources:g.sources,_bonuses};
   });
   const maxTotal=Math.max(...combData.map(d=>d.total),1);
   const fuzzy=combData.filter(d=>d.matchType==='fuzzy').length;
@@ -1722,8 +1863,8 @@ function combGetSorted(){
   data.sort((a,b)=>{
     if(col==='name')return dir==='asc'?a.canonical.localeCompare(b.canonical):b.canonical.localeCompare(a.canonical);
     if(col==='fte'){const ap=ftePct(a.canonical,a.total),bp=ftePct(b.canonical,b.total);return dir==='asc'?ap-bp:bp-ap;}
-    const av=col==='teaching'?a.tlHours:col==='tutorial'?a.tutHours:col==='project'?a.projHours:col==='mmi'?a.mmiHours:col==='citizenship'?a.citHours:col==='research'?(a.resHours||0):a.total;
-    const bv=col==='teaching'?b.tlHours:col==='tutorial'?b.tutHours:col==='project'?b.projHours:col==='mmi'?b.mmiHours:col==='citizenship'?b.citHours:col==='research'?(b.resHours||0):b.total;
+    const av=col==='teaching'?a.tlHours:col==='tutorial'?a.tutHours:col==='project'?a.projHours:col==='mmi'?a.mmiHours:col==='citizenship'?a.citHours:col==='research'?(a.resHours||0):col==='pgr'?(a.pgrHours||0):a.total;
+    const bv=col==='teaching'?b.tlHours:col==='tutorial'?b.tutHours:col==='project'?b.projHours:col==='mmi'?b.mmiHours:col==='citizenship'?b.citHours:col==='research'?(b.resHours||0):col==='pgr'?(b.pgrHours||0):b.total;
     return dir==='asc'?av-bv:bv-av;
   });
   return data;
@@ -2051,16 +2192,17 @@ function combRender(maxTotal){
     <td class="num">${d.mmiHours>0?d.mmiHours.toFixed(1):'—'}</td>
     <td class="num">${d.citHours>0?d.citHours.toFixed(1):'—'}</td>
     <td class="num">${(d.resHours||0)>0?(d.resHours).toFixed(1):'—'}</td>
+    <td class="num">${(d.pgrHours||0)>0?(d.pgrHours).toFixed(1):'—'}</td>
     <td class="tot">${d.total.toFixed(1)}</td>
     <td>${fteBarHtml(d.canonical,d.total)}</td>
     <td>${matchBadge(d)}</td>
   </tr>`;}).join('');
   // Footer: totals + average FTE%
-  const totTL=data.reduce((s,d)=>s+d.tlHours,0),totTut=data.reduce((s,d)=>s+d.tutHours,0),totProj=data.reduce((s,d)=>s+d.projHours,0),totMmi=data.reduce((s,d)=>s+d.mmiHours,0),totCit=data.reduce((s,d)=>s+d.citHours,0),totRes=data.reduce((s,d)=>s+(d.resHours||0),0),totAll=data.reduce((s,d)=>s+d.total,0);
+  const totTL=data.reduce((s,d)=>s+d.tlHours,0),totTut=data.reduce((s,d)=>s+d.tutHours,0),totProj=data.reduce((s,d)=>s+d.projHours,0),totMmi=data.reduce((s,d)=>s+d.mmiHours,0),totCit=data.reduce((s,d)=>s+d.citHours,0),totRes=data.reduce((s,d)=>s+(d.resHours||0),0),totPgr=data.reduce((s,d)=>s+(d.pgrHours||0),0),totAll=data.reduce((s,d)=>s+d.total,0);
   const avgFte=data.length>0?Math.round(data.reduce((s,d)=>s+ftePct(d.canonical,d.total),0)/data.length):0;
   const avgCls=fteClass(avgFte);
   const filterNote=activeTagFilter?` <span style="font-size:0.72rem;font-weight:400;color:var(--gold);margin-left:6px">tag: ${activeTagFilter} (${data.length})</span>`:'';
-  document.getElementById('combFoot').innerHTML=`<tr><td></td><td class="cn">Total${filterNote}</td><td></td><td class="num">${totTL.toFixed(1)}</td><td class="num">${totTut.toFixed(1)}</td><td class="num">${totProj.toFixed(1)}</td><td class="num">${totMmi.toFixed(1)}</td><td class="num">${totCit.toFixed(1)}</td><td class="num">${totRes.toFixed(1)}</td><td class="tot">${totAll.toFixed(1)}</td><td><span style="font-size:0.78rem;font-weight:600" class="fte-pct ${avgCls}">avg ${avgFte}%</span></td><td></td></tr>`;
+  document.getElementById('combFoot').innerHTML=`<tr><td></td><td class="cn">Total${filterNote}</td><td></td><td class="num">${totTL.toFixed(1)}</td><td class="num">${totTut.toFixed(1)}</td><td class="num">${totProj.toFixed(1)}</td><td class="num">${totMmi.toFixed(1)}</td><td class="num">${totCit.toFixed(1)}</td><td class="num">${totRes.toFixed(1)}</td><td class="num">${totPgr.toFixed(1)}</td><td class="tot">${totAll.toFixed(1)}</td><td><span style="font-size:0.78rem;font-weight:600" class="fte-pct ${avgCls}">avg ${avgFte}%</span></td><td></td></tr>`;
   // Inline tag-x remove buttons
   document.querySelectorAll('#combTbody .tag-x').forEach(x=>{
     x.addEventListener('click',e=>{e.stopPropagation();const c=decodeURIComponent(x.dataset.canonical),t=decodeURIComponent(x.dataset.tag);removeTag(c,t);recomputeCombData();renderTagFilterBar();renderRulesEditor();saveTagState();combRender();});
@@ -2084,6 +2226,7 @@ function combRender(maxTotal){
       ${d.mmiHours>0?`<div class="panel-row"><span class="k">🩺 MMIs</span><span class="v">${d.mmiHours.toFixed(1)}h</span></div>`:''}
       ${d.citHours>0?`<div class="panel-row"><span class="k">🏛 Citizenship</span><span class="v">${d.citHours.toFixed(1)}h</span></div>`:''}
       ${(d.resHours||0)>0?`<div class="panel-row"><span class="k">🔬 Research</span><span class="v">${d.resHours.toFixed(1)}h</span></div>`:''}
+      ${(d.pgrHours||0)>0?`<div class="panel-row"><span class="k">🎓 PGR Supervision</span><span class="v">${d.pgrHours.toFixed(1)}h</span></div>`:''}
       <div class="panel-row"><span class="k"><strong>Total</strong></span><span class="v big">${d.total.toFixed(1)}h</span></div>
       <div class="panel-row"><span class="k">FTE target</span><span class="v">${personalTarget(d.canonical).toFixed(0)}h (${(getFte(d.canonical)*100).toFixed(0)}% FTE)</span></div>
       <div class="panel-row"><span class="k">FTE %</span><span class="v ${fteClass(ftePct(d.canonical,d.total))}">${ftePct(d.canonical,d.total)}%</span></div>
@@ -2286,7 +2429,7 @@ function generateDetailedReport(canonicals){
     }
 
     // Summary donut-style bar
-    const cats=[['Teaching',d.tlHours,'#0066cc'],['Tutorial',d.tutHours,'#1a7a4a'],['Projects',d.projHours,'#b84c2a'],['MMI',d.mmiHours,'#6b21a8'],['Citizenship',d.citHours,'#c89b2a'],['Research',(d.resHours||0),'#0a7a9a']].filter(([,h])=>h>0);
+    const cats=[['Teaching',d.tlHours,'#0066cc'],['Tutorial',d.tutHours,'#1a7a4a'],['Projects',d.projHours,'#b84c2a'],['MMI',d.mmiHours,'#6b21a8'],['Citizenship',d.citHours,'#c89b2a'],['Research',(d.resHours||0),'#0a7a9a'],['PGR Supervision',(d.pgrHours||0),'#5b17a0']].filter(([,h])=>h>0);
     const summaryBars=cats.map(([label,h,col])=>`
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
         <div style="width:110px;font-size:0.82rem;color:#444">${label}</div>
@@ -2401,9 +2544,9 @@ document.getElementById('combDetailBtn').addEventListener('click',()=>{
 
 document.getElementById('combExportBtn').addEventListener('click',()=>{
   const wb2=XLSX.utils.book_new();
-  const rows=[['Academic','Teaching Name','Tutorial Name','Project Name','MMI Name','Citizenship Name','Research Name','Teaching Hrs','Tutorial Hrs','Project Hrs','MMI Hrs','Citizenship Hrs','Research Hrs','Total Hrs','Match Type']];
-  for(const d of combData)rows.push([d.canonical,d.tlName||'',d.tutName||'',d.projName||'',d.mmiName||'',d.citName||'',d.resName||'',+d.tlHours.toFixed(2),+d.tutHours.toFixed(2),+d.projHours.toFixed(2),+d.mmiHours.toFixed(2),+d.citHours.toFixed(2),+(d.resHours||0).toFixed(2),+d.total.toFixed(2),d.matchType]);
-  rows.push(['Grand Total','','','','','','',+combData.reduce((s,d)=>s+d.tlHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.tutHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.projHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.mmiHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.citHours,0).toFixed(2),+combData.reduce((s,d)=>s+(d.resHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+d.total,0).toFixed(2),'']);
+  const rows=[['Academic','Teaching Name','Tutorial Name','Project Name','MMI Name','Citizenship Name','Research Name','PGR Name','Teaching Hrs','Tutorial Hrs','Project Hrs','MMI Hrs','Citizenship Hrs','Research Hrs','PGR Hrs','Total Hrs','Match Type']];
+  for(const d of combData)rows.push([d.canonical,d.tlName||'',d.tutName||'',d.projName||'',d.mmiName||'',d.citName||'',d.resName||'',d.pgrName||'',+d.tlHours.toFixed(2),+d.tutHours.toFixed(2),+d.projHours.toFixed(2),+d.mmiHours.toFixed(2),+d.citHours.toFixed(2),+(d.resHours||0).toFixed(2),+(d.pgrHours||0).toFixed(2),+d.total.toFixed(2),d.matchType]);
+  rows.push(['Grand Total','','','','','','','',+combData.reduce((s,d)=>s+d.tlHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.tutHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.projHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.mmiHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.citHours,0).toFixed(2),+combData.reduce((s,d)=>s+(d.resHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+(d.pgrHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+d.total,0).toFixed(2),'']);
   XLSX.utils.book_append_sheet(wb2,XLSX.utils.aoa_to_sheet(rows),'Combined Load');
   XLSX.writeFile(wb2,'academic_load_combined.xlsx');
 });
@@ -2617,7 +2760,432 @@ loadTagState();
 
 </script>
 
-<!-- ═══ RESEARCH HOURS SCRIPT ═══ -->
+<!-- ═══ PGR SUPERVISION SCRIPT ═══ -->
+<script>
+// ── PGR data stores ────────────────────────────────────────────────────────────
+let pgrAllStudents = [];      // all parsed student rows (including inactive)
+let pgrSupervisorData = [];   // computed per-supervisor rows
+let pgrSettings = { phdHours: 100, mresHours: 100, ptMultiplier: 0.5 };
+
+// Expose totals for Combined merge (name → hours)
+window.getPgrTotals = function() {
+  const totals = {};
+  pgrSupervisorData.forEach(s => {
+    if (s.name && s.totalHours > 0) totals[s.name] = s.totalHours;
+  });
+  return totals;
+};
+
+// ── Date helpers ───────────────────────────────────────────────────────────────
+function pgrParseDate(val) {
+  if (!val) return null;
+  // Excel serial number
+  if (typeof val === 'number') {
+    const d = new Date((val - 25569) * 86400 * 1000);
+    if (!isNaN(d)) return d;
+  }
+  const s = String(val).trim();
+  if (!s || s === '—' || s.toLowerCase() === 'n/a') return null;
+  // Try ISO, DD/MM/YYYY, DD-MM-YYYY
+  let m;
+  if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return new Date(+m[1], +m[2]-1, +m[3]);
+  if ((m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/))) {
+    const yr = m[3].length === 2 ? 2000 + +m[3] : +m[3];
+    return new Date(yr, +m[2]-1, +m[1]);
+  }
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function pgrIsActive(student) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const start = pgrParseDate(student.startDate);
+  const end   = pgrParseDate(student.endDate);
+  const submitted = pgrParseDate(student.thesisSubmitted);
+  // If thesis submitted, exclude
+  if (submitted && submitted <= today) return false;
+  // Must have started
+  if (start && start > today) return false;
+  // Must not have ended
+  if (end && end < today) return false;
+  return true;
+}
+
+// ── Parse spreadsheet ──────────────────────────────────────────────────────────
+function parsePgrXlsx(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      if (rows.length < 2) throw new Error('No data rows found.');
+
+      // Find header row (row containing "First Name" or "Surname")
+      let hdrIdx = 0;
+      for (let i = 0; i < Math.min(5, rows.length); i++) {
+        const lower = rows[i].map(c => String(c).toLowerCase());
+        if (lower.some(c => c.includes('first name') || c.includes('surname'))) { hdrIdx = i; break; }
+      }
+      const hdrs = rows[hdrIdx].map(c => String(c).trim());
+      const hLow = hdrs.map(c => c.toLowerCase());
+
+      function col(keywords) {
+        const idx = hLow.findIndex(h => keywords.some(k => h.includes(k)));
+        return idx;
+      }
+
+      const cFirst     = col(['first name','firstname']);
+      const cSurname   = col(['surname','last name']);
+      const cStart     = col(['start date','start']);
+      const cESD       = col(['esd']);
+      const cEnd       = col(['end date','end']);
+      const cSubmit    = col(['thesis submitted','submitted']);
+      const cProg      = col(['plan/programme','programme','program','plan']);
+      const cMode      = col(['mode']);
+      const cAssist    = col(['assistant supervisor']);
+
+      // Supervisor columns: PI + up to 4 named supervisors, each with a % column
+      // Pattern: find all columns named "PI", "2nd Supervisor"…"5th Supervisor" and their % counterparts
+      const supCols = []; // [{nameCi, pctCi, label}]
+
+      // PI
+      const piNameCi = col(['pi']);
+      const piPctCi  = hLow.findIndex((h,i) => (h.includes('% pi') || h.includes('%pi') || (i > piNameCi && h.startsWith('%') && i === piNameCi + 1)));
+      if (piNameCi >= 0) {
+        // find % PI specifically
+        const ppci = hLow.findIndex(h => h.includes('% pi') || h === '% pi' || h === '%pi');
+        supCols.push({ nameCi: piNameCi, pctCi: ppci >= 0 ? ppci : piNameCi + 1, label: 'PI' });
+      }
+
+      // 2nd through 5th
+      for (let n = 2; n <= 5; n++) {
+        const nameCi = hLow.findIndex(h => h.includes(`${n}nd supervisor`) || h.includes(`${n}rd supervisor`) || h.includes(`${n}th supervisor`) || h === `${n}nd supervisor` || h.includes(`supervisor ${n}`));
+        // Actually search more flexibly
+        const nameIdx = hLow.findIndex(h => {
+          const suffixes = ['nd','rd','th'];
+          return h.includes(`${n}${suffixes[Math.min(n-2,2)]} supervisor`) || h.includes(`${n}th supervisor`) || h.includes(`${n}nd supervisor`) || h.includes(`${n}rd supervisor`);
+        });
+        const pctIdx = hLow.findIndex((h,i) => (h.includes(`% supervisor ${n}`) || h.includes(`%supervisor${n}`) || (h.startsWith('%') && h.includes(`supervisor`) && h.includes(String(n)))) );
+        // Also try: column immediately after nameIdx
+        const resolvedNameIdx = nameIdx >= 0 ? nameIdx : -1;
+        if (resolvedNameIdx >= 0) {
+          const resolvedPctIdx = pctIdx >= 0 ? pctIdx : resolvedNameIdx + 1;
+          supCols.push({ nameCi: resolvedNameIdx, pctCi: resolvedPctIdx, label: `Sup ${n}` });
+        }
+      }
+
+      if (supCols.length === 0) throw new Error('Could not find supervisor columns. Check headers include "PI" and "% PI".');
+
+      const students = [];
+      for (let i = hdrIdx + 1; i < rows.length; i++) {
+        const r = rows[i];
+        const firstName = String(r[cFirst] || '').trim();
+        const surname   = String(r[cSurname] || '').trim();
+        if (!firstName && !surname) continue;
+        const studentName = [firstName, surname].filter(Boolean).join(' ');
+
+        const prog = String(r[cProg] || '').trim();
+        const mode = String(r[cMode] || '').trim().toLowerCase();
+        const assistantSup = cAssist >= 0 ? String(r[cAssist] || '').trim() : '';
+
+        // Collect supervisors, skip assistant supervisor
+        const supervisors = [];
+        supCols.forEach(({ nameCi, pctCi, label }) => {
+          const name = String(r[nameCi] || '').trim();
+          if (!name) return;
+          // Skip if this is the assistant supervisor (same name)
+          if (assistantSup && name.toLowerCase() === assistantSup.toLowerCase()) return;
+          const rawPct = r[pctCi];
+          let pct = parseFloat(rawPct);
+          // Handle percentage as fraction (0-1) or whole number (0-100)
+          if (!isNaN(pct)) {
+            if (pct <= 1 && pct > 0) pct = pct * 100;
+          } else {
+            pct = 0;
+          }
+          supervisors.push({ name, pct, label });
+        });
+
+        students.push({
+          studentName,
+          firstName,
+          surname,
+          startDate:       cStart  >= 0 ? r[cStart]  : '',
+          esd:             cESD    >= 0 ? r[cESD]    : '',
+          endDate:         cEnd    >= 0 ? r[cEnd]    : '',
+          thesisSubmitted: cSubmit >= 0 ? r[cSubmit] : '',
+          programme:       prog,
+          mode,
+          supervisors,
+          assistantSup,
+          rawRow: r,
+        });
+      }
+
+      if (students.length === 0) throw new Error('No student rows found.');
+      pgrAllStudents = students;
+      document.getElementById('pgrError').style.display = 'none';
+      pgrCalculateAndRender();
+    } catch(err) {
+      const el = document.getElementById('pgrError');
+      el.textContent = 'Error: ' + err.message;
+      el.style.display = 'block';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Identify programme type ────────────────────────────────────────────────────
+function pgrIsMRes(prog) {
+  const p = String(prog).toLowerCase();
+  return p.includes('mres') || p.includes('m.res') || p.includes('master of research') || p.includes('masters by research');
+}
+function pgrIsPartTime(mode) {
+  const m = String(mode).toLowerCase();
+  return m.includes('part') || m.includes('pt') || m === 'p';
+}
+
+// ── Calculate supervisor hours ─────────────────────────────────────────────────
+function pgrCalculate(settings) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const active = pgrAllStudents.filter(s => pgrIsActive(s));
+  const inactive = pgrAllStudents.filter(s => !pgrIsActive(s));
+
+  // Build supervisor map
+  const supMap = {};
+  active.forEach(s => {
+    const baseHours = pgrIsMRes(s.programme) ? settings.mresHours : settings.phdHours;
+    const ptMult = pgrIsPartTime(s.mode) ? settings.ptMultiplier : 1.0;
+    const isMRes = pgrIsMRes(s.programme);
+
+    s.supervisors.forEach(sup => {
+      if (!sup.name) return;
+      const hrs = baseHours * (sup.pct / 100) * ptMult;
+      if (!supMap[sup.name]) supMap[sup.name] = { name: sup.name, phd: [], mres: [], totalHours: 0 };
+      supMap[sup.name].totalHours += hrs;
+      const entry = { studentName: s.studentName, pct: sup.pct, hrs, mode: s.mode, programme: s.programme };
+      if (isMRes) supMap[sup.name].mres.push(entry);
+      else supMap[sup.name].phd.push(entry);
+    });
+  });
+
+  const supervisors = Object.values(supMap).map(s => ({
+    ...s,
+    phdCount: s.phd.length,
+    mresCount: s.mres.length,
+    studentCount: s.phd.length + s.mres.length,
+  }));
+
+  return { supervisors, active, inactive };
+}
+
+function pgrGetCurrentSettings() {
+  return {
+    phdHours:      +document.getElementById('pgrPhdHours2').value  || pgrSettings.phdHours,
+    mresHours:     +document.getElementById('pgrMResHours2').value || pgrSettings.mresHours,
+    ptMultiplier:  +document.getElementById('pgrPtMultiplier2').value || pgrSettings.ptMultiplier,
+  };
+}
+
+function pgrCalculateAndRender() {
+  pgrSettings = {
+    phdHours:     +document.getElementById('pgrPhdHours').value  || 100,
+    mresHours:    +document.getElementById('pgrMResHours').value || 100,
+    ptMultiplier: +document.getElementById('pgrPtMultiplier').value || 0.5,
+  };
+  // Sync inline settings
+  document.getElementById('pgrPhdHours2').value  = pgrSettings.phdHours;
+  document.getElementById('pgrMResHours2').value = pgrSettings.mresHours;
+  document.getElementById('pgrPtMultiplier2').value = pgrSettings.ptMultiplier;
+
+  const { supervisors, active, inactive } = pgrCalculate(pgrSettings);
+  pgrSupervisorData = supervisors;
+
+  // Stats bar
+  const totHrs = supervisors.reduce((s,r) => s + r.totalHours, 0);
+  document.getElementById('pgrStatsBar').innerHTML = `
+    <div class="stat-card purple"><div class="sc-v">${active.length}</div><div class="sc-l">Active students</div></div>
+    <div class="stat-card teal"><div class="sc-v">${active.filter(s=>pgrIsMRes(s.programme)).length}</div><div class="sc-l">MRes</div></div>
+    <div class="stat-card rust"><div class="sc-v">${active.filter(s=>!pgrIsMRes(s.programme)).length}</div><div class="sc-l">PhD</div></div>
+    <div class="stat-card gold"><div class="sc-v">${supervisors.length}</div><div class="sc-l">Active supervisors</div></div>
+    <div class="stat-card"><div class="sc-v">${totHrs.toFixed(0)}</div><div class="sc-l">Total hrs/yr</div></div>
+  `;
+  document.getElementById('pgrMeta').textContent = `${active.length} active students · ${supervisors.length} supervisors · ${inactive.length} inactive/excluded`;
+  document.getElementById('badge-pgr').textContent = supervisors.length + ' supervisors';
+
+  pgrRenderTable();
+  pgrRenderExcluded(inactive);
+
+  document.getElementById('pgr-landing').style.display = 'none';
+  document.getElementById('pgr-content').style.display = 'block';
+  updateCombStatus();
+}
+
+function pgrGetSorted() {
+  const q = (document.getElementById('pgrSearch')?.value || '').toLowerCase();
+  let data = pgrSupervisorData.filter(s => s.name.toLowerCase().includes(q));
+  const sel = (document.getElementById('pgrSortSel')?.value || 'hours-desc');
+  data.sort((a, b) => {
+    if (sel === 'name-asc') return a.name.localeCompare(b.name);
+    if (sel === 'hours-asc') return a.totalHours - b.totalHours;
+    if (sel === 'hours-desc') return b.totalHours - a.totalHours;
+    if (sel === 'students-desc') return b.studentCount - a.studentCount;
+    return b.totalHours - a.totalHours;
+  });
+  return data;
+}
+
+function pgrRenderTable() {
+  const data = pgrGetSorted();
+  const maxHrs = Math.max(...pgrSupervisorData.map(s => s.totalHours), 1);
+
+  document.getElementById('pgrTbody').innerHTML = data.map(s => {
+    const allStudents = [...s.phd, ...s.mres];
+    const chips = allStudents.map(st => {
+      const isPt = pgrIsPartTime(st.mode);
+      const isMRes = pgrIsMRes(st.programme);
+      return `<span class="pgr-student-chip ${isMRes?'mres':'phd'} ${isPt?'pt':'ft'}" title="${st.programme} · ${st.mode} · ${st.pct}% · ${st.hrs.toFixed(1)} hrs/yr">${st.studentName} <span style="opacity:0.6">${st.pct}%</span></span>`;
+    }).join('');
+
+    return `<tr>
+      <td class="name-f">${s.name}</td>
+      <td class="num">${s.phdCount > 0 ? s.phdCount : '—'}</td>
+      <td class="num">${s.mresCount > 0 ? s.mresCount : '—'}</td>
+      <td class="num">${s.studentCount}</td>
+      <td class="tot">${s.totalHours.toFixed(1)}</td>
+      <td><div style="line-height:1.8">${chips}</div></td>
+    </tr>`;
+  }).join('');
+
+  const totHrs = data.reduce((s,r) => s + r.totalHours, 0);
+  const totPhd = data.reduce((s,r) => s + r.phdCount, 0);
+  const totMRes = data.reduce((s,r) => s + r.mresCount, 0);
+  document.getElementById('pgrFoot').innerHTML = `<tr>
+    <td><strong>Total (${data.length} supervisors)</strong></td>
+    <td class="num"><strong>${totPhd}</strong></td>
+    <td class="num"><strong>${totMRes}</strong></td>
+    <td class="num"><strong>${totPhd+totMRes}</strong></td>
+    <td class="tot"><strong>${totHrs.toFixed(1)}</strong></td>
+    <td></td>
+  </tr>`;
+}
+
+function pgrRenderExcluded(inactive) {
+  const el = document.getElementById('pgrExcludedList');
+  if (inactive.length === 0) { el.textContent = 'None — all students in the spreadsheet are currently active.'; return; }
+  el.innerHTML = inactive.map(s => {
+    const start = s.startDate ? String(s.startDate).trim() : '?';
+    const end   = s.endDate   ? String(s.endDate).trim()   : '?';
+    const sub   = s.thesisSubmitted ? ` · submitted ${String(s.thesisSubmitted).trim()}` : '';
+    return `<span class="pgr-student-chip" style="margin:2px" title="${s.programme} · ${s.mode}">${s.studentName} <span style="opacity:0.6">${start}→${end}${sub}</span></span>`;
+  }).join('');
+}
+
+// ── Wire up DOM events ─────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // File input
+  const inp = document.getElementById('pgrFileInput');
+  if (inp) inp.addEventListener('change', e => {
+    if (e.target.files[0]) {
+      document.getElementById('pgrAnalyseBtn').disabled = false;
+      parsePgrXlsx(e.target.files[0]);
+    }
+  });
+
+  // Drag and drop
+  const dz = document.getElementById('pgrDropZone');
+  if (dz) {
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+    dz.addEventListener('drop', e => {
+      e.preventDefault(); dz.classList.remove('drag-over');
+      const f = e.dataTransfer.files[0];
+      if (f) { document.getElementById('pgrAnalyseBtn').disabled = false; parsePgrXlsx(f); }
+    });
+  }
+
+  // Analyse button (also triggered by file drop, but kept for manual trigger)
+  const analyseBtn = document.getElementById('pgrAnalyseBtn');
+  if (analyseBtn) analyseBtn.addEventListener('click', () => {
+    if (pgrAllStudents.length > 0) pgrCalculateAndRender();
+  });
+
+  // Back button
+  document.getElementById('pgrBtnBack')?.addEventListener('click', () => {
+    document.getElementById('pgr-content').style.display = 'none';
+    document.getElementById('pgr-landing').style.display = 'block';
+    pgrAllStudents = [];
+    pgrSupervisorData = [];
+    document.getElementById('badge-pgr').textContent = '—';
+    updateCombStatus();
+  });
+
+  // Settings toggle
+  document.getElementById('pgrBtnSettings')?.addEventListener('click', () => {
+    const s = document.getElementById('pgrInlineSettings');
+    s.style.display = s.style.display === 'none' ? 'flex' : 'none';
+  });
+
+  // Recalculate with new settings
+  document.getElementById('pgrRecalcBtn')?.addEventListener('click', () => {
+    pgrSettings = pgrGetCurrentSettings();
+    document.getElementById('pgrPhdHours').value  = pgrSettings.phdHours;
+    document.getElementById('pgrMResHours').value = pgrSettings.mresHours;
+    document.getElementById('pgrPtMultiplier').value = pgrSettings.ptMultiplier;
+    const { supervisors, active, inactive } = pgrCalculate(pgrSettings);
+    pgrSupervisorData = supervisors;
+    const totHrs = supervisors.reduce((s,r) => s + r.totalHours, 0);
+    document.getElementById('pgrStatsBar').innerHTML = `
+      <div class="stat-card purple"><div class="sc-v">${active.length}</div><div class="sc-l">Active students</div></div>
+      <div class="stat-card teal"><div class="sc-v">${active.filter(s=>pgrIsMRes(s.programme)).length}</div><div class="sc-l">MRes</div></div>
+      <div class="stat-card rust"><div class="sc-v">${active.filter(s=>!pgrIsMRes(s.programme)).length}</div><div class="sc-l">PhD</div></div>
+      <div class="stat-card gold"><div class="sc-v">${supervisors.length}</div><div class="sc-l">Active supervisors</div></div>
+      <div class="stat-card"><div class="sc-v">${totHrs.toFixed(0)}</div><div class="sc-l">Total hrs/yr</div></div>`;
+    pgrRenderTable();
+    updateCombStatus();
+  });
+
+  // Search and sort
+  document.getElementById('pgrSearch')?.addEventListener('input', pgrRenderTable);
+  document.getElementById('pgrSortSel')?.addEventListener('change', pgrRenderTable);
+
+  // Column header sort clicks
+  document.addEventListener('click', e => {
+    const th = e.target.closest('th[data-pgrsort]');
+    if (!th) return;
+    const col = th.dataset.pgrsort;
+    const sel = document.getElementById('pgrSortSel');
+    if (!sel) return;
+    const map = { name: 'name-asc', hours: 'hours-desc', students: 'students-desc', phd: 'students-desc', mres: 'students-desc' };
+    if (sel.value === (map[col] || 'hours-desc') && col !== 'name') {
+      sel.value = col === 'hours' ? 'hours-asc' : sel.value;
+    } else {
+      sel.value = map[col] || 'hours-desc';
+    }
+    pgrRenderTable();
+  });
+
+  // Export
+  document.getElementById('pgrBtnExport')?.addEventListener('click', () => {
+    if (pgrSupervisorData.length === 0) return;
+    const rows = [['Supervisor','PhD Students','MRes Students','Total Active','Total hrs/yr']];
+    pgrGetSorted().forEach(s => {
+      rows.push([s.name, s.phdCount, s.mresCount, s.studentCount, +s.totalHours.toFixed(2)]);
+      // Sub-rows for each student
+      [...s.phd, ...s.mres].forEach(st => {
+        rows.push(['  └ ' + st.studentName, '', '', '', +st.hrs.toFixed(2)]);
+      });
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb2 = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb2, ws, 'PGR Supervision');
+    XLSX.writeFile(wb2, 'pgr_supervision.xlsx');
+  });
+});
+</script>
+
+
 <script>
 
 // ── Research Hours data store ──────────────────────────────────────────────────
