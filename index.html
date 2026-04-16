@@ -203,6 +203,21 @@
   .mmi-table .tot{font-family:'IBM Plex Mono',monospace;text-align:right;font-weight:600;color:var(--navy);}
   .mmi-table tfoot td{font-weight:600;background:var(--purple-light);border-top:2px solid var(--purple);}
 
+  /* RESEARCH TABLE */
+  .res-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
+  .res-table th{background:var(--navy);color:white;padding:9px 12px;font-weight:500;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;}
+  .res-table th:hover{background:#0a2a5a;}
+  .res-table td{padding:8px 12px;border-bottom:1px solid var(--border);}
+  .res-table tr:hover td{background:#f0f4ff;}
+  .res-table .name-f{font-weight:500;font-family:'Source Serif 4',serif;font-size:0.88rem;}
+  .res-table .num{font-family:'IBM Plex Mono',monospace;text-align:right;}
+  .res-table .tot{font-family:'IBM Plex Mono',monospace;text-align:right;font-weight:600;color:var(--navy);}
+  .res-table tfoot td{font-weight:600;background:#f0f4ff;border-top:2px solid var(--mid-blue);}
+  .res-hrs-bar-wrap{display:flex;align-items:center;gap:8px;}
+  .res-hrs-bar{flex:1;height:8px;background:var(--light-blue);border-radius:4px;overflow:hidden;min-width:60px;}
+  .res-hrs-bar-fill{height:100%;background:var(--mid-blue);border-radius:4px;}
+  .res-fte-badge{display:inline-block;font-size:0.68rem;font-weight:600;border-radius:10px;padding:2px 8px;background:var(--light-blue);color:var(--mid-blue);}
+
   /* MMI session card */
   .mmi-session-card{background:var(--bg);border-left:3px solid var(--purple);border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:0.8rem;}
   .mmi-session-card .ms-title{font-weight:600;color:var(--navy);margin-bottom:3px;}
@@ -405,7 +420,7 @@
     <div class="logo-mark">AL</div>
     <div>
       <div class="header-title">Academic Load — Combined View</div>
-      <div class="header-sub">Teaching · Tutorial · Projects · MMIs · Merged totals</div>
+      <div class="header-sub">Teaching · Tutorial · Projects · MMIs · Research · Merged totals</div>
     </div>
   </div>
   <div class="header-badge">100% browser-based · data never leaves your device</div>
@@ -418,6 +433,7 @@
     <button class="main-tab-btn" data-panel="panel-project">🎓 Project Supervision <span class="tab-badge" id="badge-project">—</span></button>
     <button class="main-tab-btn" data-panel="panel-mmi">🩺 MMIs <span class="tab-badge" id="badge-mmi">—</span></button>
     <button class="main-tab-btn" data-panel="panel-citizenship">🏛 Citizenship <span class="tab-badge" id="badge-citizenship">—</span></button>
+    <button class="main-tab-btn" data-panel="panel-research">🔬 Staff Research Hours <span class="tab-badge" id="badge-research">—</span></button>
 <button class="main-tab-btn" data-panel="panel-combined">⚡ Combined Totals <span class="tab-badge" id="badge-combined">—</span></button>
   </div>
 
@@ -637,7 +653,76 @@
     </div>
   </div>
 
-  <!-- ═══ TAB 5: COMBINED TOTALS ═══ -->
+  <!-- ═══ TAB 6: STAFF RESEARCH HOURS ═══ -->
+  <div class="main-tab-panel" id="panel-research">
+    <div id="res-landing">
+      <div class="landing-grid">
+        <div class="landing-hero" style="background:linear-gradient(135deg,#042a3a,#0a7a9a)">
+          <div class="hero-eyebrow">Tab 6 of 7</div>
+          <h1 class="hero-h1">Staff Research Hours</h1>
+          <p class="hero-desc">Upload the staff research hours spreadsheet (XLSX). Displays FTE, project count, and current/next year hours per staff member, and feeds into the Combined Totals view.</p>
+          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">Staff Identifier · Name · Department · Sum of Max FTE · Project Count · Hrs Per Week · Current Year Hours · Next Year Hours</strong></div>
+        </div>
+        <div class="landing-panel">
+          <h2 class="panel-h2">Upload Research Hours Spreadsheet</h2>
+          <p class="panel-sub">XLSX or XLS file. Headers expected on row 1.</p>
+          <div class="drop-zone" id="resDropZone" style="border-color:#0a7a9a;background:#e0f4f8">
+            <input type="file" id="resFileInput" accept=".xlsx,.xls">
+            <div class="drop-icon">🔬</div>
+            <h3>Drop XLSX file here</h3>
+            <p>or click to browse</p>
+          </div>
+          <div class="error-msg" id="resError"></div>
+          <div style="background:#e0f4f8;border-radius:8px;padding:0.8rem 1rem;font-size:0.78rem;color:#0a5a6a;margin-top:0.5rem">
+            <strong>Year used in Combined view:</strong>
+            <label style="margin-left:12px;cursor:pointer"><input type="radio" name="resYearPref" value="current" checked style="accent-color:#0a7a9a"> Current Year Hours</label>
+            <label style="margin-left:12px;cursor:pointer"><input type="radio" name="resYearPref" value="next" style="accent-color:#0a7a9a"> Next Year Hours</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="res-content" style="display:none">
+      <div class="analyser-header">
+        <div class="analyser-title-block"><h2>Staff Research Hours</h2><div class="analyser-meta" id="resMeta"></div></div>
+        <div class="analyser-actions">
+          <button class="btn-action" id="resBtnBack">← Back</button>
+          <button class="btn-action" id="resBtnExport">⬇ Export XLSX</button>
+        </div>
+      </div>
+      <div class="stats-bar" id="resStatsBar"></div>
+      <div class="search-row">
+        <input type="text" id="resSearch" placeholder="Filter by name or department…">
+        <select id="resSortSel">
+          <option value="currhours-desc">Current Year Hrs ↓</option>
+          <option value="currhours-asc">Current Year Hrs ↑</option>
+          <option value="nexthours-desc">Next Year Hrs ↓</option>
+          <option value="fte-desc">FTE ↓</option>
+          <option value="projects-desc">Projects ↓</option>
+          <option value="name-asc">Name A–Z</option>
+          <option value="dept-asc">Department A–Z</option>
+        </select>
+      </div>
+      <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
+        <table class="res-table">
+          <thead><tr>
+            <th data-ressort="identifier" style="cursor:pointer;user-select:none">Staff ID ↕</th>
+            <th data-ressort="name" style="cursor:pointer;user-select:none">Name ↕</th>
+            <th data-ressort="dept" style="cursor:pointer;user-select:none">Department ↕</th>
+            <th data-ressort="fte" style="cursor:pointer;user-select:none;text-align:right">Max FTE ↕</th>
+            <th data-ressort="projects" style="cursor:pointer;user-select:none;text-align:right">Projects ↕</th>
+            <th data-ressort="hrsweek" style="cursor:pointer;user-select:none;text-align:right">Hrs/Week ↕</th>
+            <th data-ressort="currhours" style="cursor:pointer;user-select:none;text-align:right">Current Yr Hrs ↕</th>
+            <th data-ressort="nexthours" style="cursor:pointer;user-select:none;text-align:right">Next Yr Hrs ↕</th>
+            <th style="min-width:120px">Current Yr Profile</th>
+          </tr></thead>
+          <tbody id="resTbody"></tbody>
+          <tfoot id="resFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 7 (was 5): COMBINED TOTALS ═══ -->
   <div class="main-tab-panel" id="panel-combined">
     <div class="combined-upload-bar">
       <h3>Combined Academic Load</h3>
@@ -648,6 +733,7 @@
         <span class="status-pill" id="comb-status-proj">Project Supervision</span>
         <span class="status-pill" id="comb-status-mmi">MMIs</span>
         <span class="status-pill" id="comb-status-cit">Citizenship</span>
+        <span class="status-pill" id="comb-status-res">Research Hours</span>
       </div>
       <button class="btn-primary" id="combMergeBtn" style="width:auto;padding:0.65rem 1.8rem" disabled>⚡ Merge &amp; Calculate</button>
     </div>
@@ -684,6 +770,7 @@
           <option value="project-desc">Project ↓</option>
           <option value="mmi-desc">MMI ↓</option>
           <option value="citizenship-desc">Citizenship ↓</option>
+          <option value="research-desc">Research ↓</option>
           <option value="name-asc">Name A–Z</option>
         </select>
       </div>
@@ -734,6 +821,7 @@
             <th data-combsort="project" style="cursor:pointer;user-select:none;text-align:right">Project ↕</th>
             <th data-combsort="mmi" style="cursor:pointer;user-select:none;text-align:right">MMI ↕</th>
             <th data-combsort="citizenship" style="cursor:pointer;user-select:none;text-align:right">Citizenship ↕</th>
+            <th data-combsort="research" style="cursor:pointer;user-select:none;text-align:right">Research ↕</th>
             <th data-combsort="total" style="cursor:pointer;user-select:none;text-align:right">Total ↕</th>
             <th data-combsort="fte" style="cursor:pointer;user-select:none;min-width:170px">FTE % ↕</th>
             <th>Sources</th>
@@ -1473,7 +1561,7 @@ document.getElementById('mmiBtnExport').addEventListener('click',()=>{
 // TAB 5 — COMBINED TOTALS
 // ═══════════════════════════════════════════════════════
 let combData=[],combSortKey='total-desc';
-const SRC_LABELS={tl:'📅 Teaching',tut:'👥 Tutorial',proj:'🎓 Project',mmi:'🩺 MMI',cit:'🏛 Citizenship'};
+const SRC_LABELS={tl:'📅 Teaching',tut:'👥 Tutorial',proj:'🎓 Project',mmi:'🩺 MMI',cit:'🏛 Citizenship',res:'🔬 Research'};
 // staffTags: canonical → Map<tagName, {expiry: Date|null}>
 const staffTags=new Map();
 // tagRules: tagName → {tlLoad, tlPrep, proj, expiry: Date|null}
@@ -1551,25 +1639,30 @@ function updateCombStatus(){
   const hasTL=tlAllStaff.length>0,hasTUT=tutAllTutors.length>0,hasProj=projAllResults.length>0;
   const hasMmi=mmiResults.filter(r=>r.isActiveStaff).length>0;
   const hasCit=Object.keys(citizenshipTotals).length>0;
-  const pill=(id,loaded,loadedText,defaultText)=>{const el=document.getElementById(id);el.className='status-pill'+(loaded?' loaded':'');el.textContent=loaded?loadedText:defaultText;};
+  const resHours=typeof window.getResHoursTotals==='function'?window.getResHoursTotals():{};
+  const hasRes=Object.keys(resHours).length>0;
+  const pill=(id,loaded,loadedText,defaultText)=>{const el=document.getElementById(id);if(!el)return;el.className='status-pill'+(loaded?' loaded':'');el.textContent=loaded?loadedText:defaultText;};
   pill('comb-status-tl',hasTL,`Teaching: ${tlAllStaff.length} staff`,'Teaching Load');
   pill('comb-status-tut',hasTUT,`Tutorial: ${tutAllTutors.length} tutors`,'Tutorial Workload');
   pill('comb-status-proj',hasProj,`Project: ${projAllResults.length} academics`,'Project Supervision');
   pill('comb-status-mmi',hasMmi,`MMI: ${mmiResults.filter(r=>r.isActiveStaff).length} staff`,'MMIs');
   pill('comb-status-cit',hasCit,`Citizenship: ${Object.keys(citizenshipTotals).length} staff`,'Citizenship');
-  document.getElementById('combMergeBtn').disabled=!(hasTL||hasTUT||hasProj||hasMmi||hasCit);
+  pill('comb-status-res',hasRes,`Research: ${Object.keys(resHours).length} staff`,'Research Hours');
+  document.getElementById('combMergeBtn').disabled=!(hasTL||hasTUT||hasProj||hasMmi||hasCit||hasRes);
 }
 
 // Recompute hours for all combData entries using current bonuses (no re-merge)
 function recomputeCombData(){
   purgeExpiredAssignments();
+  const resHoursTotals=typeof window.getResHoursTotals==='function'?window.getResHoursTotals():{};
   combData.forEach(d=>{
     const contactH=d.tlName?tlAllWeeks.reduce((s,w)=>s+calcHours(tlStaffData[d.tlName]?.[w],tlRealisticMode),0):0;
     const projBase=d.projName?(projAllResults.find(r=>r.name===d.projName)?.total||0):0;
     const{tlTotal,projTotal}=applyBonuses(d.canonical,contactH,projBase);
     d.tlHours=d.tlName?tlTotal:0;
     d.projHours=d.projName?projTotal:0;
-    d.total=d.tlHours+d.tutHours+d.projHours+d.mmiHours+d.citHours;
+    d.resHours=d.resName?(resHoursTotals[d.resName]||0):0;
+    d.total=d.tlHours+d.tutHours+d.projHours+d.mmiHours+d.citHours+d.resHours;
     d._bonuses=computeBonuses(d.canonical);
   });
 }
@@ -1584,9 +1677,12 @@ document.getElementById('combMergeBtn').addEventListener('click',()=>{
   if(activeMmi.length>0)lists.push({source:'mmi',names:activeMmi.map(r=>r.name)});
   const citNames=Object.keys(citizenshipTotals);
   if(citNames.length>0)lists.push({source:'cit',names:citNames});
+  const resHoursTotals=typeof window.getResHoursTotals==='function'?window.getResHoursTotals():{};
+  const resNames=Object.keys(resHoursTotals);
+  if(resNames.length>0)lists.push({source:'res',names:resNames});
   const groups=mergeNameLists(lists);
   combData=groups.map(g=>{
-    const tlName=g.sources['tl']||null,tutName=g.sources['tut']||null,projName=g.sources['proj']||null,mmiName=g.sources['mmi']||null,citName=g.sources['cit']||null;
+    const tlName=g.sources['tl']||null,tutName=g.sources['tut']||null,projName=g.sources['proj']||null,mmiName=g.sources['mmi']||null,citName=g.sources['cit']||null,resName=g.sources['res']||null;
     const contactH=tlName?tlAllWeeks.reduce((s,w)=>s+calcHours(tlStaffData[tlName]?.[w],tlRealisticMode),0):0;
     const projBase=projName?(projAllResults.find(r=>r.name===projName)?.total||0):0;
     const{tlTotal,projTotal}=applyBonuses(g.canonical,contactH,projBase);
@@ -1595,10 +1691,11 @@ document.getElementById('combMergeBtn').addEventListener('click',()=>{
     const projHours=projName?projTotal:0;
     const mmiHours=mmiName?(mmiResults.find(r=>r.name===mmiName)?.totalHours||0):0;
     const citHours=citName?(citizenshipTotals[citName]||0):0;
-    const total=tlHours+tutHours+projHours+mmiHours+citHours;
+    const resHours=resName?(resHoursTotals[resName]||0):0;
+    const total=tlHours+tutHours+projHours+mmiHours+citHours+resHours;
     const matchType=Object.keys(g.sources).length>1?(g.matchType||'exact'):'only';
     const _bonuses=computeBonuses(g.canonical);
-    return{canonical:g.canonical,tlName,tutName,projName,mmiName,citName,tlHours,tutHours,projHours,mmiHours,citHours,total,matchType,score:g.score,sources:g.sources,_bonuses};
+    return{canonical:g.canonical,tlName,tutName,projName,mmiName,citName,resName,tlHours,tutHours,projHours,mmiHours,citHours,resHours,total,matchType,score:g.score,sources:g.sources,_bonuses};
   });
   const maxTotal=Math.max(...combData.map(d=>d.total),1);
   const fuzzy=combData.filter(d=>d.matchType==='fuzzy').length;
@@ -1611,8 +1708,8 @@ document.getElementById('combMergeBtn').addEventListener('click',()=>{
   if(warnings.length>0){mi.innerHTML=warnings.join(' &nbsp;·&nbsp; ')+' — click flagged rows to inspect source names.';mi.style.display='';}else mi.style.display='none';
   document.getElementById('badge-combined').textContent=combData.length+' academics';
   document.getElementById('comb-result').style.display='block';
-  reattachStoredTags(); // restore persisted tags to current session canonicals
-  recomputeCombData();  // apply any restored tag rule bonuses
+  reattachStoredTags();
+  recomputeCombData();
   renderRulesEditor();
   combRender(maxTotal);
 });
@@ -1625,8 +1722,8 @@ function combGetSorted(){
   data.sort((a,b)=>{
     if(col==='name')return dir==='asc'?a.canonical.localeCompare(b.canonical):b.canonical.localeCompare(a.canonical);
     if(col==='fte'){const ap=ftePct(a.canonical,a.total),bp=ftePct(b.canonical,b.total);return dir==='asc'?ap-bp:bp-ap;}
-    const av=col==='teaching'?a.tlHours:col==='tutorial'?a.tutHours:col==='project'?a.projHours:col==='mmi'?a.mmiHours:col==='citizenship'?a.citHours:a.total;
-    const bv=col==='teaching'?b.tlHours:col==='tutorial'?b.tutHours:col==='project'?b.projHours:col==='mmi'?b.mmiHours:col==='citizenship'?b.citHours:b.total;
+    const av=col==='teaching'?a.tlHours:col==='tutorial'?a.tutHours:col==='project'?a.projHours:col==='mmi'?a.mmiHours:col==='citizenship'?a.citHours:col==='research'?(a.resHours||0):a.total;
+    const bv=col==='teaching'?b.tlHours:col==='tutorial'?b.tutHours:col==='project'?b.projHours:col==='mmi'?b.mmiHours:col==='citizenship'?b.citHours:col==='research'?(b.resHours||0):b.total;
     return dir==='asc'?av-bv:bv-av;
   });
   return data;
@@ -1953,16 +2050,17 @@ function combRender(maxTotal){
     <td class="num">${d.projHours>0?d.projHours.toFixed(1):'—'}</td>
     <td class="num">${d.mmiHours>0?d.mmiHours.toFixed(1):'—'}</td>
     <td class="num">${d.citHours>0?d.citHours.toFixed(1):'—'}</td>
+    <td class="num">${(d.resHours||0)>0?(d.resHours).toFixed(1):'—'}</td>
     <td class="tot">${d.total.toFixed(1)}</td>
     <td>${fteBarHtml(d.canonical,d.total)}</td>
     <td>${matchBadge(d)}</td>
   </tr>`;}).join('');
   // Footer: totals + average FTE%
-  const totTL=data.reduce((s,d)=>s+d.tlHours,0),totTut=data.reduce((s,d)=>s+d.tutHours,0),totProj=data.reduce((s,d)=>s+d.projHours,0),totMmi=data.reduce((s,d)=>s+d.mmiHours,0),totCit=data.reduce((s,d)=>s+d.citHours,0),totAll=data.reduce((s,d)=>s+d.total,0);
+  const totTL=data.reduce((s,d)=>s+d.tlHours,0),totTut=data.reduce((s,d)=>s+d.tutHours,0),totProj=data.reduce((s,d)=>s+d.projHours,0),totMmi=data.reduce((s,d)=>s+d.mmiHours,0),totCit=data.reduce((s,d)=>s+d.citHours,0),totRes=data.reduce((s,d)=>s+(d.resHours||0),0),totAll=data.reduce((s,d)=>s+d.total,0);
   const avgFte=data.length>0?Math.round(data.reduce((s,d)=>s+ftePct(d.canonical,d.total),0)/data.length):0;
   const avgCls=fteClass(avgFte);
   const filterNote=activeTagFilter?` <span style="font-size:0.72rem;font-weight:400;color:var(--gold);margin-left:6px">tag: ${activeTagFilter} (${data.length})</span>`:'';
-  document.getElementById('combFoot').innerHTML=`<tr><td></td><td class="cn">Total${filterNote}</td><td></td><td class="num">${totTL.toFixed(1)}</td><td class="num">${totTut.toFixed(1)}</td><td class="num">${totProj.toFixed(1)}</td><td class="num">${totMmi.toFixed(1)}</td><td class="num">${totCit.toFixed(1)}</td><td class="tot">${totAll.toFixed(1)}</td><td><span style="font-size:0.78rem;font-weight:600" class="fte-pct ${avgCls}">avg ${avgFte}%</span></td><td></td></tr>`;
+  document.getElementById('combFoot').innerHTML=`<tr><td></td><td class="cn">Total${filterNote}</td><td></td><td class="num">${totTL.toFixed(1)}</td><td class="num">${totTut.toFixed(1)}</td><td class="num">${totProj.toFixed(1)}</td><td class="num">${totMmi.toFixed(1)}</td><td class="num">${totCit.toFixed(1)}</td><td class="num">${totRes.toFixed(1)}</td><td class="tot">${totAll.toFixed(1)}</td><td><span style="font-size:0.78rem;font-weight:600" class="fte-pct ${avgCls}">avg ${avgFte}%</span></td><td></td></tr>`;
   // Inline tag-x remove buttons
   document.querySelectorAll('#combTbody .tag-x').forEach(x=>{
     x.addEventListener('click',e=>{e.stopPropagation();const c=decodeURIComponent(x.dataset.canonical),t=decodeURIComponent(x.dataset.tag);removeTag(c,t);recomputeCombData();renderTagFilterBar();renderRulesEditor();saveTagState();combRender();});
@@ -1985,6 +2083,7 @@ function combRender(maxTotal){
       ${d.projHours>0?`<div class="panel-row"><span class="k">🎓 Project supervision</span><span class="v">${d.projHours.toFixed(1)}h</span></div>`:''}
       ${d.mmiHours>0?`<div class="panel-row"><span class="k">🩺 MMIs</span><span class="v">${d.mmiHours.toFixed(1)}h</span></div>`:''}
       ${d.citHours>0?`<div class="panel-row"><span class="k">🏛 Citizenship</span><span class="v">${d.citHours.toFixed(1)}h</span></div>`:''}
+      ${(d.resHours||0)>0?`<div class="panel-row"><span class="k">🔬 Research</span><span class="v">${d.resHours.toFixed(1)}h</span></div>`:''}
       <div class="panel-row"><span class="k"><strong>Total</strong></span><span class="v big">${d.total.toFixed(1)}h</span></div>
       <div class="panel-row"><span class="k">FTE target</span><span class="v">${personalTarget(d.canonical).toFixed(0)}h (${(getFte(d.canonical)*100).toFixed(0)}% FTE)</span></div>
       <div class="panel-row"><span class="k">FTE %</span><span class="v ${fteClass(ftePct(d.canonical,d.total))}">${ftePct(d.canonical,d.total)}%</span></div>
@@ -2187,7 +2286,7 @@ function generateDetailedReport(canonicals){
     }
 
     // Summary donut-style bar
-    const cats=[['Teaching',d.tlHours,'#0066cc'],['Tutorial',d.tutHours,'#1a7a4a'],['Projects',d.projHours,'#b84c2a'],['MMI',d.mmiHours,'#6b21a8'],['Citizenship',d.citHours,'#c89b2a']].filter(([,h])=>h>0);
+    const cats=[['Teaching',d.tlHours,'#0066cc'],['Tutorial',d.tutHours,'#1a7a4a'],['Projects',d.projHours,'#b84c2a'],['MMI',d.mmiHours,'#6b21a8'],['Citizenship',d.citHours,'#c89b2a'],['Research',(d.resHours||0),'#0a7a9a']].filter(([,h])=>h>0);
     const summaryBars=cats.map(([label,h,col])=>`
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
         <div style="width:110px;font-size:0.82rem;color:#444">${label}</div>
@@ -2302,9 +2401,9 @@ document.getElementById('combDetailBtn').addEventListener('click',()=>{
 
 document.getElementById('combExportBtn').addEventListener('click',()=>{
   const wb2=XLSX.utils.book_new();
-  const rows=[['Academic','Teaching Name','Tutorial Name','Project Name','MMI Name','Citizenship Name','Teaching Hrs','Tutorial Hrs','Project Hrs','MMI Hrs','Citizenship Hrs','Total Hrs','Match Type']];
-  for(const d of combData)rows.push([d.canonical,d.tlName||'',d.tutName||'',d.projName||'',d.mmiName||'',d.citName||'',+d.tlHours.toFixed(2),+d.tutHours.toFixed(2),+d.projHours.toFixed(2),+d.mmiHours.toFixed(2),+d.citHours.toFixed(2),+d.total.toFixed(2),d.matchType]);
-  rows.push(['Grand Total','','','','','',+combData.reduce((s,d)=>s+d.tlHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.tutHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.projHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.mmiHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.citHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.total,0).toFixed(2),'']);
+  const rows=[['Academic','Teaching Name','Tutorial Name','Project Name','MMI Name','Citizenship Name','Research Name','Teaching Hrs','Tutorial Hrs','Project Hrs','MMI Hrs','Citizenship Hrs','Research Hrs','Total Hrs','Match Type']];
+  for(const d of combData)rows.push([d.canonical,d.tlName||'',d.tutName||'',d.projName||'',d.mmiName||'',d.citName||'',d.resName||'',+d.tlHours.toFixed(2),+d.tutHours.toFixed(2),+d.projHours.toFixed(2),+d.mmiHours.toFixed(2),+d.citHours.toFixed(2),+(d.resHours||0).toFixed(2),+d.total.toFixed(2),d.matchType]);
+  rows.push(['Grand Total','','','','','','',+combData.reduce((s,d)=>s+d.tlHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.tutHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.projHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.mmiHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.citHours,0).toFixed(2),+combData.reduce((s,d)=>s+(d.resHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+d.total,0).toFixed(2),'']);
   XLSX.utils.book_append_sheet(wb2,XLSX.utils.aoa_to_sheet(rows),'Combined Load');
   XLSX.writeFile(wb2,'academic_load_combined.xlsx');
 });
@@ -2518,7 +2617,232 @@ loadTagState();
 
 </script>
 
-<!-- ═══ CITIZENSHIP PANEL ═══ -->
+<!-- ═══ RESEARCH HOURS SCRIPT ═══ -->
+<script>
+
+// ── Research Hours data store ──────────────────────────────────────────────────
+let resAllData = [];       // array of row objects
+let resSortCol = 'currhours', resSortDir = 'desc';
+let resYearPref = 'current'; // 'current' | 'next'
+
+// Track which year pref to expose for Combined merge
+window.getResHoursTotals = function() {
+  // Returns {name: hours} using the selected year preference
+  const totals = {};
+  resAllData.forEach(r => {
+    const hrs = resYearPref === 'next' ? r.nextHours : r.currHours;
+    if (r.name && hrs > 0) totals[r.name] = (totals[r.name] || 0) + hrs;
+  });
+  return totals;
+};
+
+function parseResearchXlsx(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      if (rows.length < 2) throw new Error('No data rows found.');
+
+      // Find header row — look for row containing "Name" (case-insensitive)
+      let hdrIdx = 0;
+      for (let i = 0; i < Math.min(5, rows.length); i++) {
+        const lower = rows[i].map(c => String(c).toLowerCase());
+        if (lower.some(c => c.includes('name'))) { hdrIdx = i; break; }
+      }
+      const hdrs = rows[hdrIdx].map(c => String(c).toLowerCase().trim());
+
+      // Map columns by matching keywords
+      function col(keywords) {
+        const idx = hdrs.findIndex(h => keywords.some(k => h.includes(k)));
+        return idx >= 0 ? idx : -1;
+      }
+      const cId   = col(['staff identifier','identifier','staff id','id']);
+      const cName = col(['name']);
+      const cDept = col(['department','dept']);
+      const cFte  = col(['max fte','fte']);
+      const cProj = col(['project count','projects']);
+      const cHpw  = col(['hrs per week','hrs/week','hours per week']);
+      const cCurr = col(['current year','curr']);
+      const cNext = col(['next year','next']);
+
+      if (cName < 0) throw new Error('Could not find a "Name" column.');
+
+      const data = [];
+      for (let i = hdrIdx + 1; i < rows.length; i++) {
+        const r = rows[i];
+        const name = String(r[cName] || '').trim();
+        if (!name) continue;
+        data.push({
+          identifier: cId >= 0  ? String(r[cId]  || '').trim() : '',
+          name,
+          dept:      cDept >= 0 ? String(r[cDept] || '').trim() : '',
+          fte:       cFte  >= 0 ? (parseFloat(r[cFte])  || 0) : 0,
+          projects:  cProj >= 0 ? (parseInt(r[cProj])   || 0) : 0,
+          hrsWeek:   cHpw  >= 0 ? (parseFloat(r[cHpw])  || 0) : 0,
+          currHours: cCurr >= 0 ? (parseFloat(r[cCurr]) || 0) : 0,
+          nextHours: cNext >= 0 ? (parseFloat(r[cNext]) || 0) : 0,
+        });
+      }
+      if (data.length === 0) throw new Error('No data rows could be parsed.');
+      renderResearch(data);
+      document.getElementById('resError').style.display = 'none';
+    } catch(err) {
+      const el = document.getElementById('resError');
+      el.textContent = 'Error: ' + err.message;
+      el.style.display = 'block';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function resGetSorted() {
+  const q = document.getElementById('resSearch')?.value.toLowerCase() || '';
+  let data = resAllData.filter(r =>
+    r.name.toLowerCase().includes(q) || r.dept.toLowerCase().includes(q) || r.identifier.toLowerCase().includes(q)
+  );
+  const sel = document.getElementById('resSortSel')?.value || 'currhours-desc';
+  const [sc, sd] = sel.split('-');
+  data.sort((a, b) => {
+    let av, bv;
+    if (sc === 'name') { av = a.name; bv = b.name; return sd === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av); }
+    if (sc === 'dept') { av = a.dept; bv = b.dept; return sd === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av); }
+    if (sc === 'identifier') { av = a.identifier; bv = b.identifier; return sd === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av); }
+    av = sc === 'fte' ? a.fte : sc === 'projects' ? a.projects : sc === 'hrsweek' ? a.hrsWeek : sc === 'nexthours' ? a.nextHours : a.currHours;
+    bv = sc === 'fte' ? b.fte : sc === 'projects' ? b.projects : sc === 'hrsweek' ? b.hrsWeek : sc === 'nexthours' ? b.nextHours : b.currHours;
+    return sd === 'asc' ? av - bv : bv - av;
+  });
+  return data;
+}
+
+function renderResTable() {
+  const data = resGetSorted();
+  const maxCurr = Math.max(...resAllData.map(r => r.currHours), 1);
+  document.getElementById('resTbody').innerHTML = data.map(r => {
+    const barPct = Math.min(r.currHours / maxCurr * 100, 100).toFixed(1);
+    return `<tr>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--muted)">${r.identifier || '—'}</td>
+      <td class="name-f">${r.name}</td>
+      <td>${r.dept || '—'}</td>
+      <td class="num">${r.fte > 0 ? r.fte.toFixed(2) : '—'}</td>
+      <td class="num">${r.projects > 0 ? r.projects : '—'}</td>
+      <td class="num">${r.hrsWeek > 0 ? r.hrsWeek.toFixed(1) : '—'}</td>
+      <td class="num">${r.currHours > 0 ? r.currHours.toFixed(1) : '—'}</td>
+      <td class="num">${r.nextHours > 0 ? r.nextHours.toFixed(1) : '—'}</td>
+      <td><div class="res-hrs-bar-wrap"><div class="res-hrs-bar"><div class="res-hrs-bar-fill" style="width:${barPct}%"></div></div><span class="hours-val">${r.currHours > 0 ? r.currHours.toFixed(0) : '—'}</span></div></td>
+    </tr>`;
+  }).join('');
+
+  // Footer
+  const totCurr = data.reduce((s, r) => s + r.currHours, 0);
+  const totNext = data.reduce((s, r) => s + r.nextHours, 0);
+  const totProj = data.reduce((s, r) => s + r.projects, 0);
+  document.getElementById('resFoot').innerHTML = `<tr>
+    <td colspan="3"><strong>Total (${data.length} staff)</strong></td>
+    <td class="num">—</td>
+    <td class="num"><strong>${totProj}</strong></td>
+    <td class="num">—</td>
+    <td class="num"><strong>${totCurr.toFixed(1)}</strong></td>
+    <td class="num"><strong>${totNext.toFixed(1)}</strong></td>
+    <td></td>
+  </tr>`;
+}
+
+function renderResearch(data) {
+  resAllData = data;
+
+  // Stats bar
+  const totCurr  = data.reduce((s, r) => s + r.currHours, 0);
+  const totNext  = data.reduce((s, r) => s + r.nextHours, 0);
+  const avgFte   = data.filter(r => r.fte > 0).reduce((s, r) => s + r.fte, 0) / (data.filter(r => r.fte > 0).length || 1);
+  const totProj  = data.reduce((s, r) => s + r.projects, 0);
+  document.getElementById('resStatsBar').innerHTML = `
+    <div class="stat-card teal"><div class="sc-v">${data.length}</div><div class="sc-l">Staff members</div></div>
+    <div class="stat-card gold"><div class="sc-v">${totCurr.toFixed(0)}</div><div class="sc-l">Current Year Total Hrs</div></div>
+    <div class="stat-card rust"><div class="sc-v">${totNext.toFixed(0)}</div><div class="sc-l">Next Year Total Hrs</div></div>
+    <div class="stat-card purple"><div class="sc-v">${totProj}</div><div class="sc-l">Total Projects</div></div>
+    <div class="stat-card"><div class="sc-v">${avgFte.toFixed(2)}</div><div class="sc-l">Avg Max FTE</div></div>
+  `;
+
+  renderResTable();
+
+  document.getElementById('res-landing').style.display = 'none';
+  document.getElementById('res-content').style.display = 'block';
+  document.getElementById('badge-research').textContent = data.length;
+  document.getElementById('resMeta').textContent = `${data.length} staff · uploaded`;
+
+  // Update combined status
+  updateCombStatus();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // File input
+  const inp = document.getElementById('resFileInput');
+  if (inp) inp.addEventListener('change', e => { if (e.target.files[0]) parseResearchXlsx(e.target.files[0]); });
+
+  // Drag and drop
+  const dz = document.getElementById('resDropZone');
+  if (dz) {
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+    dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if (f) parseResearchXlsx(f); });
+  }
+
+  // Back button
+  const back = document.getElementById('resBtnBack');
+  if (back) back.addEventListener('click', () => {
+    document.getElementById('res-content').style.display = 'none';
+    document.getElementById('res-landing').style.display = 'block';
+    resAllData = [];
+    document.getElementById('badge-research').textContent = '—';
+    updateCombStatus();
+  });
+
+  // Sort and search
+  const sortSel = document.getElementById('resSortSel');
+  if (sortSel) sortSel.addEventListener('change', renderResTable);
+  const search = document.getElementById('resSearch');
+  if (search) search.addEventListener('input', renderResTable);
+
+  // Year preference radio
+  document.querySelectorAll('input[name="resYearPref"]').forEach(radio => {
+    radio.addEventListener('change', e => {
+      resYearPref = e.target.value;
+      updateCombStatus();
+    });
+  });
+
+  // Column header sorting
+  document.addEventListener('click', e => {
+    const th = e.target.closest('th[data-ressort]');
+    if (!th) return;
+    const col = th.dataset.ressort;
+    const sel = document.getElementById('resSortSel');
+    if (!sel) return;
+    const isNum = ['fte','projects','hrsweek','currhours','nexthours'].includes(col);
+    const dir = (sel.value.startsWith(col) && sel.value.endsWith('desc')) ? 'asc' : (isNum ? 'desc' : 'asc');
+    // Try to find matching option
+    const opt = [...sel.options].find(o => o.value === `${col}-${dir}`);
+    if (opt) { sel.value = opt.value; renderResTable(); }
+  });
+
+  // Export button
+  const expBtn = document.getElementById('resBtnExport');
+  if (expBtn) expBtn.addEventListener('click', () => {
+    if (resAllData.length === 0) return;
+    const rows = [['Staff Identifier','Name','Department','Max FTE','Project Count','Hrs Per Week','Current Year Hours','Next Year Hours']];
+    resGetSorted().forEach(r => rows.push([r.identifier, r.name, r.dept, r.fte, r.projects, r.hrsWeek, r.currHours, r.nextHours]));
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Research Hours');
+    XLSX.writeFile(wb, 'staff_research_hours.xlsx');
+  });
+});
+
+</script>
+
+
 <div class="main-tab-panel" id="panel-citizenship">
 
 <div style="padding:20px;max-width:1200px;margin:auto">
