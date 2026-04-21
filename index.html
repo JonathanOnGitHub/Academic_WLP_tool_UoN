@@ -5,457 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Academic Load — Combined View</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
-
-  :root {
-    --navy:      #041e42;
-    --mid-blue:  #0066cc;
-    --light-blue:#e8f0fb;
-    --accent:    #00a9e0;
-    --gold:      #c89b2a;
-    --gold-light:#fdf6e3;
-    --success:   #1a7a4a;
-    --warn:      #b85c00;
-    --danger:    #c0392b;
-    --bg:        #f5f6f8;
-    --surface:   #ffffff;
-    --border:    #d0d7e3;
-    --text:      #1a1f2e;
-    --muted:     #6b7494;
-    --teal:      #0a8a7a;
-    --teal-light:#e0f4f1;
-    --rust:      #b84c2a;
-    --rust-light:#f5e8e3;
-    --purple:    #6b21a8;
-    --purple-light:#f3e8ff;
-    --cell-0:#f0f4ff;--cell-1:#c8ddf7;--cell-2:#7fb3ef;
-    --cell-3:#3a85d9;--cell-4:#1a5fa8;--cell-5:#0a3d6b;
-  }
-
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
-
-  header{background:var(--navy);color:white;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(4,30,66,0.4);}
-  .header-logo{display:flex;align-items:center;gap:12px;}
-  .logo-mark{width:36px;height:36px;background:var(--mid-blue);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-weight:700;font-size:16px;color:white;}
-  .header-title{font-family:'Source Serif 4',serif;font-weight:600;font-size:1.1rem;}
-  .header-sub{font-size:0.7rem;opacity:0.6;font-weight:300;margin-top:1px;}
-  .header-badge{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:4px 12px;font-size:0.7rem;color:rgba(255,255,255,0.8);}
-  .header-badge::before{content:'🔒 ';}
-
-  main{max-width:1600px;margin:0 auto;padding:2rem;}
-
-  /* TOP TABS */
-  .main-tabs{display:flex;margin-bottom:2rem;border-bottom:2px solid var(--border);overflow-x:auto;}
-  .main-tab-btn{padding:0.8rem 1.4rem;font-family:'IBM Plex Sans',sans-serif;font-size:0.83rem;font-weight:500;border:none;background:transparent;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.2s;display:flex;align-items:center;gap:7px;white-space:nowrap;flex-shrink:0;}
-  .main-tab-btn:hover{color:var(--mid-blue);}
-  .main-tab-btn.active{color:var(--navy);border-bottom-color:var(--mid-blue);font-weight:600;}
-  .tab-badge{background:var(--light-blue);color:var(--mid-blue);border-radius:10px;padding:1px 7px;font-size:0.7rem;font-weight:600;}
-  .main-tab-btn.active .tab-badge{background:var(--mid-blue);color:white;}
-  .main-tab-panel{display:none;}
-  .main-tab-panel.active{display:block;}
-
-  /* LANDING */
-  .landing-grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:1rem;}
-  .landing-hero{background:var(--navy);color:white;border-radius:12px;padding:3rem;position:relative;overflow:hidden;}
-  .landing-hero::before{content:'';position:absolute;top:-60px;right:-60px;width:220px;height:220px;border-radius:50%;background:rgba(0,102,204,0.3);}
-  .hero-eyebrow{font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;font-weight:500;}
-  .hero-h1{font-family:'Source Serif 4',serif;font-size:1.8rem;font-weight:600;line-height:1.2;margin-bottom:1.2rem;position:relative;}
-  .hero-desc{font-size:0.88rem;line-height:1.7;color:rgba(255,255,255,0.75);position:relative;}
-  .landing-panel{background:var(--surface);border-radius:12px;border:1px solid var(--border);padding:2rem;}
-  .panel-h2{font-family:'Source Serif 4',serif;font-size:1.3rem;color:var(--navy);margin-bottom:0.5rem;}
-  .panel-sub{color:var(--muted);font-size:0.82rem;margin-bottom:1.5rem;}
-
-  /* DROP ZONES */
-  .drop-zone{border:2px dashed var(--mid-blue);border-radius:10px;padding:2rem;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--light-blue);position:relative;margin-bottom:1rem;}
-  .drop-zone:hover,.drop-zone.drag-over{background:#d4e8fb;border-color:var(--navy);}
-  .drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;}
-  .drop-icon{font-size:2rem;margin-bottom:0.5rem;}
-  .drop-zone h3{font-size:0.95rem;color:var(--navy);margin-bottom:0.3rem;}
-  .drop-zone p{font-size:0.78rem;color:var(--muted);}
-  .file-item{display:flex;align-items:center;gap:8px;background:var(--light-blue);border-radius:6px;padding:6px 10px;margin-bottom:6px;font-size:0.82rem;}
-  .fi-name{flex:1;color:var(--navy);font-weight:500;}
-  .fi-remove{background:none;border:none;cursor:pointer;color:var(--danger);font-size:0.9rem;padding:2px 4px;}
-
-  .config-row{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;}
-  .config-group{display:flex;flex-direction:column;gap:4px;}
-  .config-group label{font-size:0.78rem;font-weight:500;color:var(--muted);}
-  .config-group input[type=number]{width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;font-family:'IBM Plex Mono',monospace;}
-  .config-group input[type=text]{width:220px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;}
-
-  .toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;font-size:0.85rem;}
-  .toggle-row input[type=checkbox]{accent-color:var(--mid-blue);width:15px;height:15px;}
-
-  .btn-primary{background:var(--mid-blue);color:white;border:none;border-radius:8px;padding:0.75rem 1.5rem;font-size:0.9rem;font-weight:600;cursor:pointer;transition:background 0.2s;font-family:'IBM Plex Sans',sans-serif;width:100%;}
-  .btn-primary:hover{background:#004fa3;}
-  .btn-primary:disabled{opacity:0.5;cursor:not-allowed;}
-
-  /* TUTORIAL CONFIG */
-  .hours-config{background:var(--light-blue);border-radius:8px;padding:1rem;margin-bottom:1rem;}
-  .hours-config label{font-size:0.78rem;font-weight:500;color:var(--muted);display:block;margin-bottom:4px;}
-  .hours-config .hc-row{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
-  .hours-config input[type=number]{width:70px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;font-family:'IBM Plex Mono',monospace;}
-  .hours-config span{font-size:0.83rem;color:var(--text);}
-
-  /* PROJECT SETTINGS */
-  .proj-settings{background:var(--light-blue);border-radius:8px;border:1px solid var(--border);margin-bottom:1rem;overflow:hidden;}
-  .proj-settings-hdr{display:flex;align-items:center;justify-content:space-between;padding:0.8rem 1rem;cursor:pointer;user-select:none;}
-  .proj-settings-hdr h3{font-size:0.85rem;font-weight:600;color:var(--navy);display:flex;align-items:center;gap:6px;}
-  .proj-settings-hdr .chev{font-size:0.8rem;transition:transform 0.2s;}
-  .proj-settings-hdr.open .chev{transform:rotate(180deg);}
-  .proj-settings-body{display:none;padding:0 1rem 1rem;}
-  .proj-settings-body.open{display:block;}
-  .ps-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.8rem;}
-  .ps-row:last-child{border-bottom:none;}
-  .ps-row label{color:var(--text);flex:1;}
-  .ps-row .hint{font-size:0.7rem;color:var(--muted);display:block;}
-  .ps-row input{width:70px;padding:4px 7px;border:1px solid var(--border);border-radius:5px;font-size:0.82rem;font-family:'IBM Plex Mono',monospace;text-align:right;}
-
-  /* ANALYSER SHARED */
-  .analyser-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;}
-  .analyser-title-block h2{font-family:'Source Serif 4',serif;font-size:1.5rem;color:var(--navy);}
-  .analyser-meta{font-size:0.78rem;color:var(--muted);margin-top:2px;}
-  .analyser-actions{display:flex;gap:8px;flex-wrap:wrap;}
-  .btn-action{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 14px;font-size:0.82rem;font-weight:500;cursor:pointer;color:var(--navy);display:flex;align-items:center;gap:6px;font-family:'IBM Plex Sans',sans-serif;transition:all 0.2s;}
-  .btn-action:hover{background:var(--light-blue);border-color:var(--mid-blue);}
-
-  .stats-bar{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem;}
-  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1.2rem;min-width:100px;}
-  .stat-card.rust{border-left:3px solid var(--rust);}
-  .stat-card.teal{border-left:3px solid var(--teal);}
-  .stat-card.gold{border-left:3px solid var(--gold);}
-  .stat-card.purple{border-left:3px solid var(--purple);}
-  .sc-v{font-family:'IBM Plex Mono',monospace;font-size:1.4rem;font-weight:500;color:var(--mid-blue);}
-  .sc-l{font-size:0.72rem;color:var(--muted);margin-top:2px;}
-
-  /* SUB-TABS */
-  .sub-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.5rem;}
-  .tab-btn{padding:0.6rem 1.2rem;font-size:0.82rem;font-weight:500;border:none;background:transparent;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.2s;font-family:'IBM Plex Sans',sans-serif;}
-  .tab-btn:hover{color:var(--mid-blue);}
-  .tab-btn.active{color:var(--navy);border-bottom-color:var(--mid-blue);font-weight:600;}
-
-  .sort-bar{display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap;}
-  .sort-bar label{font-size:0.78rem;color:var(--muted);font-weight:500;}
-  .btn-sort{background:var(--light-blue);border:1px solid var(--border);border-radius:4px;padding:4px 10px;font-size:0.78rem;cursor:pointer;color:var(--navy);font-family:'IBM Plex Sans',sans-serif;}
-  .btn-sort:hover{background:#d0dffa;}
-  .sort-info{font-size:0.72rem;color:var(--muted);font-style:italic;}
-
-  /* HEATMAP GRID */
-  .grid-wrap{overflow-x:auto;margin-bottom:1rem;}
-  .grid-table{border-collapse:collapse;font-size:0.8rem;min-width:400px;}
-  .grid-table th{background:var(--navy);color:white;padding:8px 10px;font-weight:500;white-space:nowrap;cursor:pointer;user-select:none;}
-  .grid-table th:hover{background:#0a2a5a;}
-  .week-header{min-width:56px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;}
-  .name-cell{padding:7px 12px;font-weight:500;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;cursor:pointer;background:var(--surface);}
-  .name-cell:hover{background:var(--light-blue);}
-  .data-cell{text-align:center;padding:5px 8px;cursor:pointer;min-width:52px;vertical-align:middle;}
-  .data-cell span{display:block;font-family:'IBM Plex Mono',monospace;font-size:0.82rem;font-weight:500;}
-  .data-cell small{display:block;font-size:0.62rem;opacity:0.7;}
-  .data-cell:hover{opacity:0.8;}
-  .data-cell.empty{color:#ccc;background:#fafbfc;}
-  .heat-0{background:var(--cell-0);color:#3a4a70}.heat-1{background:var(--cell-1);color:#1a3060}
-  .heat-2{background:var(--cell-2);color:white}  .heat-3{background:var(--cell-3);color:white}
-  .heat-4{background:var(--cell-4);color:white}  .heat-5{background:var(--cell-5);color:white}
-  .totals-row td{font-weight:600;}
-  .totals-row .name-cell{background:#0a3060;color:white;cursor:default;}
-  .totals-row .data-cell{background:#e8effa;color:var(--navy);border-top:2px solid var(--mid-blue);}
-  .legend{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:0.72rem;color:var(--muted);margin-bottom:1rem;}
-  .legend-item{display:flex;align-items:center;gap:4px;}
-  .legend-swatch{width:16px;height:16px;border-radius:3px;display:inline-block;}
-
-  /* TUTORIAL TABLE */
-  .tut-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
-  .tut-table th{background:var(--navy);color:white;padding:8px 12px;font-weight:500;text-align:left;cursor:pointer;user-select:none;}
-  .tut-table th:hover{background:#0a2a5a;}
-  .tut-table td{padding:8px 12px;border-bottom:1px solid var(--border);}
-  .tut-table tr:hover td{background:var(--light-blue);}
-  td.tutor-name{font-weight:500;font-family:'Source Serif 4',serif;font-size:0.88rem;}
-  .hours-bar-wrap{display:flex;align-items:center;gap:8px;}
-  .hours-bar{flex:1;height:8px;background:var(--light-blue);border-radius:4px;overflow:hidden;min-width:60px;}
-  .hours-bar-fill{height:100%;background:var(--mid-blue);border-radius:4px;}
-  .hours-val{font-family:'IBM Plex Mono',monospace;font-size:0.85rem;min-width:45px;}
-  .tut-summary{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem;}
-  .tut-stat{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1.2rem;}
-  .tut-stat .val{font-family:'IBM Plex Mono',monospace;font-size:1.4rem;font-weight:500;color:var(--teal);}
-  .tut-stat .lbl{font-size:0.72rem;color:var(--muted);margin-top:2px;}
-
-  /* PROJECT TABLE */
-  .proj-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
-  .proj-table th{background:var(--navy);color:white;padding:9px 12px;font-weight:500;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;}
-  .proj-table th:hover{background:#0a2a5a;}
-  .proj-table td{padding:8px 12px;border-bottom:1px solid var(--border);}
-  .proj-table tr:hover td{background:var(--light-blue);}
-  .proj-table .name-f{font-weight:500;font-family:'Source Serif 4',serif;font-size:0.88rem;cursor:pointer;}
-  .proj-table .name-f:hover{color:var(--rust);}
-  .proj-table .num{font-family:'IBM Plex Mono',monospace;text-align:right;}
-  .proj-table .tot{font-family:'IBM Plex Mono',monospace;text-align:right;font-weight:600;color:var(--navy);}
-  .proj-table tfoot td{font-weight:600;background:var(--light-blue);border-top:2px solid var(--border);}
-
-  /* MMI TABLE */
-  .mmi-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
-  .mmi-table th{background:var(--navy);color:white;padding:9px 12px;font-weight:500;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;}
-  .mmi-table th:hover{background:#0a2a5a;}
-  .mmi-table td{padding:8px 12px;border-bottom:1px solid var(--border);}
-  .mmi-table tr:hover td{background:var(--purple-light);}
-  .mmi-table .name-f{font-weight:500;font-family:'Source Serif 4',serif;font-size:0.88rem;}
-  .mmi-table .num{font-family:'IBM Plex Mono',monospace;text-align:right;}
-  .mmi-table .tot{font-family:'IBM Plex Mono',monospace;text-align:right;font-weight:600;color:var(--navy);}
-  .mmi-table tfoot td{font-weight:600;background:var(--purple-light);border-top:2px solid var(--purple);}
-
-  /* RESEARCH TABLE */
-  .res-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
-  .res-table th{background:var(--navy);color:white;padding:9px 12px;font-weight:500;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;}
-  .res-table th:hover{background:#0a2a5a;}
-  .res-table td{padding:8px 12px;border-bottom:1px solid var(--border);}
-  .res-table tr:hover td{background:#f0f4ff;}
-  .res-table .name-f{font-weight:500;font-family:'Source Serif 4',serif;font-size:0.88rem;}
-  .res-table .num{font-family:'IBM Plex Mono',monospace;text-align:right;}
-  .res-table .tot{font-family:'IBM Plex Mono',monospace;text-align:right;font-weight:600;color:var(--navy);}
-  .res-table tfoot td{font-weight:600;background:#f0f4ff;border-top:2px solid var(--mid-blue);}
-  .res-hrs-bar-wrap{display:flex;align-items:center;gap:8px;}
-  .res-hrs-bar{flex:1;height:8px;background:var(--light-blue);border-radius:4px;overflow:hidden;min-width:60px;}
-  .res-hrs-bar-fill{height:100%;background:var(--mid-blue);border-radius:4px;}
-  .res-fte-badge{display:inline-block;font-size:0.68rem;font-weight:600;border-radius:10px;padding:2px 8px;background:var(--light-blue);color:var(--mid-blue);}
-
-  /* PGR SUPERVISION TABLE */
-  .pgr-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
-  .pgr-table th{background:var(--navy);color:white;padding:9px 12px;font-weight:500;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;}
-  .pgr-table th:hover{background:#0a2a5a;}
-  .pgr-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
-  .pgr-table tr:hover td{background:#f5f0ff;}
-  .pgr-table .name-f{font-weight:500;font-family:'Source Serif 4',serif;font-size:0.88rem;}
-  .pgr-table .num{font-family:'IBM Plex Mono',monospace;text-align:right;}
-  .pgr-table .tot{font-family:'IBM Plex Mono',monospace;text-align:right;font-weight:600;color:var(--navy);}
-  .pgr-table tfoot td{font-weight:600;background:#f5f0ff;border-top:2px solid var(--purple);}
-  .pgr-student-chip{display:inline-block;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-size:0.72rem;margin:2px;white-space:nowrap;}
-  .pgr-student-chip.phd{border-left:3px solid var(--purple);}
-  .pgr-student-chip.mres{border-left:3px solid var(--teal);}
-  .pgr-student-chip.ft{color:var(--text);}
-  .pgr-student-chip.pt{color:var(--muted);font-style:italic;}
-  .pgr-badge{display:inline-block;font-size:0.65rem;font-weight:600;border-radius:10px;padding:1px 7px;margin-left:3px;}
-  .pgr-badge-phd{background:var(--purple-light);color:var(--purple);}
-  .pgr-badge-mres{background:var(--teal-light);color:var(--teal);}
-  .pgr-settings-bar{background:#f5f0ff;border:1px solid #d8b4fe;border-radius:10px;padding:1rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:flex-end;gap:1.5rem;flex-wrap:wrap;}
-  .pgr-settings-bar h3{font-size:0.85rem;font-weight:600;color:var(--purple);margin-bottom:0;width:100%;}
-  .pgr-set-group{display:flex;flex-direction:column;gap:3px;}
-  .pgr-set-group label{font-size:0.72rem;color:var(--muted);font-weight:500;}
-  .pgr-set-group input[type=number]{padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.82rem;font-family:'IBM Plex Mono',monospace;width:90px;}
-  .pgr-set-group .hint{font-size:0.65rem;color:var(--muted);font-style:italic;}
-  .pgr-recalc-btn{background:var(--purple);color:white;border:none;border-radius:6px;padding:6px 14px;font-size:0.8rem;font-weight:500;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;align-self:flex-end;}
-  .pgr-recalc-btn:hover{background:#5b17a0;}
-
-  /* ASSESSMENT TABLE */
-  .ass-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
-  .ass-table th{background:var(--navy);color:white;padding:9px 12px;font-weight:500;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;}
-  .ass-table th:hover{background:#0a2a5a;}
-  .ass-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
-  .ass-table tr:hover td{background:#f0f8ff;}
-  .ass-table .name-f{font-weight:500;font-family:'Source Serif 4',serif;font-size:0.88rem;}
-  .ass-table .num{font-family:'IBM Plex Mono',monospace;text-align:right;}
-  .ass-table .tot{font-family:'IBM Plex Mono',monospace;text-align:right;font-weight:600;color:var(--navy);}
-  .ass-table tfoot td{font-weight:600;background:#e0f0ff;border-top:2px solid #0066cc;}
-  .ass-breakdown{display:flex;align-items:center;gap:8px;font-size:0.75rem;color:var(--muted);}
-  .ass-bonus-badge{display:inline-block;font-size:0.65rem;font-weight:600;border-radius:6px;padding:1px 6px;margin-left:2px;background:var(--light-blue);color:var(--mid-blue);}
-  .ass-bonus-badge.bonus-1x{background:#c8e6c9;color:#2e7d32;}
-  .ass-bonus-badge.bonus-05x{background:#ffe0b2;color:#e65100;}
-  .ass-settings-bar{background:#e0f0ff;border:1px solid #90caf9;border-radius:10px;padding:1rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:flex-end;gap:1.5rem;flex-wrap:wrap;}
-  .ass-settings-bar h3{font-size:0.85rem;font-weight:600;color:#0066cc;margin-bottom:0;width:100%;}
-
-  /* MMI session card */
-  .mmi-session-card{background:var(--bg);border-left:3px solid var(--purple);border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:0.8rem;}
-  .mmi-session-card .ms-title{font-weight:600;color:var(--navy);margin-bottom:3px;}
-  .mmi-session-card .ms-meta{color:var(--muted);font-size:0.75rem;}
-  .reserve-badge{background:var(--purple-light);color:var(--purple);border-radius:10px;padding:1px 8px;font-size:0.68rem;font-weight:600;margin-left:6px;}
-
-  /* INLINE SETTINGS */
-  .inline-settings{background:var(--light-blue);border:1px solid var(--border);border-radius:10px;padding:1rem 1.5rem;margin-bottom:1.5rem;display:none;}
-  .inline-settings.open{display:block;}
-  .inline-settings h3{font-size:0.85rem;font-weight:600;margin-bottom:0.8rem;color:var(--navy);}
-  .is-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.7rem;}
-  .is-group{display:flex;flex-direction:column;gap:3px;}
-  .is-group label{font-size:0.72rem;color:var(--muted);font-weight:500;}
-  .is-group input{padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.82rem;font-family:'IBM Plex Mono',monospace;}
-  .is-group .hint{font-size:0.65rem;color:var(--muted);font-style:italic;}
-  .btn-recalc{background:var(--mid-blue);color:white;border:none;border-radius:6px;padding:6px 14px;font-size:0.8rem;font-weight:500;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;margin-top:0.8rem;}
-  .btn-recalc:hover{background:#004fa3;}
-
-  /* COMBINED */
-  .search-row{display:flex;gap:1rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;}
-  .search-row input[type=text]{padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:220px;}
-  .search-row select{padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem;}
-
-  .combined-upload-bar{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.5rem;margin-bottom:1.5rem;}
-  .combined-upload-bar h3{font-family:'Source Serif 4',serif;color:var(--navy);margin-bottom:0.5rem;font-size:1.1rem;}
-  .combined-upload-bar p{font-size:0.82rem;color:var(--muted);margin-bottom:1rem;}
-  .combined-status{display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:1.2rem;}
-  .status-pill{display:flex;align-items:center;gap:6px;background:var(--light-blue);border-radius:20px;padding:5px 12px;font-size:0.78rem;color:var(--muted);}
-  .status-pill.loaded{background:#e0f4e8;color:var(--success);}
-  .status-pill.loaded::before{content:'✓ ';font-weight:700;}
-  .status-pill:not(.loaded)::before{content:'○ ';}
-
-  .comb-table-wrap{overflow-x:auto;}
-  .comb-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
-  .comb-table th{background:var(--navy);color:white;padding:9px 14px;font-weight:500;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;}
-  .comb-table th:hover{background:#0a2a5a;}
-  .comb-table td{padding:9px 14px;border-bottom:1px solid var(--border);}
-  .comb-table tr:hover td{background:var(--light-blue);}
-  .comb-table .cn{font-weight:500;font-family:'Source Serif 4',serif;font-size:0.88rem;}
-  .comb-table .num{font-family:'IBM Plex Mono',monospace;text-align:right;}
-  .comb-table .tot{font-family:'IBM Plex Mono',monospace;text-align:right;font-weight:700;color:var(--navy);}
-  .comb-table tfoot td{font-weight:600;background:#f0f4ff;border-top:2px solid var(--mid-blue);}
-  .comb-table tfoot .num,.comb-table tfoot .tot{color:var(--mid-blue);}
-
-  .total-bar-wrap{display:flex;align-items:center;gap:8px;}
-  .total-bar{flex:1;height:8px;background:var(--light-blue);border-radius:4px;overflow:hidden;min-width:80px;}
-  .total-bar-fill{height:100%;background:linear-gradient(90deg,var(--mid-blue),var(--teal));border-radius:4px;}
-
-  .match-badge{font-size:0.68rem;padding:2px 6px;border-radius:10px;font-weight:500;}
-  .match-exact{background:#e0f4e8;color:var(--success);}
-  .match-fuzzy{background:#fff3e0;color:var(--warn);}
-  .match-only{background:var(--light-blue);color:var(--mid-blue);}
-
-  /* TAGS */
-  .tag-chip{display:inline-flex;align-items:center;gap:3px;background:var(--gold-light);border:1px solid var(--gold);color:#7a5800;border-radius:10px;padding:1px 7px;font-size:0.68rem;font-weight:600;white-space:nowrap;cursor:default;}
-  .tag-chip .tag-x{cursor:pointer;opacity:0.6;font-size:0.75rem;margin-left:1px;line-height:1;}
-  .tag-chip .tag-x:hover{opacity:1;}
-  .tag-add-btn{background:none;border:1px dashed var(--border);border-radius:10px;padding:1px 7px;font-size:0.68rem;color:var(--muted);cursor:pointer;white-space:nowrap;}
-  .tag-add-btn:hover{border-color:var(--gold);color:#7a5800;background:var(--gold-light);}
-  .tag-cell{display:flex;flex-wrap:wrap;gap:3px;align-items:center;min-width:120px;}
-
-  .tag-popover{position:fixed;z-index:300;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(4,30,66,0.18);padding:0.9rem 1rem;width:240px;}
-  .tag-popover h4{font-size:0.75rem;font-weight:600;color:var(--navy);margin-bottom:0.6rem;}
-  .tag-popover .tag-existing{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:0.7rem;}
-  .tag-popover-input-row{display:flex;gap:6px;}
-  .tag-popover input{flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem;font-family:'IBM Plex Sans',sans-serif;}
-  .tag-popover button{background:var(--mid-blue);color:white;border:none;border-radius:6px;padding:5px 10px;font-size:0.78rem;cursor:pointer;}
-  .tag-popover-close{position:absolute;top:6px;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.9rem;}
-
-  .tag-filter-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:0.5rem 0;margin-bottom:0.5rem;min-height:32px;}
-  .tag-filter-bar .tfl{font-size:0.75rem;font-weight:500;color:var(--muted);}
-  .tag-filter-pill{display:inline-flex;align-items:center;gap:4px;background:var(--light-blue);border:1.5px solid var(--border);border-radius:10px;padding:3px 10px;font-size:0.75rem;font-weight:500;color:var(--navy);cursor:pointer;transition:all 0.15s;}
-  .tag-filter-pill:hover{border-color:var(--gold);background:var(--gold-light);color:#7a5800;}
-  .tag-filter-pill.active{background:var(--gold-light);border-color:var(--gold);color:#7a5800;}
-  .tag-filter-pill .tfc{background:rgba(0,0,0,0.12);border-radius:8px;padding:0 4px;font-size:0.68rem;margin-left:2px;}
-  .tag-filter-clear{background:none;border:1px solid var(--border);border-radius:10px;padding:3px 10px;font-size:0.75rem;color:var(--muted);cursor:pointer;}
-  .tag-filter-clear:hover{border-color:var(--danger);color:var(--danger);}
-  .tag-group-report-btn{margin-left:auto;background:var(--navy);color:white;border:none;border-radius:8px;padding:4px 12px;font-size:0.75rem;font-weight:500;cursor:pointer;display:none;}
-  .tag-group-report-btn.visible{display:inline-block;}
-
-  /* TAG RULES EDITOR */
-  .rules-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:1rem;overflow:hidden;}
-  .rules-panel-hdr{display:flex;align-items:center;justify-content:space-between;padding:0.7rem 1rem;cursor:pointer;user-select:none;background:var(--light-blue);}
-  .rules-panel-hdr h3{font-size:0.85rem;font-weight:600;color:var(--navy);display:flex;align-items:center;gap:7px;margin:0;}
-  .rules-panel-hdr .chev{font-size:0.8rem;transition:transform 0.2s;color:var(--muted);}
-  .rules-panel-hdr.open .chev{transform:rotate(180deg);}
-  .rules-panel-body{display:none;padding:1rem;}
-  .rules-panel-body.open{display:block;}
-  .rules-table{width:100%;border-collapse:collapse;font-size:0.8rem;margin-bottom:0.8rem;}
-  .rules-table th{background:var(--navy);color:white;padding:6px 10px;font-weight:500;text-align:left;font-size:0.75rem;white-space:nowrap;}
-  .rules-table td{padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
-  .rules-table tr:last-child td{border-bottom:none;}
-  .rules-table input[type=number]{width:62px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:0.8rem;font-family:'IBM Plex Mono',monospace;text-align:right;}
-  .rules-table input[type=date]{padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:0.78rem;color:var(--text);}
-  .rules-table .rule-tag-name{font-weight:600;color:var(--navy);font-size:0.82rem;}
-  .rules-table .rule-del{background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.9rem;padding:2px 5px;border-radius:4px;}
-  .rules-table .rule-del:hover{background:#fde8e8;}
-  .rules-add-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:0.5rem;padding-top:0.8rem;border-top:1px solid var(--border);}
-  .rules-add-row input[type=text]{padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem;width:140px;}
-  .rules-add-row input[type=number]{width:62px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem;font-family:'IBM Plex Mono',monospace;text-align:right;}
-  .rules-add-row label{font-size:0.72rem;color:var(--muted);white-space:nowrap;}
-  .rules-add-row .rules-add-group{display:flex;flex-direction:column;gap:2px;}
-  .btn-rules-add{background:var(--mid-blue);color:white;border:none;border-radius:6px;padding:5px 12px;font-size:0.8rem;font-weight:500;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;align-self:flex-end;}
-  .rule-active-badge{font-size:0.65rem;background:#e0f4e8;color:var(--success);border-radius:4px;padding:1px 5px;font-weight:600;}
-  .rule-expired-badge{font-size:0.65rem;background:#fde8e8;color:var(--danger);border-radius:4px;padding:1px 5px;font-weight:600;}
-  .adj-badge{font-size:0.65rem;background:var(--purple-light);color:var(--purple);border-radius:4px;padding:1px 5px;font-weight:600;margin-left:3px;cursor:help;}
-
-  /* FTE INDICATOR */
-  .fte-wrap{display:flex;align-items:center;gap:7px;min-width:160px;}
-  .fte-pct{font-family:'IBM Plex Mono',monospace;font-size:0.82rem;font-weight:600;min-width:42px;text-align:right;}
-  .fte-pct.fte-under{color:var(--mid-blue);}
-  .fte-pct.fte-ok{color:var(--success);}
-  .fte-pct.fte-warn{color:var(--warn);}
-  .fte-pct.fte-over{color:var(--danger);}
-  .fte-bar-outer{flex:1;height:10px;background:#e8edf5;border-radius:5px;overflow:visible;position:relative;min-width:80px;}
-  .fte-bar-fill{height:100%;border-radius:5px;transition:width 0.3s;}
-  .fte-bar-fill.fte-under{background:var(--mid-blue);opacity:0.6;}
-  .fte-bar-fill.fte-ok{background:var(--success);}
-  .fte-bar-fill.fte-warn{background:var(--warn);}
-  .fte-bar-fill.fte-over{background:var(--danger);}
-  .fte-target-mark{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--navy);border-radius:1px;opacity:0.5;}
-
-  /* FTE SETTINGS INLINE PANEL */
-  .fte-settings{background:var(--light-blue);border:1px solid var(--border);border-radius:10px;padding:1rem 1.5rem;margin-bottom:1rem;display:none;}
-  .fte-settings.open{display:flex;align-items:flex-end;gap:1.5rem;flex-wrap:wrap;}
-  .fte-settings h3{font-size:0.85rem;font-weight:600;color:var(--navy);margin-bottom:0.5rem;width:100%;}
-  .fte-set-group{display:flex;flex-direction:column;gap:3px;}
-  .fte-set-group label{font-size:0.72rem;color:var(--muted);font-weight:500;}
-  .fte-set-group input{padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:0.82rem;font-family:'IBM Plex Mono',monospace;width:90px;}
-  .fte-set-group .hint{font-size:0.65rem;color:var(--muted);font-style:italic;}
-
-  /* FTE fraction in popover */
-  .fte-fraction-row{display:flex;align-items:center;gap:8px;background:#f0f4ff;border-radius:6px;padding:6px 8px;margin-bottom:8px;}
-  .fte-fraction-row label{font-size:0.78rem;font-weight:500;color:var(--navy);flex:1;}
-  .fte-fraction-row input{width:60px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:0.82rem;font-family:'IBM Plex Mono',monospace;text-align:right;}
-  /* Assignment expiry in popover */
-  .tag-assign-row{display:flex;align-items:center;justify-content:space-between;background:var(--light-blue);border-radius:6px;padding:4px 8px;margin-bottom:4px;gap:6px;}
-  .tag-assign-name{font-weight:600;font-size:0.8rem;color:var(--navy);flex:1;}
-  .tag-assign-expiry{font-size:0.72rem;color:var(--muted);display:flex;align-items:center;gap:4px;}
-  .tag-assign-expiry input[type=date]{padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:0.72rem;}
-  .tag-assign-x{background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.85rem;padding:1px 4px;}
-  .merge-info{background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:0.8rem 1rem;margin-bottom:1rem;font-size:0.8rem;color:#7a5800;display:none;}
-  .merge-info strong{color:#5a4000;}
-
-  /* ROLE PILLS */
-  .role-pill{display:inline-block;font-size:0.65rem;font-weight:600;border-radius:4px;padding:1px 6px;margin:1px;white-space:nowrap;}
-  .pill-sup{background:var(--rust-light);color:var(--rust);}
-  .pill-cosup{background:#fff3e0;color:var(--warn);}
-  .pill-diss{background:var(--light-blue);color:var(--mid-blue);}
-  .pill-post{background:var(--teal-light);color:var(--teal);}
-
-  /* DETAIL PANEL */
-  .overlay{position:fixed;inset:0;background:rgba(4,30,66,0.3);z-index:190;display:none;backdrop-filter:blur(2px);}
-  .overlay.open{display:block;}
-  .detail-panel{position:fixed;right:0;top:0;bottom:0;width:420px;background:var(--surface);box-shadow:-4px 0 24px rgba(4,30,66,0.15);z-index:200;transform:translateX(100%);transition:transform 0.3s;overflow-y:auto;display:flex;flex-direction:column;}
-  .detail-panel.open{transform:translateX(0);}
-  .panel-header{background:var(--navy);color:white;padding:1.2rem 1.5rem;position:sticky;top:0;z-index:1;}
-  .panel-header h3{font-family:'Source Serif 4',serif;font-size:1.1rem;margin-bottom:2px;}
-  .panel-header p{font-size:0.75rem;opacity:0.7;}
-  .close-btn{position:absolute;top:1rem;right:1rem;background:rgba(255,255,255,0.15);border:none;color:white;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:0.9rem;}
-  .panel-body{padding:1.2rem;flex:1;}
-  .panel-section{margin-bottom:1.2rem;}
-  .panel-section h4{font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;}
-  .panel-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.82rem;}
-  .panel-row:last-child{border-bottom:none;}
-  .panel-row .k{color:var(--muted);}
-  .panel-row .v{font-family:'IBM Plex Mono',monospace;font-weight:500;}
-  .panel-row .v.big{color:var(--mid-blue);font-size:1.05rem;}
-
-  .session-card{background:var(--bg);border-radius:8px;padding:0.8rem;margin-bottom:0.6rem;}
-  .sc-title{font-weight:500;margin-bottom:4px;font-size:0.85rem;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
-  .sc-hours{background:var(--light-blue);color:var(--mid-blue);border-radius:10px;padding:2px 8px;font-size:0.72rem;font-weight:600;white-space:nowrap;}
-  .sc-meta{display:flex;flex-wrap:wrap;gap:6px;font-size:0.75rem;color:var(--muted);}
-  .sc-tag{background:var(--light-blue);color:var(--mid-blue);border-radius:4px;padding:1px 6px;font-size:0.72rem;margin-right:4px;}
-  .modal-stat-row{display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;}
-  .modal-stat{background:var(--light-blue);border-radius:8px;padding:0.7rem 1rem;min-width:80px;}
-  .ms-value{font-family:'IBM Plex Mono',monospace;font-size:1.3rem;font-weight:500;color:var(--mid-blue);}
-  .ms-label{font-size:0.7rem;color:var(--muted);}
-  .proj-student{background:var(--bg);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:0.78rem;}
-  .proj-student .sn{font-weight:500;margin-bottom:2px;}
-  .proj-student .sr{color:var(--muted);}
-
-  .error-msg{display:none;background:#fde8e8;border:1px solid #f4a0a0;border-radius:6px;padding:0.7rem 1rem;font-size:0.82rem;color:var(--danger);margin-bottom:1rem;}
-  .error-msg.show{display:block;}
-  .warn-msg{display:none;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:0.7rem 1rem;font-size:0.82rem;color:#7a5800;margin-bottom:1rem;}
-  .warn-msg.show{display:block;}
-
-  @media(max-width:700px){
-    .landing-grid{grid-template-columns:1fr;}
-    .detail-panel{width:100%;}
-    main{padding:1rem;}
-    .main-tab-btn{padding:0.6rem 0.7rem;font-size:0.75rem;}
-  }
-</style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -464,7 +14,7 @@
     <div class="logo-mark">AL</div>
     <div>
       <div class="header-title">Academic Load — Combined View</div>
-      <div class="header-sub">Teaching · Tutorial · Projects · MMIs · Research · PGR · Assessment · Merged totals</div>
+      <div class="header-sub">Teaching · Tutorial · Projects · MMIs · Research · PGR · Merged totals</div>
     </div>
   </div>
   <div class="header-badge">100% browser-based · data never leaves your device</div>
@@ -478,9 +28,9 @@
     <button class="main-tab-btn" data-panel="panel-mmi">🩺 MMIs <span class="tab-badge" id="badge-mmi">—</span></button>
     <button class="main-tab-btn" data-panel="panel-citizenship">🏛 Citizenship <span class="tab-badge" id="badge-citizenship">—</span></button>
     <button class="main-tab-btn" data-panel="panel-research">🔬 Staff Research Hours <span class="tab-badge" id="badge-research">—</span></button>
-    <button class="main-tab-btn" data-panel="panel-pgr">🎓 PGR Supervision <span class="tab-badge" id="badge-pgr">—</span></button>
-    <button class="main-tab-btn" data-panel="panel-assessment">📝 Assessment Load <span class="tab-badge" id="badge-assessment">—</span></button>
-    <button class="main-tab-btn" data-panel="panel-combined">⚡ Combined Totals <span class="tab-badge" id="badge-combined">—</span></button>
+    <button class="main-tab-btn" data-panel="panel-pgr">👨‍🎓 PGR Supervision <span class="tab-badge" id="badge-pgr">—</span></button>
+    <button class="main-tab-btn" data-panel="panel-assessment">📝 Assessment <span class="tab-badge" id="badge-assessment">—</span></button>
+<button class="main-tab-btn" data-panel="panel-combined">⚡ Combined Totals <span class="tab-badge" id="badge-combined">—</span></button>
   </div>
 
   <!-- ═══ TAB 1: TEACHING LOAD ═══ -->
@@ -488,7 +38,7 @@
     <div id="tl-landing">
       <div class="landing-grid">
         <div class="landing-hero">
-          <div class="hero-eyebrow">Tab 1 of 9</div>
+          <div class="hero-eyebrow">Tab 1 of 5</div>
           <h1 class="hero-h1">Teaching Load Analyser</h1>
           <p class="hero-desc">Upload exported HTML timetable files. Parses session data and calculates weekly contact hours per staff member.</p>
         </div>
@@ -548,7 +98,7 @@
     <div id="tut-landing">
       <div class="landing-grid">
         <div class="landing-hero" style="background:linear-gradient(135deg,#0a3d2a,#1a7a4a)">
-          <div class="hero-eyebrow">Tab 2 of 9</div>
+          <div class="hero-eyebrow">Tab 2 of 5</div>
           <h1 class="hero-h1">Tutor Workload Calculator</h1>
           <p class="hero-desc">Upload the student allocation spreadsheet (XLSX). Calculates hours per tutor based on year of study.</p>
         </div>
@@ -580,7 +130,7 @@
     <div id="proj-landing">
       <div class="landing-grid">
         <div class="landing-hero" style="background:linear-gradient(135deg,#3a1f0a,#b84c2a)">
-          <div class="hero-eyebrow">Tab 3 of 9</div>
+          <div class="hero-eyebrow">Tab 3 of 5</div>
           <h1 class="hero-h1">Project Supervision &amp; Assessment</h1>
           <p class="hero-desc">Upload the project allocation spreadsheet. Calculates supervision, dissertation, and poster hours per academic.</p>
           <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected: <strong style="color:rgba(255,255,255,0.85)">Theme · Supervisor · Co_Supervisors · Poster_1/2_Assessor · Dissertation_1/2_Assessor</strong></div>
@@ -638,7 +188,7 @@
     <div id="mmi-landing">
       <div class="landing-grid">
         <div class="landing-hero" style="background:linear-gradient(135deg,#2d1b69,#6b21a8)">
-          <div class="hero-eyebrow">Tab 4 of 9</div>
+          <div class="hero-eyebrow">Tab 4 of 5</div>
           <h1 class="hero-h1">MMI Workload Calculator</h1>
           <p class="hero-desc">Upload the MMI allocation spreadsheet. Each tab is one interview session — the tab name encodes the date and time. Staff names are read from column B starting at row 5. Reserve staff (flagged in column A) are listed but not counted toward load hours.</p>
           <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">
@@ -699,49 +249,12 @@
     </div>
   </div>
 
-  <!-- ═══ TAB 5: CITIZENSHIP ═══ -->
-  <div class="main-tab-panel" id="panel-citizenship">
-    <div style="padding:20px;max-width:1200px;margin:auto">
-      <h2>Citizenship Roles</h2>
-      <p>Paste SharePoint tables for <a href="#">Teaching</a>, <a href="#">Research</a>, and <a href="#">School/Citizenship</a> roles.</p>
-      
-      <h3>Teaching Roles</h3>
-      <textarea id="cit-teaching" style="width:100%;height:120px"></textarea>
-      
-      <h3>Research Roles</h3>
-      <textarea id="cit-research" style="width:100%;height:120px"></textarea>
-      
-      <h3>School & Citizenship Roles</h3>
-      <textarea id="cit-school" style="width:100%;height:120px"></textarea>
-      
-      <button id="citAnalyseBtn" style="margin-top:10px;padding:8px 16px">Analyse Roles</button>
-      
-      <div id="cit-results" style="margin-top:20px;display:none">
-        <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
-          <table class="proj-table" id="citTable">
-            <thead>
-              <tr>
-                <th data-citsort="role" style="cursor:pointer;user-select:none">Role ↕</th>
-                <th data-citsort="holder" style="cursor:pointer;user-select:none">Role Holder ↕</th>
-                <th data-citsort="hours" style="cursor:pointer;user-select:none;text-align:right">Hours ↕</th>
-                <th data-citsort="term" style="cursor:pointer;user-select:none">Term ↕</th>
-                <th data-citsort="end" style="cursor:pointer;user-select:none">End Date ↕</th>
-                <th data-citsort="category" style="cursor:pointer;user-select:none">Category ↕</th>
-              </tr>
-            </thead>
-            <tbody id="citTbody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══ TAB 6: RESEARCH ═══ -->
+  <!-- ═══ TAB 6: STAFF RESEARCH HOURS ═══ -->
   <div class="main-tab-panel" id="panel-research">
     <div id="res-landing">
       <div class="landing-grid">
         <div class="landing-hero" style="background:linear-gradient(135deg,#042a3a,#0a7a9a)">
-          <div class="hero-eyebrow">Tab 6 of 9</div>
+          <div class="hero-eyebrow">Tab 6 of 7</div>
           <h1 class="hero-h1">Staff Research Hours</h1>
           <p class="hero-desc">Upload the staff research hours spreadsheet (XLSX). Displays FTE, project count, and current/next year hours per staff member, and feeds into the Combined Totals view.</p>
           <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">Staff Identifier · Name · Department · Sum of Max FTE · Project Count · Hrs Per Week · Current Year Hours · Next Year Hours</strong></div>
@@ -805,184 +318,124 @@
     </div>
   </div>
 
-  <!-- ═══ TAB 7: PGR ═══ -->
+  <!-- ═══ TAB 7: PGR SUPERVISION ═══ -->
   <div class="main-tab-panel" id="panel-pgr">
     <div id="pgr-landing">
       <div class="landing-grid">
-        <div class="landing-hero" style="background:linear-gradient(135deg,#2d1b69,#6b21a8)">
-          <div class="hero-eyebrow">Tab 7 of 9</div>
+        <div class="landing-hero" style="background:linear-gradient(135deg,#0a4a3a,#0a9a7a)">
+          <div class="hero-eyebrow">Tab 7 of 8</div>
           <h1 class="hero-h1">PGR Supervision</h1>
-          <p class="hero-desc">Upload the PGR student spreadsheet. Calculates per-supervisor hours based on percentage allocation, student programme (PhD / MRes), and mode (full-time / part-time). Only students whose supervision period includes today's date are counted. Assistant supervisors are excluded.</p>
-          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">First Name · Surname · Start date · ESD · End date · Thesis Submitted Date · Plan/Programme · PI · % PI · 2nd–5th Supervisor &amp; % · Assistant Supervisor · Mode</strong></div>
+          <p class="hero-desc">Upload the PGR supervision spreadsheet (XLSX). Calculates 100 hours per year per PhD/MRes student, split according to supervision percentages, and feeds into the Combined Totals view.</p>
+          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">First Name · Surname · Start date · ESD · End date · Thesis Submitted Date · Plan/Programme · PI · % PI · 2nd Supervisor · % Supervisor 2 · 3rd Supervisor · % Supervisor 3 · 4th Supervisor · % Supervisor 4 · 5th Supervisor · % Supervisor 5 · Assistant Supervisor · Mode</strong></div>
         </div>
         <div class="landing-panel">
           <h2 class="panel-h2">Upload PGR Spreadsheet</h2>
           <p class="panel-sub">XLSX or XLS file. Headers expected on row 1.</p>
-          <div class="drop-zone" id="pgrDropZone" style="border-color:var(--purple);background:var(--purple-light)">
+          <div class="drop-zone" id="pgrDropZone" style="border-color:#0a9a7a;background:#e0f8f0">
             <input type="file" id="pgrFileInput" accept=".xlsx,.xls">
-            <div class="drop-icon">🎓</div>
+            <div class="drop-icon">👨‍🎓</div>
             <h3>Drop XLSX file here</h3>
             <p>or click to browse</p>
           </div>
           <div class="error-msg" id="pgrError"></div>
-          <div style="background:var(--purple-light);border:1px solid #d8b4fe;border-radius:8px;padding:1rem;margin-top:0.5rem">
-            <div style="font-size:0.78rem;font-weight:600;color:var(--purple);margin-bottom:0.7rem">⚙️ Hour rates (1.0 FTE equivalent)</div>
-            <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
-              <div class="pgr-set-group">
-                <label>PhD hours/yr (1.0 FTE)</label>
-                <input type="number" id="pgrPhdHours" value="100" min="1" max="500" step="5">
-                <span class="hint">pro-rated by % allocation &amp; mode</span>
-              </div>
-              <div class="pgr-set-group">
-                <label>MRes hours/yr (1.0 FTE)</label>
-                <input type="number" id="pgrMResHours" value="100" min="1" max="500" step="5">
-                <span class="hint">pro-rated by % allocation &amp; mode</span>
-              </div>
-              <div class="pgr-set-group">
-                <label>Part-time multiplier</label>
-                <input type="number" id="pgrPtMultiplier" value="0.5" min="0.1" max="1.0" step="0.05">
-                <span class="hint">applied to part-time students</span>
-              </div>
-            </div>
-          </div>
-          <button class="btn-primary" id="pgrAnalyseBtn" disabled style="margin-top:1rem">🎓 Calculate PGR Supervision</button>
         </div>
       </div>
     </div>
-
     <div id="pgr-content" style="display:none">
       <div class="analyser-header">
-        <div class="analyser-title-block"><h2>PGR Supervision Workload</h2><div class="analyser-meta" id="pgrMeta"></div></div>
+        <div class="analyser-title-block"><h2>PGR Supervision</h2><div class="analyser-meta" id="pgrMeta"></div></div>
         <div class="analyser-actions">
           <button class="btn-action" id="pgrBtnBack">← Back</button>
-          <button class="btn-action" id="pgrBtnSettings">⚙ Settings</button>
           <button class="btn-action" id="pgrBtnExport">⬇ Export XLSX</button>
         </div>
       </div>
-
-      <div class="pgr-settings-bar" id="pgrInlineSettings" style="display:none">
-        <h3>Hour rates — adjust and click Recalculate</h3>
-        <div class="pgr-set-group"><label>PhD hrs/yr (1.0 FTE)</label><input type="number" id="pgrPhdHours2" min="1" max="500" step="5"><span class="hint">hrs per full-time PhD at 100%</span></div>
-        <div class="pgr-set-group"><label>MRes hrs/yr (1.0 FTE)</label><input type="number" id="pgrMResHours2" min="1" max="500" step="5"><span class="hint">hrs per full-time MRes at 100%</span></div>
-        <div class="pgr-set-group"><label>Part-time multiplier</label><input type="number" id="pgrPtMultiplier2" min="0.1" max="1" step="0.05"><span class="hint">fraction applied to PT students</span></div>
-        <button class="pgr-recalc-btn" id="pgrRecalcBtn">↻ Recalculate</button>
-      </div>
-
       <div class="stats-bar" id="pgrStatsBar"></div>
-
-      <div style="background:#f5f0ff;border:1px solid #d8b4fe;border-radius:8px;padding:0.6rem 1rem;margin-bottom:1rem;font-size:0.78rem;color:var(--purple)">
-        ℹ️ Only students currently active (today between Start Date and End Date, or thesis not yet submitted) are counted. Part-time students use the multiplier above. Assistant supervisors are excluded.
-      </div>
-
       <div class="search-row">
         <input type="text" id="pgrSearch" placeholder="Filter by supervisor name…">
         <select id="pgrSortSel">
-          <option value="hours-desc">Total hrs ↓</option>
-          <option value="hours-asc">Total hrs ↑</option>
-          <option value="students-desc">Active students ↓</option>
+          <option value="hours-desc">Total hours ↓</option>
+          <option value="hours-asc">Total hours ↑</option>
+          <option value="students-desc">Students ↓</option>
+          <option value="students-asc">Students ↑</option>
           <option value="name-asc">Name A–Z</option>
+          <option value="name-desc">Name Z–A</option>
         </select>
       </div>
-
       <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
         <table class="pgr-table">
           <thead><tr>
             <th data-pgrsort="name" style="cursor:pointer;user-select:none">Supervisor ↕</th>
-            <th data-pgrsort="phd" style="cursor:pointer;user-select:none;text-align:right">PhD students ↕</th>
-            <th data-pgrsort="mres" style="cursor:pointer;user-select:none;text-align:right">MRes students ↕</th>
-            <th data-pgrsort="students" style="cursor:pointer;user-select:none;text-align:right">Active total ↕</th>
-            <th data-pgrsort="hours" style="cursor:pointer;user-select:none;text-align:right">Total hrs/yr ↕</th>
-            <th style="min-width:200px">Active students</th>
+            <th data-pgrsort="students" style="cursor:pointer;user-select:none;text-align:right">Students ↕</th>
+            <th data-pgrsort="hours" style="cursor:pointer;user-select:none;text-align:right">Total hours ↕</th>
+            <th style="min-width:120px">Profile</th>
           </tr></thead>
           <tbody id="pgrTbody"></tbody>
           <tfoot id="pgrFoot"></tfoot>
         </table>
-      </div>
-
-      <div style="margin-top:1.5rem">
-        <h3 style="font-family:'Source Serif 4',serif;color:var(--navy);font-size:1rem;margin-bottom:0.8rem">Excluded / Inactive Students</h3>
-        <div id="pgrExcludedList" style="font-size:0.78rem;color:var(--muted)"></div>
       </div>
     </div>
   </div>
 
   <!-- ═══ TAB 8: ASSESSMENT ═══ -->
   <div class="main-tab-panel" id="panel-assessment">
-    <div id="ass-landing">
+    <div id="assessment-landing">
       <div class="landing-grid">
-        <div class="landing-hero" style="background:linear-gradient(135deg,#1a4a6a,#0066cc)">
+        <div class="landing-hero" style="background:linear-gradient(135deg,#6a11cb,#2575fc)">
           <div class="hero-eyebrow">Tab 8 of 9</div>
           <h1 class="hero-h1">Assessment Load</h1>
-          <p class="hero-desc">Upload the assessment spreadsheet. Calculates hours per staff member based on total load, number of participants, and extra-allowance bonuses for nominated staff members (1.0× or 0.5× base share). Hours only count if today is before the expiry date.</p>
-          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected: 2 header rows. Row 1 has merged cells (H–I "Allow 1.0× extra", J–K "Allow 0.5× extra"). Row 2: Assessment description · Year of study · Course code(s) · Load per student (mins) · Total students · Total load (hrs) · All staff · Staff (1.0× bonus) · Expiry · Staff (0.5× bonus) · Expiry.</div>
+          <p class="hero-desc">Upload the assessment spreadsheet (XLSX). Calculates load per academic based on total assessment hours divided among all staff, with extra allowances for staff listed in 1.0x/0.5x extra columns if expiry date is in the future.</p>
+          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">Columns A–G empty, H–I merged 'Allow 1.0x extra', J–K merged 'Allow 0.5x extra'. Row 2: Assessment description · Year of study · Course code(s) · Load per student (minutes) · Total students · Total assessment load (hours) · All staff (comma separated) · Staff · Expiry (XX/YY/ZZ) · Staff · Expiry (XX/YY/ZZ)</strong></div>
         </div>
         <div class="landing-panel">
           <h2 class="panel-h2">Upload Assessment Spreadsheet</h2>
-          <p class="panel-sub">XLSX or XLS file. Headers on rows 1–2 as described.</p>
-          <div class="drop-zone" id="assDropZone" style="border-color:#0066cc;background:#e0f0ff">
-            <input type="file" id="assFileInput" accept=".xlsx,.xls">
+          <p class="panel-sub">XLSX or XLS file. Double-row header expected.</p>
+          <div class="drop-zone" id="assessmentDropZone" style="border-color:#2575fc;background:#e8f0ff">
+            <input type="file" id="assessmentFileInput" accept=".xlsx,.xls">
             <div class="drop-icon">📝</div>
             <h3>Drop XLSX file here</h3>
             <p>or click to browse</p>
           </div>
-          <div class="error-msg" id="assError"></div>
-          <button class="btn-primary" id="assAnalyseBtn" disabled style="margin-top:1rem">📊 Calculate Assessment Load</button>
+          <div class="error-msg" id="assessmentError"></div>
         </div>
       </div>
     </div>
-
-    <div id="ass-content" style="display:none">
+    <div id="assessment-content" style="display:none">
       <div class="analyser-header">
-        <div class="analyser-title-block"><h2>Assessment Load</h2><div class="analyser-meta" id="assMeta"></div></div>
+        <div class="analyser-title-block"><h2>Assessment Load</h2><div class="analyser-meta" id="assessmentMeta"></div></div>
         <div class="analyser-actions">
-          <button class="btn-action" id="assBtnBack">← Back</button>
-          <button class="btn-action" id="assBtnExport">⬇ Export XLSX</button>
+          <button class="btn-action" id="assessmentBtnBack">← Back</button>
+          <button class="btn-action" id="assessmentBtnExport">⬇ Export XLSX</button>
         </div>
       </div>
-
-      <div class="stats-bar" id="assStatsBar"></div>
-
-      <div style="background:#e0f0ff;border:1px solid #90caf9;border-radius:8px;padding:0.6rem 1rem;margin-bottom:1rem;font-size:0.78rem;color:#0066cc">
-        ℹ️ Load is divided equally among all staff in the "All staff" column. Bonus shares (1.0× or 0.5×) are applied only if today is before the expiry date. Base share = Total load ÷ number of staff.
-      </div>
-
+      <div class="stats-bar" id="assessmentStatsBar"></div>
       <div class="search-row">
-        <input type="text" id="assSearch" placeholder="Filter by staff name…">
-        <select id="assSortSel">
-          <option value="hours-desc">Total hrs ↓</option>
-          <option value="hours-asc">Total hrs ↑</option>
-          <option value="assessments-desc">Assessments ↓</option>
+        <input type="text" id="assessmentSearch" placeholder="Filter by staff name…">
+        <select id="assessmentSortSel">
+          <option value="hours-desc">Total hours ↓</option>
+          <option value="hours-asc">Total hours ↑</option>
           <option value="name-asc">Name A–Z</option>
+          <option value="name-desc">Name Z–A</option>
         </select>
       </div>
-
       <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
-        <table class="ass-table">
+        <table class="assessment-table">
           <thead><tr>
-            <th data-asssort="name" style="cursor:pointer;user-select:none">Staff Member ↕</th>
-            <th data-asssort="assessments" style="cursor:pointer;user-select:none;text-align:right">Assessments ↕</th>
-            <th style="text-align:right">Base hrs</th>
-            <th style="text-align:right">Bonus hrs</th>
-            <th data-asssort="hours" style="cursor:pointer;user-select:none;text-align:right">Total hrs ↕</th>
-            <th style="min-width:250px">Breakdown</th>
+            <th data-assessmentsort="name" style="cursor:pointer;user-select:none">Staff ↕</th>
+            <th data-assessmentsort="hours" style="cursor:pointer;user-select:none;text-align:right">Total hours ↕</th>
+            <th style="min-width:120px">Profile</th>
           </tr></thead>
-          <tbody id="assTbody"></tbody>
-          <tfoot id="assFoot"></tfoot>
+          <tbody id="assessmentTbody"></tbody>
+          <tfoot id="assessmentFoot"></tfoot>
         </table>
-      </div>
-
-      <div style="margin-top:1.5rem">
-        <h3 style="font-family:'Source Serif 4',serif;color:var(--navy);font-size:1rem;margin-bottom:0.8rem">Excluded Assessments</h3>
-        <div id="assExcludedList" style="font-size:0.78rem;color:var(--muted)"></div>
       </div>
     </div>
   </div>
 
-  <!-- ═══ TAB 9: COMBINED ═══ -->
+  <!-- ═══ TAB 9 (was 8): COMBINED TOTALS ═══ -->
   <div class="main-tab-panel" id="panel-combined">
     <div class="combined-upload-bar">
       <h3>Combined Academic Load</h3>
-      <p>Load data in Tabs 1–8, then merge here. Names are matched across all sources using title-stripping and fuzzy matching.</p>
+      <p>Load data in Tabs 1–4, then merge here. Names are matched across all sources using title-stripping and fuzzy matching.</p>
       <div class="combined-status">
         <span class="status-pill" id="comb-status-tl">Teaching Load</span>
         <span class="status-pill" id="comb-status-tut">Tutorial Workload</span>
@@ -991,7 +444,7 @@
         <span class="status-pill" id="comb-status-cit">Citizenship</span>
         <span class="status-pill" id="comb-status-res">Research Hours</span>
         <span class="status-pill" id="comb-status-pgr">PGR Supervision</span>
-        <span class="status-pill" id="comb-status-ass">Assessment Load</span>
+        <span class="status-pill" id="comb-status-assessment">Assessment</span>
       </div>
       <button class="btn-primary" id="combMergeBtn" style="width:auto;padding:0.65rem 1.8rem" disabled>⚡ Merge &amp; Calculate</button>
     </div>
@@ -1029,7 +482,7 @@
           <option value="mmi-desc">MMI ↓</option>
           <option value="citizenship-desc">Citizenship ↓</option>
           <option value="research-desc">Research ↓</option>
-          <option value="pgr-desc">PGR Supervision ↓</option>
+          <option value="pgr-desc">PGR ↓</option>
           <option value="assessment-desc">Assessment ↓</option>
           <option value="name-asc">Name A–Z</option>
         </select>
@@ -1116,1393 +569,51 @@
   <div class="panel-body" id="panelBody"></div>
 </div>
 
-<script>
-// ═══════════════════════════════════════════════════════
-// SHARED UTILITIES & GLOBALS
-// ═══════════════════════════════════════════════════════
-let citizenshipTotals = {};
-let combData = [];
-let combSortKey = 'total-desc';
-let combSelected = new Set();
-let staffTags = new Map();
-let tagRules = new Map();
-let activeTagFilter = null;
-let fteTarget = 1600;
-let staffFte = new Map();
 
-// ── Name normalisation & matching utilities ──────────────────────────────────
-const NICKNAMES = {
-  charlie:['charles'],charles:['charlie','chuck','chas'],
-  bill:['william'],will:['william'],willie:['william'],william:['bill','will','willie','wills'],
-  bob:['robert'],rob:['robert'],bobby:['robert'],robert:['bob','rob','robbie','bobby'],
-  jim:['james'],jimmy:['james'],jamie:['james'],james:['jim','jimmy','jamie'],
-  dave:['david'],davy:['david'],david:['dave','davy'],
-  mike:['michael'],mick:['michael'],mickey:['michael'],michael:['mike','mick','mickey'],
-  nick:['nicholas'],nicky:['nicholas'],nicholas:['nick','nicky'],
-  tony:['anthony'],ant:['anthony'],anthony:['tony','ant'],
-  sue:['susan'],susie:['susan'],susan:['sue','susie'],
-  liz:['elizabeth'],beth:['elizabeth'],betty:['elizabeth'],elizabeth:['liz','beth','betty','lisa'],
-  kate:['katherine','kathryn','catherine'],kath:['katherine','kathryn','catherine'],
-  katherine:['kate','kath','kathy'],kathryn:['kate','kath','kathy'],catherine:['kate','kath','cathy'],
-  alex:['alexander','alexandra'],alexander:['alex','al'],alexandra:['alex'],
-  andy:['andrew'],drew:['andrew'],andrew:['andy','drew'],
-  chris:['christopher','christian'],christopher:['chris'],
-  dan:['daniel'],danny:['daniel'],daniel:['dan','danny'],
-  jon:['jonathan'],jonathan:['jon'],
-  matt:['matthew'],matthew:['matt'],
-  sam:['samuel','samantha'],samuel:['sam'],samantha:['sam'],
-  steve:['stephen','steven'],stephen:['steve'],steven:['steve'],
-  tom:['thomas'],tommy:['thomas'],thomas:['tom','tommy'],
-  tim:['timothy'],timothy:['tim'],
-  ben:['benjamin'],benjamin:['ben'],
-  joe:['joseph'],joseph:['joe'],
-  phil:['philip','phillip'],philip:['phil'],phillip:['phil'],
-  pete:['peter'],peter:['pete'],
-  pat:['patrick','patricia'],patrick:['pat'],patricia:['pat'],
-  rick:['richard'],rich:['richard'],dick:['richard'],richard:['rick','rich','dick'],
-  fred:['frederick'],frederick:['fred'],
-  ed:['edward'],edward:['ed','eddie','ted'],
-  jenny:['jennifer'],jen:['jennifer'],jennifer:['jenny','jen'],
-  maggie:['margaret'],meg:['margaret'],margaret:['maggie','meg','peggy'],
-  wendy:['gwendolyn'],gwendolyn:['wendy'],
-  vicky:['victoria'],victoria:['vicky','vic'],
-  nicky:['nicola'],nicola:['nicky'],
-  rosie:['rosalind','rose','rosa'],rosalind:['rosie'],rose:['rosie'],rosa:['rosie'],
-  kati:['katalin'],katalin:['kati'],
-  beppe:['giuseppe'],giuseppe:['beppe'],
-  sj:['steve','stephen'],steve:['sj'],stephen:['sj'],
-};
+<!-- ═══ RESEARCH HOURS SCRIPT ═══ -->
 
-function nicknameVariants(name){
-  const n=name.toLowerCase();
-  const vars=new Set([n]);
-  if(NICKNAMES[n])NICKNAMES[n].forEach(v=>vars.add(v));
-  for(const[k,vs]of Object.entries(NICKNAMES)){if(vs.includes(n)){vars.add(k);vs.forEach(v=>vars.add(v));}}
-  return vars;
-}
 
-const SURNAME_PREFIXES = ['de','van','von','der','den','di','da','del','dos','du','la','le','mac','mc','o','st','saint','ter','ten','van de','van den','van der','von dem','von der'];
+<div class="main-tab-panel" id="panel-citizenship">
 
-function normaliseName(raw){
-  let n=String(raw||'').trim();
-  const TITLE_RE=/\b(prof\.?|professor|dr\.?|mr\.?|mrs\.?|ms\.?|mx\.?|rev\.?|sir)\b\s*/i;
-  let prev;
-  do{prev=n;n=n.replace(TITLE_RE,'');}while(n!==prev);
-  n=n.toLowerCase().replace(/[,-.']/g,' ').replace(/\s+/g,' ').trim();
-  return n;
-}
+<div style="padding:20px;max-width:1200px;margin:auto">
 
-function nameTokens(raw){
-  const norm=normaliseName(raw);
-  const tokens=norm.split(' ').filter(Boolean);
-  const result=[];
-  let i=0;
-  while(i<tokens.length){
-    if(i<tokens.length-1 && SURNAME_PREFIXES.includes(tokens[i])){
-      result.push(tokens[i]+' '+tokens[i+1]);
-      i+=2;
-    }else{
-      result.push(tokens[i]);
-      i++;
-    }
-  }
-  return result;
-}
+<h2>Citizenship Roles</h2>
+<p>Paste SharePoint tables for <a href="https://uniofnottm.sharepoint.com/sites/SchoolofPharmacy/SitePages/Research-Academic-Leadership-and-Management-Roles.aspx?CT=1774694534056&OR=OWA-NT-Mail&CID=f87661dc-dad3-b906-df98-44b0da2ced07">Teaching</a>, <a href="https://uniofnottm.sharepoint.com/sites/SchoolofPharmacy/SitePages/Research-Leadership-and-Management-Roles.aspx?CT=1774694512064&OR=OWA-NTB-Mail&CID=59802290-25da-053c-3ae7-d10f99d23910">Research</a>, and <a href="https://uniofnottm.sharepoint.com/sites/SchoolofPharmacy/SitePages/School-and-Citizenship-Roles.aspx?CT=1774694564268&OR=OWA-NT-Mail&CID=a708f218-08e3-af29-4de2-2fdf650e9495">School/Citizenship</a> roles.</p>
 
-function extractSurname(raw){const t=nameTokens(raw);return t.length>0?t[t.length-1]:'';}
-function extractFirst(raw){const t=nameTokens(raw);return t.length>0?t[0]:'';}
+<h3>Teaching Roles</h3>
+<textarea id="cit-teaching" style="width:100%;height:120px"></textarea>
 
-function initialMatches(initial,fullToken){return initial.length===1&&fullToken.startsWith(initial);}
+<h3>Research Roles</h3>
+<textarea id="cit-research" style="width:100%;height:120px"></textarea>
 
-function multiInitialMatches(initials, tokens){
-  if(!/^[a-z]+$/.test(initials))return false;
-  if(initials.length<2)return false;
-  if(initials.length>tokens.length)return false;
-  for(let i=0;i<initials.length;i++){
-    if(!tokens[i].startsWith(initials[i]))return false;
-  }
-  return true;
-}
+<h3>School & Citizenship Roles</h3>
+<textarea id="cit-school" style="width:100%;height:120px"></textarea>
 
-function tokenAppearsIn(singleToken, allTokens){
-  for(const t of allTokens){
-    if(t===singleToken)return true;
-    if(t.includes(' ') && t.split(' ').includes(singleToken))return true;
-  }
-  return false;
-}
+<button id="citAnalyseBtn" style="margin-top:10px;padding:8px 16px">Analyse Roles</button>
 
-function nameSimilarity(a,b){
-  if(!a||!b)return 0;
-  const na=normaliseName(a),nb=normaliseName(b);
-  if(na===nb)return 1.0;
-  const ta=nameTokens(a);
-  const tb=nameTokens(b);
-  if(ta.length===1 || tb.length===1){
-    const singleTokens=ta.length===1?ta:tb;
-    const multiTokens=ta.length===1?tb:ta;
-    const single=singleTokens[0];
-    if(tokenAppearsIn(single, multiTokens))return 0.95;
-    if(multiTokens.some(t=>initialMatches(single,t)))return 0.90;
-    const vars=nicknameVariants(single);
-    for(const v of vars){
-      if(tokenAppearsIn(v, multiTokens))return 0.88;
-    }
-    if(single.length>=3){
-      for(const mt of multiTokens){
-        if(mt.length>=3 && (mt.includes(single) || single.includes(mt)))return 0.75;
-      }
-    }
-  }
-  const sA=new Set(ta),sB=new Set(tb);
-  let inter=0;for(const w of sA)if(sB.has(w))inter++;
-  const union=sA.size+sB.size-inter;
-  const tsr=union===0?0:inter/union;
-  if(tsr>=1.0)return 1.0;
-  function expandFirst(tokens){
-    if(tokens.length===0)return[tokens];
-    const variants=nicknameVariants(tokens[0]);
-    return[...variants].map(v=>[v,...tokens.slice(1)]);
-  }
-  const aExpanded=expandFirst(ta);
-  const bExpanded=expandFirst(tb);
-  let bestNick=tsr;
-  for(const ae of aExpanded)for(const be of bExpanded){
-    const sAe=new Set(ae),sBe=new Set(be);
-    let i2=0;for(const w of sAe)if(sBe.has(w))i2++;
-    const u2=sAe.size+sBe.size-i2;
-    const sc=u2===0?0:i2/u2;
-    if(sc>bestNick)bestNick=sc;
-  }
-  if(bestNick>=0.75)return bestNick;
-  const surA=ta[ta.length-1],surB=tb[tb.length-1];
-  const firstA=ta[0],firstB=tb[0];
-  if(surA&&surB&&surA===surB){
-    if(firstA===firstB)return 0.9;
-    if(initialMatches(firstA,firstB)||initialMatches(firstB,firstA))return 0.82;
-    const givenA=ta.slice(0,-1), givenB=tb.slice(0,-1);
-    if(multiInitialMatches(firstA,givenB)||multiInitialMatches(firstB,givenA))return 0.82;
-    if(firstA.length>1&&firstA[0]===firstB[0])return 0.78;
-    if(firstB.length>1&&firstB[0]===firstA[0])return 0.78;
-    const varA=nicknameVariants(firstA),varB=nicknameVariants(firstB);
-    if([...varA].some(v=>v===firstB||v.startsWith(firstB))||[...varB].some(v=>v===firstA||v.startsWith(firstA)))return 0.80;
-    return 0.55;
-  }
-  if(surA && surB){
-    const surALast=surA.split(' ').pop();
-    const surBLast=surB.split(' ').pop();
-    if(surALast===surBLast){
-      const givenA=ta.slice(0,-1),givenB=tb.slice(0,-1);
-      if(givenA.length===0 || givenB.length===0)return 0.85;
-      const givenSetA=new Set(givenA),givenSetB=new Set(givenB);
-      let gInter=0;
-      for(const g of givenSetA)if(givenSetB.has(g))gInter++;
-      if(gInter>0)return 0.80+gInter*0.05;
-    }
-  }
-  if(na.length>=3 && nb.length>=3 && (na.includes(nb)||nb.includes(na)))return 0.70;
-  return bestNick;
-}
+<div id="cit-results" style="margin-top:20px;display:none">
+<div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
+<table class="proj-table" id="citTable">
+<thead>
+<tr>
+<th data-citsort="role" style="cursor:pointer;user-select:none">Role ↕</th>
+<th data-citsort="holder" style="cursor:pointer;user-select:none">Role Holder ↕</th>
+<th data-citsort="hours" style="cursor:pointer;user-select:none;text-align:right">Hours ↕</th>
+<th data-citsort="term" style="cursor:pointer;user-select:none">Term ↕</th>
+<th data-citsort="end" style="cursor:pointer;user-select:none">End Date ↕</th>
+<th data-citsort="category" style="cursor:pointer;user-select:none">Category ↕</th>
+</tr>
+</thead>
+<tbody id="citTbody"></tbody>
+</table>
+</div>
+</div>
 
-function tokenSortRatio(a,b){return nameSimilarity(a,b);}
+</div>
+</div>
 
-function intraSourceMerge(names, source){
-  if(names.length<=1)return names.map(n=>({raw:n,canonical:n}));
-  const groups=[];
-  const used=new Set();
-  for(let i=0;i<names.length;i++){
-    if(used.has(i))continue;
-    const group={raws:[names[i]],canonical:names[i]};
-    used.add(i);
-    for(let j=i+1;j<names.length;j++){
-      if(used.has(j))continue;
-      const sc=nameSimilarity(names[i],names[j]);
-      if(sc>=0.85){
-        group.raws.push(names[j]);
-        used.add(j);
-        if(nameTokens(names[j]).length>nameTokens(group.canonical).length){
-          group.canonical=names[j];
-        }
-      }
-    }
-    groups.push(group);
-  }
-  return groups.map(g=>({raw:g.canonical,canonical:g.canonical,raws:g.raws}));
-}
-
-function mergeNameLists(lists){
-  const preMergedLists=lists.map(({source,names})=>{
-    const merged=intraSourceMerge(names,source);
-    return{source,names:merged.map(m=>m.raw),canonicalMap:merged.reduce((acc,m)=>{acc[m.raw]=m.canonical;return acc;},{})};
-  });
-  const THRESH=0.65,all=[];
-  for(const{source,names}of preMergedLists)for(const n of names)all.push({norm:normaliseName(n),raw:n,source});
-  const groups=[],used=new Set(),key=(r,s)=>`${s}::${r}`;
-  for(const e of all){
-    if(used.has(key(e.raw,e.source)))continue;
-    const g={canonical:e.raw,sources:{[e.source]:e.raw}};
-    used.add(key(e.raw,e.source));
-    for(const o of all){
-      if(used.has(key(o.raw,o.source)))continue;
-      if(o.source===e.source)continue;
-      if(g.sources[o.source])continue;
-      const sc=nameSimilarity(e.raw,o.raw);
-      if(sc>=THRESH){
-        g.sources[o.source]=o.raw;
-        used.add(key(o.raw,o.source));
-        const mtype=sc>=0.99?'exact':sc>=0.80?'fuzzy':'fuzzy';
-        g.matchType=g.matchType?g.matchType:mtype;
-        if(!g.score||sc<g.score)g.score=sc;
-      }
-    }
-    if(!g.matchType)g.matchType=Object.keys(g.sources).length>1?'exact':'only';
-    groups.push(g);
-  }
-  for(const g of groups){
-    if(Object.keys(g.sources).length>1||g._merged)continue;
-    const src=Object.keys(g.sources)[0];
-    const tokens=normaliseName(g.canonical).split(' ').filter(Boolean);
-    if(tokens.length!==1)continue;
-    const candidates=groups.filter(og=>{
-      if(og===g||og._merged)return false;
-      if(og.sources[src])return false;
-      const sc=nameSimilarity(g.canonical,og.canonical);
-      return sc>=0.70;
-    });
-    if(candidates.length===1){
-      candidates[0].sources[src]=g.canonical;
-      candidates[0].matchType='firstname';
-      candidates[0].firstnameMatch=true;
-      g._merged=true;
-    }
-  }
-  for(const g of groups){
-    if(g._merged)continue;
-    const allNames=Object.values(g.sources);
-    if(allNames.length>1){
-      const bestName=allNames.reduce((best,name)=>{
-        const score=nameTokens(name).length;
-        return score>best.score?{name,score}:best;
-      },{name:allNames[0],score:0});
-      g.canonical=bestName.name;
-    }
-  }
-  return groups.filter(g=>!g._merged);
-}
-
-function closePanel(){document.getElementById('detailPanel').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
-function openPanel(name,sub,bodyHtml){document.getElementById('panelName').textContent=name;document.getElementById('panelSub').textContent=sub;document.getElementById('panelBody').innerHTML=bodyHtml;document.getElementById('detailPanel').classList.add('open');document.getElementById('overlay').classList.add('open');}
-function fh(h){return h>0?h.toFixed(1):'—';}
-function fmt(h){return h.toFixed(1);}
-
-document.querySelectorAll('.main-tab-btn').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('.main-tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.main-tab-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById(btn.dataset.panel).classList.add('active');});});
-
-// ═══════════════════════════════════════════════════════
-// TAB 1 — TEACHING LOAD (Simplified placeholder)
-// ═══════════════════════════════════════════════════════
-let tlUploadedFiles=[],tlParsedSessions=[],tlWeekRange=[1,52],tlRealisticMode=false;
-let tlStaffData={},tlModuleData={},tlTypeData={};
-let tlAllWeeks=[],tlAllStaff=[],tlAllModules=[],tlAllTypes=[];
-let tlStaffSort={col:'total',dir:-1},tlModSort={col:'total',dir:-1},tlTypeSort={col:'total',dir:-1};
-let tlPrepRatio=0;
-const tlFileInput=document.getElementById('tlFileInput'),tlDropZone=document.getElementById('tlDropZone'),tlFileList=document.getElementById('tlFileList'),tlAnalyseBtn=document.getElementById('tlAnalyseBtn');
-function tlUpdateFileList(){tlFileList.innerHTML='';tlUploadedFiles.forEach((f,i)=>{const d=document.createElement('div');d.className='file-item';d.innerHTML=`<span>📄</span><span class="fi-name">${f.name}</span><button class="fi-remove" data-i="${i}">✕</button>`;tlFileList.appendChild(d);});tlAnalyseBtn.disabled=tlUploadedFiles.length===0;}
-tlFileInput.addEventListener('change',e=>{tlUploadedFiles.push(...Array.from(e.target.files));tlUpdateFileList();tlFileInput.value='';});
-tlDropZone.addEventListener('dragover',e=>{e.preventDefault();tlDropZone.classList.add('drag-over');});tlDropZone.addEventListener('dragleave',()=>tlDropZone.classList.remove('drag-over'));
-tlDropZone.addEventListener('drop',e=>{e.preventDefault();tlDropZone.classList.remove('drag-over');tlUploadedFiles.push(...Array.from(e.dataTransfer.files).filter(f=>f.name.match(/\.html?$/i)));tlUpdateFileList();});
-tlFileList.addEventListener('click',e=>{if(e.target.classList.contains('fi-remove')){tlUploadedFiles.splice(+e.target.dataset.i,1);tlUpdateFileList();}});
-function parseWeeks(str){if(!str)return[];const ws=new Set();for(const p of String(str).trim().split(',')){const t=p.trim(),r=t.match(/^(\d+)\s*[-–—]\s*(\d+)$/);if(r){for(let w=+r[1];w<=+r[2];w++)ws.add(w);}else{const n=+t;if(!isNaN(n)&&n>0)ws.add(n);}}return[...ws].sort((a,b)=>a-b);}
-function timeToHours(t){if(!t)return 0;const m=String(t).match(/(\d+):(\d+)/);if(m)return+m[1]+ +m[2]/60;const h=parseFloat(t);return isNaN(h)?0:h;}
-function sessionDuration(s){const d=timeToHours(s.end)-timeToHours(s.start);return d>0?Math.round(d*100)/100:0;}
-function parseHTMLFile(html){const doc=new DOMParser().parseFromString(html,'text/html'),sessions=[];for(const table of doc.querySelectorAll('table')){const rows=table.querySelectorAll('tr');if(rows.length<2)continue;let headerRow=null,headerIdx=0;for(let i=0;i<Math.min(rows.length,5);i++){const cells=rows[i].querySelectorAll('th,td'),texts=[...cells].map(c=>c.textContent.trim().toLowerCase());if(texts.some(t=>t.includes('module')||t.includes('activity')||t.includes('staff'))){headerRow=cells;headerIdx=i;break;}}if(!headerRow)continue;const cols={},headerMap={activity:['activity'],moduleCode:['module code','module_code','modulecode'],moduleTitle:['module title','module_title','moduletitle'],sessionTitle:['session title','session_title','sessiontitle'],type:['type'],weeks:['weeks','week'],day:['day'],start:['start'],end:['end'],staff:['staff'],location:['location','room'],groupInfo:['group information','group info','group'],notes:['notes']};[...headerRow].forEach((cell,i)=>{const t=cell.textContent.trim().toLowerCase();for(const[key,variants]of Object.entries(headerMap)){if(variants.some(v=>t.includes(v))&&cols[key]===undefined)cols[key]=i;}});if(cols.weeks===undefined&&cols.staff===undefined)continue;for(let i=headerIdx+1;i<rows.length;i++){const cells=rows[i].querySelectorAll('td,th');if(cells.length<2)continue;const get=k=>(cols[k]!==undefined&&cells[cols[k]])?cells[cols[k]].innerHTML:'';const getText=k=>(cols[k]!==undefined&&cells[cols[k]])?cells[cols[k]].textContent.trim():'';const weeks=parseWeeks(getText('weeks'));if(weeks.length===0)continue;const staffNames=get('staff').split(/<br\s*\/?>/gi).map(s=>s.replace(/<[^>]+>/g,'').trim()).filter(Boolean);if(staffNames.length===0)continue;sessions.push({activity:getText('activity'),moduleCode:getText('moduleCode'),moduleTitle:getText('moduleTitle'),sessionTitle:getText('sessionTitle'),type:getText('type'),weeks,weeksRaw:getText('weeks'),day:getText('day'),start:getText('start'),end:getText('end'),staff:staffNames,location:getText('location'),groupInfo:getText('groupInfo'),notes:getText('notes')});}}return sessions;}
-function calcHours(sessions,realistic){if(!sessions||sessions.length===0)return 0;if(!realistic)return sessions.reduce((s,x)=>s+sessionDuration(x),0);const byDay={};for(const s of sessions){const d=s.day||'unknown';if(!byDay[d])byDay[d]=[];byDay[d].push({start:timeToHours(s.start),end:timeToHours(s.end)});}let total=0;for(const slots of Object.values(byDay)){const sorted=slots.filter(s=>s.end>s.start).sort((a,b)=>a.start-b.start);let merged=[];for(const s of sorted){if(merged.length&&s.start<merged[merged.length-1].end)merged[merged.length-1].end=Math.max(merged[merged.length-1].end,s.end);else merged.push({...s});}total+=merged.reduce((s,x)=>s+(x.end-x.start),0);}return Math.round(total*100)/100;}
-function sessionKey(s){return[s.moduleCode,s.moduleTitle,s.sessionTitle,s.day,s.start,s.end,s.type,s.location].join('|');}
-function deduplicateSessions(sessions){const seen=new Map();for(const s of sessions){const k=sessionKey(s);if(!seen.has(k))seen.set(k,s);}return[...seen.values()];}
-function tlAggregate(sessions,wFrom,wTo){tlStaffData={};tlModuleData={};tlTypeData={};for(const sess of sessions){const fw=sess.weeks.filter(w=>w>=wFrom&&w<=wTo);if(fw.length===0)continue;for(const name of sess.staff){if(!tlStaffData[name])tlStaffData[name]={};for(const w of fw){if(!tlStaffData[name][w])tlStaffData[name][w]=[];tlStaffData[name][w].push(sess);}}const mk=sess.moduleCode||sess.moduleTitle||'Unknown';if(!tlModuleData[mk])tlModuleData[mk]={};for(const w of fw){if(!tlModuleData[mk][w])tlModuleData[mk][w]=[];for(let _=0;_<sess.staff.length;_++)tlModuleData[mk][w].push(sess);}const tk=(sess.type||'').trim()||'Undefined';if(!tlTypeData[tk])tlTypeData[tk]={};for(const w of fw){if(!tlTypeData[tk][w])tlTypeData[tk][w]=[];for(let _=0;_<sess.staff.length;_++)tlTypeData[tk][w].push(sess);}}tlAllStaff=Object.keys(tlStaffData).sort();tlAllModules=Object.keys(tlModuleData).sort();tlAllTypes=Object.keys(tlTypeData).sort((a,b)=>a==='Undefined'?1:b==='Undefined'?-1:a.localeCompare(b));const ws=new Set();for(const s of sessions)for(const w of s.weeks)if(w>=wFrom&&w<=wTo)ws.add(w);tlAllWeeks=[...ws].sort((a,b)=>a-b);}
-function buildGrid(dataMap,entities,weeks,sortConfig,realistic,prepRatio){const pr=prepRatio||0;if(entities.length===0)return{html:'<div style="padding:2rem;color:var(--muted)">No data found.</div>',legendHtml:''};const sorted=[...entities];if(sortConfig.col==='name')sorted.sort((a,b)=>sortConfig.dir*a.localeCompare(b));else if(sortConfig.col==='total')sorted.sort((a,b)=>sortConfig.dir*(weeks.reduce((s,w)=>s+calcHours(dataMap[a]?.[w],realistic)*(1+pr),0)-weeks.reduce((s,w)=>s+calcHours(dataMap[b]?.[w],realistic)*(1+pr),0)));else sorted.sort((a,b)=>sortConfig.dir*(calcHours(dataMap[a]?.[sortConfig.col],realistic)*(1+pr)-calcHours(dataMap[b]?.[sortConfig.col],realistic)*(1+pr)));let maxH=0;for(const e of entities)for(const w of weeks){const h=calcHours(dataMap[e]?.[w],realistic)*(1+pr);if(h>maxH)maxH=h;}const breaks=[0,maxH*0.1,maxH*0.25,maxH*0.45,maxH*0.65,maxH*0.85];const heatClass=h=>{if(h<=0)return'';for(let i=breaks.length-1;i>=0;i--)if(h>=breaks[i])return`heat-${i}`;return'heat-0';};const totArr=sortConfig.col==='total'?(sortConfig.dir>0?' ↑':' ↓'):'';const nameArr=sortConfig.col==='name'?(sortConfig.dir>0?' ↑':' ↓'):'';let html=`<table class="grid-table"><thead><tr><th style="text-align:left" data-sort="name">Name${nameArr}</th>`;for(const w of weeks){const arr=sortConfig.col===w?(sortConfig.dir>0?' ↑':' ↓'):'';html+=`<th class="week-header" data-sort-week="${w}">W${w}${arr}</th>`;}html+=`<th class="week-header" data-sort="total" style="background:#0a3060">Total${totArr}</th></tr></thead><tbody>`;for(const entity of sorted){html+=`<tr><td class="name-cell" data-entity="${encodeURIComponent(entity)}" title="${entity}">${entity}</td>`;let rowTotal=0;for(const w of weeks){const contact=calcHours(dataMap[entity]?.[w],realistic);const h=contact*(1+pr);rowTotal+=h;if(h>0){const tip=pr>0?`title="${contact.toFixed(1)}h contact + ${(contact*pr).toFixed(1)}h prep"`:'';html+=`<td class="data-cell ${heatClass(h)}" data-entity="${encodeURIComponent(entity)}" data-week="${w}" ${tip}><span>${h.toFixed(1)}</span><small>${pr>0?'incl. prep':'hrs'}</small></td>`;}else html+=`<td class="data-cell empty" data-entity="${encodeURIComponent(entity)}" data-week="${w}">–</td>`;}html+=`<td class="data-cell heat-3" data-entity="${encodeURIComponent(entity)}" data-week="total"><span>${rowTotal.toFixed(1)}</span><small>${pr>0?'incl. prep':'hrs'}</small></td></tr>`;}html+='<tr class="totals-row"><td class="name-cell" data-week="total" data-entity="all">Grand Total</td>';let gt=0;for(const w of weeks){const wt=entities.reduce((s,e)=>s+calcHours(dataMap[e]?.[w],realistic)*(1+pr),0);gt+=wt;html+=`<td class="data-cell" data-week="${w}" data-entity="all"><span>${wt.toFixed(1)}</span><small>hrs</small></td>`;}html+=`<td class="data-cell" data-week="total" data-entity="all"><span>${gt.toFixed(1)}</span><small>hrs</small></td></tr></tbody></table>`;const legendHtml=`<span>Colour scale:</span>${breaks.map((b,i)=>`<span class="legend-item"><span class="legend-swatch heat-${i}"></span>${b.toFixed(0)}${i<breaks.length-1?'–'+breaks[i+1].toFixed(0):'+'}</span>`).join('')}`;return{html,legendHtml};}
-function tlRenderGrid(id,dataMap,allEntities,weeks,sortCfg,realistic,legendId,prepRatio){const res=buildGrid(dataMap,allEntities,weeks,sortCfg,realistic,prepRatio||0);const wrap=document.getElementById(id);wrap.innerHTML=res.html;if(legendId)document.getElementById(legendId).innerHTML=res.legendHtml;tlAttachGridEvents(wrap,dataMap,id.includes('Staff')?'staff':id.includes('Mod')?'module':'type');}
-function tlRenderStaffGrid(){tlRenderGrid('tlStaffGridWrap',tlStaffData,tlAllStaff,tlAllWeeks,tlStaffSort,tlRealisticMode,'tlStaffLegend',tlPrepRatio);document.getElementById('tlStaffSortInfo').textContent=`Sorted by: ${tlStaffSort.col==='name'?'Name':tlStaffSort.col==='total'?'Total':'Week '+tlStaffSort.col} (${tlStaffSort.dir>0?'asc':'desc'})${tlPrepRatio>0?' · incl. '+tlPrepRatio+'× prep':''}`;}
-function tlRenderModGrid(){tlRenderGrid('tlModGridWrap',tlModuleData,tlAllModules,tlAllWeeks,tlModSort,false,'tlModLegend',tlPrepRatio);}
-function tlRenderTypeGrid(){tlRenderGrid('tlTypeGridWrap',tlTypeData,tlAllTypes,tlAllWeeks,tlTypeSort,false,'tlTypeLegend',tlPrepRatio);}
-function tlAttachGridEvents(wrap,dataMap,type){wrap.querySelectorAll('.data-cell,.name-cell').forEach(cell=>{cell.addEventListener('click',()=>{const entity=cell.dataset.entity?decodeURIComponent(cell.dataset.entity):null,week=cell.dataset.week;if(!entity)return;const entities=entity==='all'?Object.keys(dataMap):[entity],weeks=(week==='total'||!week)?tlAllWeeks:[+week];const applyR=type==='staff'&&tlRealisticMode;let totalH=0,rawS=[];for(const e of entities)for(const w of weeks){totalH+=calcHours(dataMap[e]?.[w],applyR);rawS.push(...(dataMap[e]?.[w]||[]));}const unique=deduplicateSessions(rawS),realH=calcHours(unique,true);let html=`<div class="modal-stat-row"><div class="modal-stat"><div class="ms-value">${totalH.toFixed(1)}</div><div class="ms-label">Staff-hours</div></div><div class="modal-stat"><div class="ms-value">${realH.toFixed(1)}</div><div class="ms-label">Deduped hrs</div></div><div class="modal-stat"><div class="ms-value">${unique.length}</div><div class="ms-label">Sessions</div></div></div><div>`;for(const s of unique){const dur=sessionDuration(s);html+=`<div class="session-card"><div class="sc-title">${s.moduleCode?`<span class="sc-tag">${s.moduleCode}</span>`:''} ${s.moduleTitle||s.sessionTitle||s.activity||'Session'}<span class="sc-hours">${dur.toFixed(1)}h</span></div><div class="sc-meta">${s.day?`<span>📅 ${s.day}</span>`:''} ${s.start&&s.end?`<span>🕐 ${s.start}–${s.end}</span>`:''} ${s.location?`<span>📍 ${s.location}</span>`:''}</div></div>`;}html+='</div>';openPanel(entity==='all'?'Grand Total':entity,week==='total'?'All weeks':`Week ${week}`,html);});});const thead=wrap.querySelector('thead');if(thead)thead.addEventListener('click',e=>{const th=e.target.closest('th');if(!th)return;const col=th.dataset.sort,w=th.dataset.sortWeek?+th.dataset.sortWeek:null;const s=type==='staff'?tlStaffSort:type==='module'?tlModSort:tlTypeSort;const render=type==='staff'?tlRenderStaffGrid:type==='module'?tlRenderModGrid:tlRenderTypeGrid;if(col){if(s.col===col)s.dir*=-1;else{s.col=col;s.dir=-1;}render();}else if(w!==null){if(s.col===w)s.dir*=-1;else{s.col=w;s.dir=-1;}render();}});}
-function tlUpdateStatsBar(){const contactH=tlParsedSessions.reduce((s,x)=>s+sessionDuration(x),0);const prepH=contactH*tlPrepRatio;const totalH=contactH+prepH;const cards=[['Sessions',tlParsedSessions.length],['Staff',tlAllStaff.length],['Modules',tlAllModules.length],['Weeks',tlAllWeeks.length],['Contact hrs',contactH.toFixed(0)]];if(tlPrepRatio>0){cards.push(['Prep hrs ('+tlPrepRatio+'×)',prepH.toFixed(0)]);cards.push(['Total hrs',totalH.toFixed(0)]);}document.getElementById('tlStatsBar').innerHTML=cards.map(([l,v])=>`<div class="stat-card"><div class="sc-v">${v}</div><div class="sc-l">${l}</div></div>`).join('');}
-tlAnalyseBtn.addEventListener('click',async()=>{tlAnalyseBtn.disabled=true;tlAnalyseBtn.textContent='⏳ Processing…';tlParsedSessions=[];for(const file of tlUploadedFiles){const html=await file.text();tlParsedSessions.push(...parseHTMLFile(html));}const wFrom=+document.getElementById('tlWeekFrom').value||1,wTo=+document.getElementById('tlWeekTo').value||52;tlWeekRange=[wFrom,wTo];tlRealisticMode=document.getElementById('tlRealistic').checked;document.getElementById('tlRealistic2').checked=tlRealisticMode;tlAggregate(tlParsedSessions,wFrom,wTo);document.getElementById('tlAnalyserTitle').textContent=document.getElementById('tlTitle').value||'Teaching Load';document.getElementById('tlAnalyserMeta').textContent=`${tlParsedSessions.length} sessions · ${tlAllStaff.length} staff · ${tlAllModules.length} modules · ${tlAllTypes.length} types`;tlUpdateStatsBar();document.getElementById('tl-landing').style.display='none';document.getElementById('tl-analyser').style.display='block';document.getElementById('badge-teaching').textContent=tlAllStaff.length+' staff';tlRenderStaffGrid();tlRenderModGrid();tlRenderTypeGrid();tlAnalyseBtn.disabled=false;tlAnalyseBtn.textContent='📊 Analyse Timetable';updateCombStatus();});
-document.getElementById('tlRealistic2').addEventListener('change',e=>{tlRealisticMode=e.target.checked;tlRenderStaffGrid();tlRenderModGrid();tlRenderTypeGrid();});
-document.getElementById('tlBtnSettings').addEventListener('click',()=>{document.getElementById('tlInlineSettings').classList.toggle('open');});
-document.getElementById('tlRecalcBtn').addEventListener('click',()=>{const enabled=document.getElementById('tl_prep_enabled').checked;tlPrepRatio=enabled?(+document.getElementById('tl_prep_ratio').value||0):0;tlUpdateStatsBar();tlRenderStaffGrid();tlRenderModGrid();tlRenderTypeGrid();updateCombStatus();});
-document.getElementById('tl_prep_enabled').addEventListener('change',()=>{document.getElementById('tl_prep_ratio').disabled=!document.getElementById('tl_prep_enabled').checked;});
-document.querySelectorAll('[data-tltab]').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('[data-tltab]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const t=btn.dataset.tltab;['staff','modules','types'].forEach(x=>document.getElementById(`tl-tab-${x}`).style.display=x===t?'':'none');});});
-document.getElementById('tlBtnBack').addEventListener('click',()=>{document.getElementById('tl-landing').style.display='';document.getElementById('tl-analyser').style.display='none';});
-['tlSortStaffName','tlSortStaffTotal','tlSortModName','tlSortModTotal','tlSortTypeName','tlSortTypeTotal'].forEach(id=>{document.getElementById(id).addEventListener('click',()=>{const[,,type,col]=id.match(/tlSort(Staff|Mod|Type)(Name|Total)/),s=type==='Staff'?tlStaffSort:type==='Mod'?tlModSort:tlTypeSort,c=col==='Name'?'name':'total';if(s.col===c)s.dir*=-1;else{s.col=c;s.dir=col==='Name'?1:-1;}if(type==='Staff')tlRenderStaffGrid();else if(type==='Mod')tlRenderModGrid();else tlRenderTypeGrid();});});
-document.getElementById('tlBtnExport').addEventListener('click',()=>{const wb=XLSX.utils.book_new();const pr=tlPrepRatio;const headers=pr>0?['Staff',...tlAllWeeks.map(w=>`Week ${w} Contact`),...tlAllWeeks.map(w=>`Week ${w} Prep`),'Total Contact','Total Prep','Total (incl. prep)']:['Staff',...tlAllWeeks.map(w=>`Week ${w}`),'Total'];const rows=[headers];for(const name of tlAllStaff){if(pr>0){const contacts=tlAllWeeks.map(w=>calcHours(tlStaffData[name]?.[w],tlRealisticMode));const totC=contacts.reduce((a,b)=>a+b,0);const totP=totC*pr;rows.push([name,...contacts,...contacts.map(c=>+(c*pr).toFixed(2)),+totC.toFixed(2),+totP.toFixed(2),+(totC+totP).toFixed(2)]);}else{const row=[name];let tot=0;for(const w of tlAllWeeks){const h=calcHours(tlStaffData[name]?.[w],tlRealisticMode);row.push(h||'');tot+=h;}row.push(+tot.toFixed(2));rows.push(row);}}if(pr>0){const contacts=tlAllWeeks.map(w=>tlAllStaff.reduce((s,e)=>s+calcHours(tlStaffData[e]?.[w],tlRealisticMode),0));const gtC=contacts.reduce((a,b)=>a+b,0);const gtP=gtC*pr;rows.push(['Grand Total',...contacts,...contacts.map(c=>+(c*pr).toFixed(2)),+gtC.toFixed(2),+gtP.toFixed(2),+(gtC+gtP).toFixed(2)]);}else{const gr=['Grand Total'];let gt=0;for(const w of tlAllWeeks){const wt=tlAllStaff.reduce((s,e)=>s+calcHours(tlStaffData[e]?.[w],tlRealisticMode),0);gr.push(+wt.toFixed(2));gt+=wt;}gr.push(+gt.toFixed(2));rows.push(gr);}XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Staff Load');XLSX.writeFile(wb,'teaching_load.xlsx');});
-
-// ═══════════════════════════════════════════════════════
-// TAB 2 — TUTORIAL WORKLOAD (Simplified placeholder)
-// ═══════════════════════════════════════════════════════
-let tutAllTutors=[],tutMaxHours=0,tutSortCol='hours',tutSortDir='desc';
-const tutDropZone=document.getElementById('tutDropZone'),tutFileInput=document.getElementById('tutFileInput');
-tutDropZone.addEventListener('dragover',e=>{e.preventDefault();tutDropZone.classList.add('drag-over');});tutDropZone.addEventListener('dragleave',()=>tutDropZone.classList.remove('drag-over'));tutDropZone.addEventListener('drop',e=>{e.preventDefault();tutDropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])tutProcessFile(e.dataTransfer.files[0]);});tutFileInput.addEventListener('change',e=>{if(e.target.files[0])tutProcessFile(e.target.files[0]);});
-function tutShowError(msg){const el=document.getElementById('tutError');el.textContent=msg;el.classList.add('show');}function tutClearError(){document.getElementById('tutError').classList.remove('show');}
-function tutProcessFile(file){tutClearError();const y1h=+document.getElementById('tutY1Hours').value||16,oh=+document.getElementById('tutOtherHours').value||8;const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const headerRow=raw[5]||[];const norm=s=>String(s).toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,''),headers=headerRow.map(norm),col=key=>headers.indexOf(norm(key));const iYear=col('Year of Study'),iSurname=col('Surname'),iFirst=col('First Name'),iCourse=col('Course'),iEmail=col('UoN Email'),iTutor=col('Tutor'),iTutorEmail=col('Tutor email'),iStaff=col('Staff Indicator');if(iTutor===-1){tutShowError('Could not find a "Tutor" column. Check headers are on row 6.');return;}const tutorMap={};raw.slice(6).forEach(row=>{if(iStaff!==-1&&String(row[iStaff]).trim().toLowerCase()==='yes')return;const tutorName=String(row[iTutor]||'').trim();if(!tutorName)return;const yearNum=parseInt(String(row[iYear]||'').trim(),10),isY1=yearNum===1;const tutorEmail=iTutorEmail!==-1?String(row[iTutorEmail]||'').trim():'';const studentName=[String(row[iFirst]||'').trim(),String(row[iSurname]||'').trim()].filter(Boolean).join(' ');const course=iCourse!==-1?String(row[iCourse]||'').trim():'',studentEmail=iEmail!==-1?String(row[iEmail]||'').trim():'';if(!tutorMap[tutorName])tutorMap[tutorName]={name:tutorName,email:tutorEmail,year1:[],other:[]};const entry={name:studentName,year:String(row[iYear]||'').trim(),course,email:studentEmail};if(isY1)tutorMap[tutorName].year1.push(entry);else tutorMap[tutorName].other.push(entry);});tutAllTutors=Object.values(tutorMap).map(t=>({...t,totalTutees:t.year1.length+t.other.length,hours:t.year1.length*y1h+t.other.length*oh}));if(tutAllTutors.length===0){tutShowError('No tutee records found.');return;}tutMaxHours=Math.max(...tutAllTutors.map(t=>t.hours));document.getElementById('tut-landing').style.display='none';document.getElementById('tut-content').style.display='block';document.getElementById('badge-tutorial').textContent=tutAllTutors.length+' tutors';document.getElementById('tutMeta').textContent=`${tutAllTutors.length} tutors · ${tutAllTutors.reduce((s,t)=>s+t.totalTutees,0)} tutees`;tutRenderSummary();tutRenderTable();updateCombStatus();}catch(err){tutShowError('Error reading file: '+err.message);}};reader.readAsArrayBuffer(file);}
-function tutRenderSummary(){const totalH=tutAllTutors.reduce((s,t)=>s+t.hours,0),totalT=tutAllTutors.reduce((s,t)=>s+t.totalTutees,0),avg=totalH/tutAllTutors.length,maxT=tutAllTutors.reduce((a,b)=>a.hours>b.hours?a:b);document.getElementById('tutSummary').innerHTML=[['Tutors',tutAllTutors.length],['Total Tutees',totalT],['Total Hours',totalH],['Avg Hours',avg.toFixed(1)],['Peak Load',`${maxT.hours}h`]].map(([l,v])=>`<div class="tut-stat"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('');}
-function tutRenderTable(){const q=document.getElementById('tutSearch').value.toLowerCase();let data=tutAllTutors.filter(t=>t.name.toLowerCase().includes(q)||t.email.toLowerCase().includes(q));const colMap={name:'name',email:'email',total:'totalTutees',hours:'hours'},key=colMap[tutSortCol]||tutSortCol;data.sort((a,b)=>{const av=a[key]??0,bv=b[key]??0;return typeof av==='string'?(tutSortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av)):(tutSortDir==='asc'?av-bv:bv-av);});document.getElementById('tutTbody').innerHTML=data.map(t=>`<tr data-name="${encodeURIComponent(t.name)}" style="cursor:pointer"><td class="tutor-name">${t.name}</td><td>${t.email||'—'}</td><td style="text-align:right">${t.year1.length}</td><td style="text-align:right">${t.other.length}</td><td style="text-align:right">${t.totalTutees}</td><td><div class="hours-bar-wrap"><div class="hours-bar"><div class="hours-bar-fill" style="width:${tutMaxHours>0?t.hours/tutMaxHours*100:0}%"></div></div><span class="hours-val">${t.hours}h</span></div></td></tr>`).join('');document.querySelectorAll('#tutTbody tr').forEach(row=>{row.addEventListener('click',()=>{const name=decodeURIComponent(row.dataset.name),tutor=tutAllTutors.find(t=>t.name===name);if(!tutor)return;const y1=tutor.year1.map(s=>`<div class="panel-row"><span class="k">${s.name}</span><span class="v">${s.course||'—'}</span></div>`).join(''),ot=tutor.other.map(s=>`<div class="panel-row"><span class="k">${s.name}</span><span class="v">${s.course||'—'}</span></div>`).join('');openPanel(tutor.name,tutor.email||'',`<div class="panel-section"><div class="panel-row"><span class="k">Year 1 tutees</span><span class="v">${tutor.year1.length}</span></div><div class="panel-row"><span class="k">Other year tutees</span><span class="v">${tutor.other.length}</span></div><div class="panel-row"><span class="k">Total hours</span><span class="v big">${tutor.hours}h</span></div></div>${tutor.year1.length?`<div class="panel-section"><h4>Year 1 Tutees</h4>${y1}</div>`:''}${tutor.other.length?`<div class="panel-section"><h4>Other Tutees</h4>${ot}</div>`:''}`);});});}
-document.getElementById('tutSearch').addEventListener('input',tutRenderTable);document.getElementById('tutSort').addEventListener('change',e=>{const[c,d]=e.target.value.split('-');tutSortCol=c;tutSortDir=d;tutRenderTable();});document.getElementById('tutBtnBack').addEventListener('click',()=>{document.getElementById('tut-landing').style.display='';document.getElementById('tut-content').style.display='none';});document.getElementById('tutTable').querySelector('thead').addEventListener('click',e=>{const th=e.target.closest('th[data-tutsort]');if(!th)return;const col=th.dataset.tutsort;if(tutSortCol===col)tutSortDir=tutSortDir==='asc'?'desc':'asc';else{tutSortCol=col;tutSortDir=(col==='hours'||col==='total'||col==='year1'||col==='other')?'desc':'asc';}tutRenderTable();});
-
-// ═══════════════════════════════════════════════════════
-// TAB 3 — PROJECT SUPERVISION (Simplified placeholder)
-// ═══════════════════════════════════════════════════════
-let projRawProjects=[],projAllResults=[],projSettings={supervision:12,cosupervision:6,diss_feedback:3,diss_marking:2,poster_feedback:0.5,poster_marking:1/3},projSortKey='total-desc';
-const projDropZone=document.getElementById('projDropZone'),projFileInput=document.getElementById('projFileInput'),projAnalyseBtn=document.getElementById('projAnalyseBtn');
-projDropZone.addEventListener('dragover',e=>{e.preventDefault();projDropZone.classList.add('drag-over');});projDropZone.addEventListener('dragleave',()=>projDropZone.classList.remove('drag-over'));projDropZone.addEventListener('drop',e=>{e.preventDefault();projDropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])projLoadFile(e.dataTransfer.files[0]);});projFileInput.addEventListener('change',e=>{if(e.target.files[0])projLoadFile(e.target.files[0]);});
-document.getElementById('projSettingsHdr').addEventListener('click',()=>{document.getElementById('projSettingsBody').classList.toggle('open');document.getElementById('projSettingsHdr').classList.toggle('open');});
-function projShowError(msg){const el=document.getElementById('projError');el.textContent=msg;el.classList.add('show');}function projClearError(){document.getElementById('projError').classList.remove('show');}
-function projNormH(s){return String(s).toLowerCase().replace(/[\s_\-]/g,'').replace(/[^a-z0-9]/g,'');}
-const PROJ_COL_MAP={theme:['theme','projecttitle','title','project'],supervisor:['supervisor'],cosupervisors:['co_supervisors','cosupervisors','cosupervisor','cosup'],poster1:['poster_assessor_1','poster1assessor','poster_1_assessor','poster1','posterassessor1'],poster2:['poster_assessor_2','poster2assessor','poster_2_assessor','poster2','posterassessor2'],dissertation1:['dissertation_assessor_1','dissertation1assessor','dissertation_1_assessor','diss1','dissertationassessor1'],dissertation2:['dissertation_assessor_2','dissertation2assessor','dissertation_2_assessor','diss2','dissertationassessor2']};
-function projFindCol(headers,key){const variants=PROJ_COL_MAP[key];for(let i=0;i<headers.length;i++){const h=projNormH(headers[i]);if(variants.some(v=>h===v))return i;}return -1;}
-function projLoadFile(file){projClearError();const reader=new FileReader();reader.onload=e=>{try{let raw;if(file.name.match(/\.csv$/i)){const text=new TextDecoder().decode(e.target.result),lines=text.split(/\r?\n/).filter(l=>l.trim());raw=lines.map(l=>l.split(',').map(c=>c.replace(/^"|"$/g,'').trim()));}else{const wb=XLSX.read(e.target.result,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]];raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});}let headerIdx=0,headerRow=null;for(let i=0;i<Math.min(5,raw.length);i++){const h=raw[i].map(projNormH);if(h.some(c=>c.includes('supervisor')||c.includes('theme')||c.includes('assessor'))){headerIdx=i;headerRow=raw[i];break;}}if(!headerRow){projShowError('Could not find header row.');return;}const iSup=projFindCol(headerRow,'supervisor');if(iSup===-1){projShowError('Could not find Supervisor column.');return;}const iTheme=projFindCol(headerRow,'theme'),iCoSup=projFindCol(headerRow,'cosupervisors'),iP1=projFindCol(headerRow,'poster1'),iP2=projFindCol(headerRow,'poster2'),iD1=projFindCol(headerRow,'dissertation1'),iD2=projFindCol(headerRow,'dissertation2');projRawProjects=[];for(let i=headerIdx+1;i<raw.length;i++){const row=raw[i];if(row.every(c=>!String(c).trim()))continue;const get=idx=>idx!==-1?String(row[idx]||'').trim():'';const splitNames=s=>s.split(/[;,\/|&]+/).map(n=>n.trim()).filter(Boolean);projRawProjects.push({theme:get(iTheme),supervisors:splitNames(get(iSup)),cosupervisors:splitNames(get(iCoSup)),poster1:get(iP1),poster2:get(iP2),diss1:get(iD1),diss2:get(iD2)});}if(projRawProjects.length===0){projShowError('No project rows found.');return;}projAnalyseBtn.disabled=false;projAnalyseBtn.textContent=`🎓 Calculate Project Workload (${projRawProjects.length} projects found) →`;}catch(err){projShowError('Error reading file: '+err.message);}};reader.readAsArrayBuffer(file);}
-function projGetSettings(){return{supervision:+document.getElementById('ps_sup').value||0,cosupervision:+document.getElementById('ps_cosup').value||0,diss_feedback:+document.getElementById('ps_diss_fb').value||0,diss_marking:+document.getElementById('ps_diss_mk').value||0,poster_feedback:+document.getElementById('ps_post_fb').value||0,poster_marking:+document.getElementById('ps_post_mk').value||0};}
-function projSyncInlineSettings(s){document.getElementById('as_sup').value=s.supervision;document.getElementById('as_cosup').value=s.cosupervision;document.getElementById('as_diss_fb').value=s.diss_feedback;document.getElementById('as_diss_mk').value=s.diss_marking;document.getElementById('as_post_fb').value=s.poster_feedback;document.getElementById('as_post_mk').value=s.poster_marking;}
-function projCalculate(projects,s){
-  const map={};
-  const ensure=name=>{if(!name)return null;if(!map[name])map[name]={name,supervised:[],supShare:[],cosupervised:[],coSupShare:[],diss_assessed:[],poster_assessed:[]};return map[name];};
-  for(const p of projects){
-    const nSups=p.supervisors.length||1;
-    for(const sup of p.supervisors){
-      if(sup){ensure(sup).supervised.push(p);ensure(sup).supShare.push(1/nSups);}
-    }
-    const nCoSups=p.cosupervisors.length||1;
-    for(const co of p.cosupervisors){
-      if(co){ensure(co).cosupervised.push(p);ensure(co).coSupShare.push(1/nCoSups);}
-    }
-    if(p.diss1)ensure(p.diss1).diss_assessed.push(p);
-    if(p.diss2)ensure(p.diss2).diss_assessed.push(p);
-    if(p.poster1)ensure(p.poster1).poster_assessed.push(p);
-    if(p.poster2)ensure(p.poster2).poster_assessed.push(p);
-  }
-  return Object.values(map).map(a=>{
-    const h_sup=a.supShare.reduce((t,sh)=>t+sh*s.supervision,0);
-    const h_df=a.supShare.reduce((t,sh)=>t+sh*s.diss_feedback,0);
-    const h_pf=a.supShare.reduce((t,sh)=>t+sh*s.poster_feedback,0);
-    const h_cosup=a.coSupShare.reduce((t,sh)=>t+sh*s.cosupervision,0);
-    const nDissAss=a.diss_assessed.length,nPostAss=a.poster_assessed.length;
-    const h_dm=nDissAss*s.diss_marking,h_pm=nPostAss*s.poster_marking;
-    const nSup=+a.supShare.reduce((t,sh)=>t+sh,0).toFixed(4);
-    const nCoSup=+a.coSupShare.reduce((t,sh)=>t+sh,0).toFixed(4);
-    const total=h_sup+h_cosup+h_df+h_dm+h_pf+h_pm;
-    return{...a,nSup,nCoSup,nDissAss,nPostAss,h_sup,h_cosup,h_df,h_dm,h_pf,h_pm,total};
-  });
-}
-function projGetSorted(){const q=document.getElementById('projSearch').value.toLowerCase();let data=projAllResults.filter(r=>r.name.toLowerCase().includes(q));const[col,dir]=projSortKey.split('-');data.sort((a,b)=>{if(col==='name')return dir==='asc'?a.name.localeCompare(b.name):b.name.localeCompare(a.name);if(col==='students')return dir==='desc'?b.nSup-a.nSup:a.nSup-b.nSup;return dir==='desc'?b.total-a.total:a.total-b.total;});return data;}
-function projRenderTable(){const data=projGetSorted(),maxTotal=Math.max(...projAllResults.map(r=>r.total),1);document.getElementById('projTbody').innerHTML=data.map(r=>`<tr style="cursor:pointer" data-name="${encodeURIComponent(r.name)}"><td class="name-f">${r.name}</td><td class="num" title="${r.supervised.length} project${r.supervised.length!==1?'s':''}, ${r.nSup.toFixed?r.nSup.toFixed(2):r.nSup} share">${r.supervised.length||'—'}</td><td class="num">${fh(r.h_sup)}</td><td class="num">${fh(r.h_cosup)}</td><td class="num">${fh(r.h_df)}</td><td class="num">${fh(r.h_dm)}</td><td class="num">${fh(r.h_pf)}</td><td class="num">${fh(r.h_pm)}</td><td class="tot">${fmt(r.total)}</td><td><div class="hours-bar-wrap"><div class="hours-bar"><div class="hours-bar-fill" style="width:${r.total/maxTotal*100}%;background:linear-gradient(90deg,var(--rust),var(--gold))"></div></div><span class="hours-val">${fmt(r.total)}h</span></div></td></tr>`).join('');const sumFn=key=>projAllResults.reduce((s,r)=>s+r[key],0);document.getElementById('projFoot').innerHTML=`<tr style="font-weight:600;background:var(--light-blue)"><td>Grand Total</td><td class="num">${projAllResults.reduce((s,r)=>s+r.supervised.length,0)}</td><td class="num">${fmt(sumFn('h_sup'))}</td><td class="num">${fmt(sumFn('h_cosup'))}</td><td class="num">${fmt(sumFn('h_df'))}</td><td class="num">${fmt(sumFn('h_dm'))}</td><td class="num">${fmt(sumFn('h_pf'))}</td><td class="num">${fmt(sumFn('h_pm'))}</td><td class="tot" style="color:var(--mid-blue)">${fmt(sumFn('total'))}</td><td></td></tr>`;document.querySelectorAll('#projTbody tr').forEach(row=>{row.addEventListener('click',()=>projOpenDetail(decodeURIComponent(row.dataset.name)));});}
-function projOpenDetail(name){const r=projAllResults.find(x=>x.name===name);if(!r)return;const pills=p=>`${p.supervisors.includes(name)?'<span class="role-pill pill-sup">Supervisor</span>':''}${p.cosupervisors.includes(name)?'<span class="role-pill pill-cosup">Co-supervisor</span>':''}${p.diss1===name||p.diss2===name?'<span class="role-pill pill-diss">Diss. Assessor</span>':''}${p.poster1===name||p.poster2===name?'<span class="role-pill pill-post">Poster Assessor</span>':''}`;const allProjects=[...new Map([...r.supervised,...r.cosupervised,...r.diss_assessed,...r.poster_assessed].map(p=>[p.theme+p.supervisors.join(','),p])).values()];let html=`<div class="panel-section"><h4>Hours Breakdown</h4>${r.h_sup>0?`<div class="panel-row"><span class="k">Supervision (${Number.isInteger(r.nSup)?r.nSup:r.nSup.toFixed(2)} student share${r.nSup!==1?'s':''})</span><span class="v">${fmt(r.h_sup)}h</span></div>`:''}${r.h_cosup>0?`<div class="panel-row"><span class="k">Co-supervision (${r.nCoSup})</span><span class="v">${fmt(r.h_cosup)}h</span></div>`:''}${r.h_df>0?`<div class="panel-row"><span class="k">Dissertation feedback</span><span class="v">${fmt(r.h_df)}h</span></div>`:''}${r.h_dm>0?`<div class="panel-row"><span class="k">Dissertation marking (${r.nDissAss})</span><span class="v">${fmt(r.h_dm)}h</span></div>`:''}${r.h_pf>0?`<div class="panel-row"><span class="k">Poster feedback</span><span class="v">${fmt(r.h_pf)}h</span></div>`:''}${r.h_pm>0?`<div class="panel-row"><span class="k">Poster marking (${r.nPostAss})</span><span class="v">${fmt(r.h_pm)}h</span></div>`:''}<div class="panel-row" style="margin-top:4px"><span class="k"><strong>Total</strong></span><span class="v big">${fmt(r.total)}h</span></div></div>`;if(allProjects.length>0){html+=`<div class="panel-section"><h4>Projects (${allProjects.length})</h4>`;for(const p of allProjects)html+=`<div class="proj-student"><div class="sn">${p.theme||'(No title)'}</div><div class="sr">${pills(p)}</div></div>`;html+='</div>';}openPanel(name,`${fmt(r.total)}h total · ${allProjects.length} project${allProjects.length!==1?'s':''}`,html);}
-projAnalyseBtn.addEventListener('click',()=>{projSettings=projGetSettings();projSyncInlineSettings(projSettings);projAllResults=projCalculate(projRawProjects,projSettings);const totalH=projAllResults.reduce((s,r)=>s+r.total,0),nAc=projAllResults.length;document.getElementById('projMeta').textContent=`${projRawProjects.length} projects · ${nAc} academics · ${projAllResults.reduce((s,r)=>s+r.supervised.length,0)} supervision roles`;document.getElementById('projStatsBar').innerHTML=[['Projects',projRawProjects.length],['Academics',nAc],['Total hrs',fmt(totalH)],['Avg hrs',fmt(totalH/nAc)]].map(([l,v])=>`<div class="stat-card rust"><div class="sc-v">${v}</div><div class="sc-l">${l}</div></div>`).join('');document.getElementById('proj-landing').style.display='none';document.getElementById('proj-content').style.display='block';document.getElementById('badge-project').textContent=nAc+' academics';projRenderTable();updateCombStatus();});
-document.getElementById('projBtnBack').addEventListener('click',()=>{document.getElementById('proj-landing').style.display='';document.getElementById('proj-content').style.display='none';});document.getElementById('projBtnSettings').addEventListener('click',()=>document.getElementById('projInlineSettings').classList.toggle('open'));document.getElementById('projRecalcBtn').addEventListener('click',()=>{projSettings={supervision:+document.getElementById('as_sup').value||0,cosupervision:+document.getElementById('as_cosup').value||0,diss_feedback:+document.getElementById('as_diss_fb').value||0,diss_marking:+document.getElementById('as_diss_mk').value||0,poster_feedback:+document.getElementById('as_post_fb').value||0,poster_marking:+document.getElementById('as_post_mk').value||0};projAllResults=projCalculate(projRawProjects,projSettings);projRenderTable();updateCombStatus();});
-document.getElementById('projSearch').addEventListener('input',projRenderTable);document.getElementById('projSortSel').addEventListener('change',e=>{projSortKey=e.target.value;projRenderTable();});document.querySelector('#proj-content table.proj-table thead').addEventListener('click',e=>{const th=e.target.closest('th[data-projsort]');if(!th)return;const col=th.dataset.projsort;const[curCol,curDir]=projSortKey.split('-');if(curCol===col)projSortKey=col+'-'+(curDir==='desc'?'asc':'desc');else projSortKey=col+'-'+(col==='name'?'asc':'desc');projRenderTable();});
-document.getElementById('projBtnExport').addEventListener('click',()=>{const wb=XLSX.utils.book_new();const rows=[['Academic','Supervised (projects)','Sup. share','Co-supervised (projects)','Co-sup. share','Diss.Assessed','Poster Assessed','Sup.hrs','Co-sup.hrs','Diss.Feedback','Diss.Marking','Poster Feedback','Poster Marking','Total']];for(const r of projAllResults)rows.push([r.name,r.supervised.length,+r.nSup.toFixed(2),r.cosupervised.length,+r.nCoSup.toFixed(2),r.nDissAss,r.nPostAss,+r.h_sup.toFixed(2),+r.h_cosup.toFixed(2),+r.h_df.toFixed(2),+r.h_dm.toFixed(2),+r.h_pf.toFixed(2),+r.h_pm.toFixed(2),+r.total.toFixed(2)]);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Project Workload');const sRows=[['Setting','Value'],['Supervision',projSettings.supervision],['Co-supervision',projSettings.cosupervision],['Diss. feedback',projSettings.diss_feedback],['Diss. marking',projSettings.diss_marking],['Poster feedback',projSettings.poster_feedback],['Poster marking',+projSettings.poster_marking.toFixed(4)]];XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sRows),'Settings');XLSX.writeFile(wb,'project_workload.xlsx');});
-
-// ═══════════════════════════════════════════════════════
-// TAB 4 — MMI WORKLOAD (Simplified placeholder)
-// ═══════════════════════════════════════════════════════
-let mmiSessions=[];
-let mmiResults=[];
-let mmiRawWb=null;
-let mmiSortKey='total-desc';
-const mmiDropZone=document.getElementById('mmiDropZone'),mmiFileInput=document.getElementById('mmiFileInput'),mmiAnalyseBtn=document.getElementById('mmiAnalyseBtn');
-mmiDropZone.addEventListener('dragover',e=>{e.preventDefault();mmiDropZone.classList.add('drag-over');});mmiDropZone.addEventListener('dragleave',()=>mmiDropZone.classList.remove('drag-over'));mmiDropZone.addEventListener('drop',e=>{e.preventDefault();mmiDropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])mmiLoadFile(e.dataTransfer.files[0]);});mmiFileInput.addEventListener('change',e=>{if(e.target.files[0])mmiLoadFile(e.target.files[0]);});
-function mmiShowError(msg){const el=document.getElementById('mmiError');el.textContent=msg;el.classList.add('show');}
-function mmiClearError(){document.getElementById('mmiError').classList.remove('show');}
-function mmiShowWarn(msg){const el=document.getElementById('mmiWarn');el.textContent=msg;el.classList.add('show');}
-function mmiClearWarn(){document.getElementById('mmiWarn').classList.remove('show');}
-function parseMmiTabName(name){
-  const s=name.trim();
-  const dateM=s.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})/);
-  let dateStr='';
-  if(dateM){
-    const d=dateM[1].padStart(2,'0'),mo=dateM[2].padStart(2,'0');
-    let yr=dateM[3];if(yr.length===2)yr='20'+yr;
-    dateStr=`${d}/${mo}/${yr}`;
-  }
-  let remainder=s.replace(/^\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}\s*/,'').replace(/^[-–—\s]+/,'').trim();
-  function parseTime(raw, prevHour, pmHint){
-    raw=String(raw).trim().toLowerCase();
-    const isPm=raw.includes('pm');const isAm=raw.includes('am');
-    raw=raw.replace(/[apm]/g,'').trim();
-    let h,m=0;
-    const parts=raw.split(/[.:]/);
-    h=parseInt(parts[0],10);
-    if(parts.length>1)m=parseInt(parts[1],10)||0;
-    if(isNaN(h))return null;
-    if(isPm&&h<12)h+=12;
-    if(isAm&&h===12)h=0;
-    if(!isPm&&!isAm&&pmHint&&h<12)h+=12;
-    if(!isPm&&!isAm&&h<(prevHour||0)&&h>0)h+=12;
-    return h+m/60;
-  }
-  const timeRangeM=remainder.match(/([\d.:]+\s*(?:am|pm)?)\s*[-–—]\s*([\d.:]+\s*(?:am|pm)?)\s*$/i);
-  if(!timeRangeM) return{dateStr,label:remainder,startH:null,endH:null,durationH:null};
-  const rawStart=timeRangeM[1].trim(),rawEnd=timeRangeM[2].trim();
-  const label=remainder.slice(0,remainder.length-timeRangeM[0].length).replace(/[-–—\s]+$/,'').trim();
-  const endHasPm=/pm/i.test(rawEnd);
-  const startH=parseTime(rawStart,null,endHasPm&&!/am/i.test(rawStart));
-  const endH=parseTime(rawEnd,startH,false);
-  if(startH===null||endH===null||endH<=startH) return{dateStr,label,startH:null,endH:null,durationH:null};
-  const durationH=Math.round((endH-startH)*100)/100;
-  return{dateStr,label,startH,endH,durationH};
-}
-function formatHour(h){
-  if(h===null)return'?';
-  const hh=Math.floor(h),mm=Math.round((h-hh)*60);
-  const period=hh>=12?'pm':'am';const hh12=hh>12?hh-12:hh===0?12:hh;
-  return`${hh12}${mm>0?':'+String(mm).padStart(2,'0'):''}${period}`;
-}
-function mmiLoadFile(file){
-  mmiClearError();mmiClearWarn();mmiAnalyseBtn.disabled=true;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const wb=XLSX.read(e.target.result,{type:'array'});
-      mmiRawWb=wb;
-      const parsed=[];const unparsed=[];
-      const visibleSheets=wb.SheetNames.filter((_,i)=>{const s=wb.Workbook?.Sheets?.[i];return !s||s.Hidden===0||s.Hidden===undefined;});
-      for(const sheetName of visibleSheets){
-        const info=parseMmiTabName(sheetName);
-        if(info.durationH===null){unparsed.push(sheetName);continue;}
-        parsed.push({sheetName,...info});
-      }
-      if(parsed.length===0){mmiShowError('No sheets with parseable time ranges found.');return;}
-      if(unparsed.length>0)mmiShowWarn(`${unparsed.length} sheet${unparsed.length>1?'s':''} skipped (time not recognised): ${unparsed.slice(0,5).join(', ')}${unparsed.length>5?'…':''}`);
-      document.getElementById('mmiPreview').style.display='block';
-      document.getElementById('mmiPreviewList').innerHTML=parsed.map(p=>`<div style="padding:4px 6px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <span style="font-weight:500">${p.sheetName}</span>
-        <span style="color:var(--purple);font-family:'IBM Plex Mono',monospace;font-size:0.75rem">${p.dateStr} · ${formatHour(p.startH)}–${formatHour(p.endH)} · ${p.durationH.toFixed(2)}h</span>
-      </div>`).join('');
-      mmiAnalyseBtn.disabled=false;
-      mmiAnalyseBtn.textContent=`🩺 Calculate MMI Workload (${parsed.length} session${parsed.length>1?'s':''}) →`;
-    }catch(err){mmiShowError('Error reading file: '+err.message);}
-  };
-  reader.readAsArrayBuffer(file);
-}
-function mmiAnalyse(){
-  mmiClearError();
-  const wb=mmiRawWb;if(!wb)return;
-  const sessions=[];
-  const visibleSheets=wb.SheetNames.filter((_,i)=>{const s=wb.Workbook?.Sheets?.[i];return!s||s.Hidden===0||s.Hidden===undefined;});
-  for(const sheetName of visibleSheets){
-    const info=parseMmiTabName(sheetName);if(info.durationH===null)continue;
-    const ws=wb.Sheets[sheetName];
-    const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-    let reserveRowIdx=Infinity;
-    for(let i=4;i<raw.length;i++){
-      const cellA=String(raw[i][0]||'').trim().toLowerCase();
-      if(cellA.includes('reserve')){reserveRowIdx=i;break;}
-    }
-    const staff=[];
-    for(let i=4;i<raw.length;i++){
-      const name=String(raw[i][1]||'').trim();
-      if(!name)continue;
-      if(/^(name|staff|reserve|assessor)/i.test(name))continue;
-      staff.push({name,isReserve:i>=reserveRowIdx});
-    }
-    if(staff.length>0)sessions.push({sheetName,...info,staff});
-  }
-  if(sessions.length===0){mmiShowError('No staff names found in any session sheets.');return;}
-  mmiSessions=sessions;
-  const map={};
-  for(const sess of sessions){
-    for(const{name,isReserve}of sess.staff){
-      if(!map[name])map[name]={name,sessions:[],totalHours:0,isActiveStaff:false};
-      map[name].sessions.push({...sess,isReserve});
-      if(!isReserve){map[name].totalHours+=sess.durationH;map[name].isActiveStaff=true;}
-    }
-  }
-  mmiResults=Object.values(map).sort((a,b)=>b.totalHours-a.totalHours);
-  const activeResults=mmiResults.filter(r=>r.isActiveStaff);
-  const totalH=activeResults.reduce((s,r)=>s+r.totalHours,0);
-  const totalSessions=sessions.length;
-  document.getElementById('mmiMeta').textContent=`${totalSessions} sessions · ${activeResults.length} active staff · ${mmiResults.filter(r=>!r.isActiveStaff).length} reserve-only · ${totalH.toFixed(1)}h total`;
-  document.getElementById('mmiStatsBar').innerHTML=[['Sessions',totalSessions],['Active Staff',activeResults.length],['Reserve Only',mmiResults.filter(r=>!r.isActiveStaff).length],['Total hrs',totalH.toFixed(1)],['Avg hrs',activeResults.length?fmt(totalH/activeResults.length):'—']].map(([l,v])=>`<div class="stat-card purple"><div class="sc-v">${v}</div><div class="sc-l">${l}</div></div>`).join('');
-  document.getElementById('mmi-landing').style.display='none';document.getElementById('mmi-content').style.display='block';
-  document.getElementById('badge-mmi').textContent=activeResults.length+' staff';
-  mmiRenderTable();updateCombStatus();
-}
-mmiAnalyseBtn.addEventListener('click',mmiAnalyse);
-document.getElementById('mmiBtnBack').addEventListener('click',()=>{document.getElementById('mmi-landing').style.display='';document.getElementById('mmi-content').style.display='none';});
-function mmiGetSorted(){
-  const q=document.getElementById('mmiSearch').value.toLowerCase();
-  const showReserve=document.getElementById('mmiShowReserve').checked;
-  let data=mmiResults.filter(r=>r.name.toLowerCase().includes(q));
-  if(!showReserve)data=data.filter(r=>r.isActiveStaff);
-  const[col,dir]=mmiSortKey.split('-');
-  data.sort((a,b)=>{
-    if(col==='name')return dir==='asc'?a.name.localeCompare(b.name):b.name.localeCompare(a.name);
-    if(col==='sessions'){const an=a.sessions.filter(s=>!s.isReserve).length,bn=b.sessions.filter(s=>!s.isReserve).length;return dir==='desc'?bn-an:an-bn;}
-    return dir==='desc'?b.totalHours-a.totalHours:a.totalHours-b.totalHours;
-  });
-  return data;
-}
-function mmiRenderTable(){
-  const data=mmiGetSorted();
-  const maxH=Math.max(...mmiResults.filter(r=>r.isActiveStaff).map(r=>r.totalHours),1);
-  document.getElementById('mmiTbody').innerHTML=data.map(r=>{
-    const activeSessions=r.sessions.filter(s=>!s.isReserve);
-    const reserveSessions=r.sessions.filter(s=>s.isReserve);
-    const isReserveOnly=!r.isActiveStaff;
-    return`<tr style="cursor:pointer${isReserveOnly?';opacity:0.65':''}" data-name="${encodeURIComponent(r.name)}">
-      <td class="name-f">${r.name}${isReserveOnly?'<span class="reserve-badge">reserve only</span>':''}</td>
-      <td class="num">${activeSessions.length}${reserveSessions.length>0?`<span style="color:var(--muted);font-size:0.72rem"> (+${reserveSessions.length}R)</span>`:''}</td>
-      <td class="tot">${isReserveOnly?'<span style="color:var(--muted)">—</span>':fmt(r.totalHours)+'h'}</td>
-      <td>${isReserveOnly?'<span style="color:var(--muted);font-size:0.75rem">Reserve — hours not counted</span>':`<div class="hours-bar-wrap"><div class="hours-bar"><div class="hours-bar-fill" style="width:${r.totalHours/maxH*100}%;background:linear-gradient(90deg,var(--purple),#9333ea)"></div></div><span class="hours-val">${fmt(r.totalHours)}h</span></div>`}</td>
-    </tr>`;
-  }).join('');
-  const activeData=mmiResults.filter(r=>r.isActiveStaff);
-  const totH=activeData.reduce((s,r)=>s+r.totalHours,0);
-  document.getElementById('mmiFoot').innerHTML=`<tr><td class="name-f">Grand Total (active staff)</td><td class="num">${mmiSessions.length} sessions</td><td class="tot" style="color:var(--purple)">${fmt(totH)}h</td><td></td></tr>`;
-  document.querySelectorAll('#mmiTbody tr').forEach(row=>{row.addEventListener('click',()=>mmiOpenDetail(decodeURIComponent(row.dataset.name)));});
-}
-function mmiOpenDetail(name){
-  const r=mmiResults.find(x=>x.name===name);if(!r)return;
-  const activeSess=r.sessions.filter(s=>!s.isReserve);
-  const reserveSess=r.sessions.filter(s=>s.isReserve);
-  let html=`<div class="panel-section"><h4>Summary</h4>
-    <div class="panel-row"><span class="k">Active sessions</span><span class="v">${activeSess.length}</span></div>
-    <div class="panel-row"><span class="k">Reserve sessions</span><span class="v">${reserveSess.length}</span></div>
-    <div class="panel-row"><span class="k">Total hours (active)</span><span class="v big">${fmt(r.totalHours)}h</span></div>
-  </div>`;
-  if(activeSess.length>0){html+=`<div class="panel-section"><h4>Active Sessions</h4>`;for(const s of activeSess)html+=`<div class="mmi-session-card"><div class="ms-title">${s.dateStr}${s.label?' · '+s.label:''}</div><div class="ms-meta">🕐 ${formatHour(s.startH)}–${formatHour(s.endH)} · ${s.durationH.toFixed(2)}h</div></div>`;html+='</div>';}
-  if(reserveSess.length>0){html+=`<div class="panel-section"><h4>Reserve Sessions (hours not counted)</h4>`;for(const s of reserveSess)html+=`<div class="mmi-session-card" style="border-color:var(--muted);opacity:0.7"><div class="ms-title">${s.dateStr}${s.label?' · '+s.label:''}</div><div class="ms-meta">🕐 ${formatHour(s.startH)}–${formatHour(s.endH)} · ${s.durationH.toFixed(2)}h (reserve)</div></div>`;html+='</div>';}
-  openPanel(name,`${fmt(r.totalHours)}h active · ${r.sessions.length} session${r.sessions.length!==1?'s':''}`,html);
-}
-document.getElementById('mmiSearch').addEventListener('input',mmiRenderTable);
-document.getElementById('mmiSortSel').addEventListener('change',e=>{mmiSortKey=e.target.value;mmiRenderTable();});
-document.getElementById('mmiShowReserve').addEventListener('change',mmiRenderTable);
-document.querySelector('#mmi-content table.mmi-table thead').addEventListener('click',e=>{const th=e.target.closest('th[data-mmisort]');if(!th)return;const col=th.dataset.mmisort;const[curCol,curDir]=mmiSortKey.split('-');if(curCol===col)mmiSortKey=col+'-'+(curDir==='desc'?'asc':'desc');else mmiSortKey=col+'-'+(col==='name'?'asc':'desc');mmiRenderTable();});
-document.getElementById('mmiBtnExport').addEventListener('click',()=>{
-  const wb2=XLSX.utils.book_new();
-  const rows=[['Academic','Active Sessions','Total Hours (active)','Is Reserve Only']];
-  for(const r of mmiResults){const activeSess=r.sessions.filter(s=>!s.isReserve);rows.push([r.name,activeSess.length,+r.totalHours.toFixed(2),r.isActiveStaff?'No':'Yes']);}
-  XLSX.utils.book_append_sheet(wb2,XLSX.utils.aoa_to_sheet(rows),'MMI Workload');
-  const sRows=[['Session (Tab)','Date','Start','End','Duration (h)','Staff Name','Is Reserve']];
-  for(const sess of mmiSessions)for(const st of sess.staff)sRows.push([sess.sheetName,sess.dateStr,formatHour(sess.startH),formatHour(sess.endH),+sess.durationH.toFixed(2),st.name,st.isReserve?'Yes':'No']);
-  XLSX.utils.book_append_sheet(wb2,XLSX.utils.aoa_to_sheet(sRows),'Session Detail');
-  XLSX.writeFile(wb2,'mmi_workload.xlsx');
-});
-
-// ═══════════════════════════════════════════════════════
-// TAB 5 — CITIZENSHIP
-// ═══════════════════════════════════════════════════════
-const CIT_NAME_ALIASES = {
-  'jing y':     'Dr Jing Yang',
-  'jing yang':  'Dr Jing Yang',
-  'laura k':    'Dr Laura Kilpatrick',
-  'laura kilpatrick': 'Dr Laura Kilpatrick',
-  'kati k':     'Dr Katalin Kovacs',
-  'katalin kovacs': 'Dr Katalin Kovacs',
-};
-function citNormaliseName(raw){
-  let s = raw.replace(/\s*\(.*?\)\s*/g,'').trim();
-  const alias = CIT_NAME_ALIASES[s.toLowerCase()];
-  return alias ? alias : s;
-}
-function citExpandHolders(rawHolder, totalHours){
-  const tokens=rawHolder.split('&').map(t=>citNormaliseName(t)).filter(t=>t.length>0);
-  if(tokens.length===0) return [];
-  const share=totalHours/tokens.length;
-  return tokens.map(name=>({name, hours:share}));
-}
-function parseSharePointTable(input, category){
-  let data=[];
-  function pushRow(rawRole, rawHolder, rawHours, rawTerm, rawEnd){
-    const totalHours=parseFloat(rawHours)||0;
-    const holders=citExpandHolders(rawHolder, totalHours);
-    holders.forEach(({name, hours})=>{
-      data.push({
-        role:rawRole,
-        holder:name,
-        holderOriginal:rawHolder.trim(),
-        hours:hours,
-        shared:holders.length>1,
-        term:rawTerm,
-        end:rawEnd,
-        category:category
-      });
-    });
-  }
-  if(input.includes("<table") || input.includes("<tr")){
-    const parser=new DOMParser();
-    const doc=parser.parseFromString(input,"text/html");
-    const rows=[...doc.querySelectorAll("tr")];
-    rows.slice(1).forEach(r=>{
-      const cells=[...r.querySelectorAll("td")].map(c=>c.textContent.trim());
-      if(cells.length>=5) pushRow(cells[0],cells[1],cells[2],cells[3],cells[4]);
-    });
-  }else{
-    const rows=input.trim().split("\n");
-    rows.slice(1).forEach(line=>{
-      const cells=line.split("\t");
-      if(cells.length>=5) pushRow(cells[0].trim(),cells[1].trim(),cells[2].trim(),cells[3].trim(),cells[4].trim());
-    });
-  }
-  return data;
-}
-let citSortCol='hours', citSortDir='desc';
-let citAllData=[];
-function citGetSorted(){
-  const data=[...citAllData];
-  data.sort((a,b)=>{
-    if(citSortCol==='hours') return citSortDir==='asc'?a.hours-b.hours:b.hours-a.hours;
-    const av=a[citSortCol]||'', bv=b[citSortCol]||'';
-    return citSortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av);
-  });
-  return data;
-}
-function renderCitizenshipTable(){
-  document.getElementById("citTbody").innerHTML=citGetSorted().map(r=>`<tr>
-    <td>${r.role}</td>
-    <td>${r.holder}${r.shared?` <span style="font-size:0.68rem;background:var(--gold-light);color:var(--gold);border-radius:4px;padding:1px 5px;font-weight:600">shared</span>`:''}</td>
-    <td style="font-family:'IBM Plex Mono',monospace;text-align:right">${r.hours%1===0?r.hours.toFixed(0):r.hours.toFixed(2)}</td>
-    <td>${r.term}</td>
-    <td>${r.end}</td>
-    <td>${r.category}</td>
-   </tr>`).join('');
-}
-function renderCitizenship(data){
-  citizenshipTotals={};
-  citAllData=data;
-  data.forEach(r=>{
-    if(!citizenshipTotals[r.holder]) citizenshipTotals[r.holder]=0;
-    citizenshipTotals[r.holder]+=r.hours;
-  });
-  renderCitizenshipTable();
-  document.getElementById("cit-results").style.display="block";
-  document.getElementById("badge-citizenship").textContent=data.length;
-  updateCombStatus();
-}
-document.getElementById("citAnalyseBtn").addEventListener("click",function(){
-  const teaching=document.getElementById("cit-teaching").value;
-  const research=document.getElementById("cit-research").value;
-  const school=document.getElementById("cit-school").value;
-  let results=[];
-  results=results.concat(parseSharePointTable(teaching,"Teaching roles"));
-  results=results.concat(parseSharePointTable(research,"Research roles"));
-  results=results.concat(parseSharePointTable(school,"School & Citizenship"));
-  const seen=new Set();
-  results=results.filter(r=>{
-    const key=(r.role+'|||'+r.holder).toLowerCase().trim();
-    if(seen.has(key))return false;
-    seen.add(key);
-    return true;
-  });
-  renderCitizenship(results);
-});
-document.getElementById("citTable").querySelector("thead").addEventListener("click",e=>{
-  const th=e.target.closest("th[data-citsort]");
-  if(!th) return;
-  const col=th.dataset.citsort;
-  if(citSortCol===col) citSortDir=citSortDir==='asc'?'desc':'asc';
-  else{citSortCol=col; citSortDir=col==='hours'?'desc':'asc';}
-  renderCitizenshipTable();
-});
-
-// ═══════════════════════════════════════════════════════
-// TAB 6 — RESEARCH (Simplified placeholder)
-// ═══════════════════════════════════════════════════════
-let resAllData = [];
-let resSortCol = 'currhours', resSortDir = 'desc';
-let resYearPref = 'current';
-window.getResHoursTotals = function() {
-  const totals = {};
-  resAllData.forEach(r => {
-    const hrs = resYearPref === 'next' ? r.nextHours : r.currHours;
-    if(r.name && hrs > 0) totals[r.name] = (totals[r.name] || 0) + hrs;
-  });
-  return totals;
-};
-function parseResearchXlsx(file){
-  const reader = new FileReader();
-  reader.onload = e => {
-    try{
-      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-      if (rows.length < 2) throw new Error('No data rows found.');
-      let hdrIdx = 0;
-      for (let i = 0; i < Math.min(5, rows.length); i++) {
-        const lower = rows[i].map(c => String(c).toLowerCase());
-        if (lower.some(c => c.includes('name'))) { hdrIdx = i; break; }
-      }
-      const hdrs = rows[hdrIdx].map(c => String(c).toLowerCase().trim());
-      function col(keywords) {
-        const idx = hdrs.findIndex(h => keywords.some(k => h.includes(k)));
-        return idx >= 0 ? idx : -1;
-      }
-      const cId   = col(['staff identifier','identifier','staff id','id']);
-      const cName = col(['name']);
-      const cDept = col(['department','dept']);
-      const cFte  = col(['max fte','fte']);
-      const cProj = col(['project count','projects']);
-      const cHpw  = col(['hrs per week','hrs/week','hours per week']);
-      const cCurr = col(['current year','curr']);
-      const cNext = col(['next year','next']);
-      if (cName < 0) throw new Error('Could not find a "Name" column.');
-      const data = [];
-      for (let i = hdrIdx + 1; i < rows.length; i++) {
-        const r = rows[i];
-        const name = String(r[cName] || '').trim();
-        if (!name) continue;
-        data.push({
-          identifier: cId >= 0  ? String(r[cId]  || '').trim() : '',
-          name,
-          dept:      cDept >= 0 ? String(r[cDept] || '').trim() : '',
-          fte:       cFte  >= 0 ? (parseFloat(r[cFte])  || 0) : 0,
-          projects:  cProj >= 0 ? (parseInt(r[cProj])   || 0) : 0,
-          hrsWeek:   cHpw  >= 0 ? (parseFloat(r[cHpw])  || 0) : 0,
-          currHours: cCurr >= 0 ? (parseFloat(r[cCurr]) || 0) : 0,
-          nextHours: cNext >= 0 ? (parseFloat(r[cNext]) || 0) : 0,
-        });
-      }
-      if (data.length === 0) throw new Error('No data rows could be parsed.');
-      renderResearch(data);
-      document.getElementById('resError').style.display = 'none';
-    }catch(err){
-      const el = document.getElementById('resError');
-      el.textContent = 'Error: ' + err.message;
-      el.style.display = 'block';
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-function resGetSorted(){
-  const q = document.getElementById('resSearch')?.value.toLowerCase() || '';
-  let data = resAllData.filter(r =>
-    r.name.toLowerCase().includes(q) || r.dept.toLowerCase().includes(q) || r.identifier.toLowerCase().includes(q)
-  );
-  const sel = document.getElementById('resSortSel')?.value || 'currhours-desc';
-  const [sc, sd] = sel.split('-');
-  data.sort((a, b) => {
-    let av, bv;
-    if (sc === 'name') { av = a.name; bv = b.name; return sd === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av); }
-    if (sc === 'dept') { av = a.dept; bv = b.dept; return sd === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av); }
-    if (sc === 'identifier') { av = a.identifier; bv = b.identifier; return sd === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av); }
-    av = sc === 'fte' ? a.fte : sc === 'projects' ? a.projects : sc === 'hrsweek' ? a.hrsWeek : sc === 'nexthours' ? a.nextHours : a.currHours;
-    bv = sc === 'fte' ? b.fte : sc === 'projects' ? b.projects : sc === 'hrsweek' ? b.hrsWeek : sc === 'nexthours' ? b.nextHours : b.currHours;
-    return sd === 'asc' ? av - bv : bv - av;
-  });
-  return data;
-}
-function renderResTable(){
-  const data = resGetSorted();
-  const maxCurr = Math.max(...resAllData.map(r => r.currHours), 1);
-  document.getElementById('resTbody').innerHTML = data.map(r => {
-    const barPct = Math.min(r.currHours / maxCurr * 100, 100).toFixed(1);
-    return `<tr>
-      <td style="font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--muted)">${r.identifier || '—'}</td>
-      <td class="name-f">${r.name}</td>
-      <td>${r.dept || '—'}</td>
-      <td class="num">${r.fte > 0 ? r.fte.toFixed(2) : '—'}</td>
-      <td class="num">${r.projects > 0 ? r.projects : '—'}</td>
-      <td class="num">${r.hrsWeek > 0 ? r.hrsWeek.toFixed(1) : '—'}</td>
-      <td class="num">${r.currHours > 0 ? r.currHours.toFixed(1) : '—'}</td>
-      <td class="num">${r.nextHours > 0 ? r.nextHours.toFixed(1) : '—'}</td>
-      <td><div class="res-hrs-bar-wrap"><div class="res-hrs-bar"><div class="res-hrs-bar-fill" style="width:${barPct}%"></div></div><span class="hours-val">${r.currHours > 0 ? r.currHours.toFixed(0) : '—'}</span></div></td>
-    </tr>`;
-  }).join('');
-  const totCurr = data.reduce((s, r) => s + r.currHours, 0);
-  const totNext = data.reduce((s, r) => s + r.nextHours, 0);
-  const totProj = data.reduce((s, r) => s + r.projects, 0);
-  document.getElementById('resFoot').innerHTML = `<tr>
-    <td colspan="3"><strong>Total (${data.length} staff)</strong></td>
-    <td class="num">—</td>
-    <td class="num"><strong>${totProj}</strong></td>
-    <td class="num">—</td>
-    <td class="num"><strong>${totCurr.toFixed(1)}</strong></td>
-    <td class="num"><strong>${totNext.toFixed(1)}</strong></td>
-    <td></td>
-  </tr>`;
-}
-function renderResearch(data){
-  resAllData = data;
-  const totCurr  = data.reduce((s, r) => s + r.currHours, 0);
-  const totNext  = data.reduce((s, r) => s + r.nextHours, 0);
-  const avgFte   = data.filter(r => r.fte > 0).reduce((s, r) => s + r.fte, 0) / (data.filter(r => r.fte > 0).length || 1);
-  const totProj  = data.reduce((s, r) => s + r.projects, 0);
-  document.getElementById('resStatsBar').innerHTML = `
-    <div class="stat-card teal"><div class="sc-v">${data.length}</div><div class="sc-l">Staff members</div></div>
-    <div class="stat-card gold"><div class="sc-v">${totCurr.toFixed(0)}</div><div class="sc-l">Current Year Total Hrs</div></div>
-    <div class="stat-card rust"><div class="sc-v">${totNext.toFixed(0)}</div><div class="sc-l">Next Year Total Hrs</div></div>
-    <div class="stat-card purple"><div class="sc-v">${totProj}</div><div class="sc-l">Total Projects</div></div>
-    <div class="stat-card"><div class="sc-v">${avgFte.toFixed(2)}</div><div class="sc-l">Avg Max FTE</div></div>
-  `;
-  renderResTable();
-  document.getElementById('res-landing').style.display = 'none';
-  document.getElementById('res-content').style.display = 'block';
-  document.getElementById('badge-research').textContent = data.length;
-  document.getElementById('resMeta').textContent = `${data.length} staff · uploaded`;
-  updateCombStatus();
-}
-function initResearchTab(){
-  const fileInput = document.getElementById('resFileInput');
-  if(fileInput) fileInput.addEventListener('change', e => { if(e.target.files[0]) parseResearchXlsx(e.target.files[0]); });
-  const dropZone = document.getElementById('resDropZone');
-  if(dropZone){
-    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-    dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if(e.dataTransfer.files[0]) parseResearchXlsx(e.dataTransfer.files[0]); });
-  }
-  const backBtn = document.getElementById('resBtnBack');
-  if(backBtn) backBtn.addEventListener('click', () => {
-    document.getElementById('res-content').style.display = 'none';
-    document.getElementById('res-landing').style.display = 'block';
-    resAllData = [];
-    document.getElementById('badge-research').textContent = '—';
-    updateCombStatus();
-  });
-  const sortSel = document.getElementById('resSortSel');
-  if(sortSel) sortSel.addEventListener('change', renderResTable);
-  const search = document.getElementById('resSearch');
-  if(search) search.addEventListener('input', renderResTable);
-  document.querySelectorAll('input[name="resYearPref"]').forEach(radio => {
-    radio.addEventListener('change', e => { resYearPref = e.target.value; updateCombStatus(); });
-  });
-  const expBtn = document.getElementById('resBtnExport');
-  if(expBtn) expBtn.addEventListener('click', () => {
-    if(resAllData.length === 0) return;
-    const rows = [['Staff Identifier','Name','Department','Max FTE','Project Count','Hrs Per Week','Current Year Hours','Next Year Hours']];
-    resGetSorted().forEach(r => rows.push([r.identifier, r.name, r.dept, r.fte, r.projects, r.hrsWeek, r.currHours, r.nextHours]));
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Research Hours');
-    XLSX.writeFile(wb, 'staff_research_hours.xlsx');
-  });
-}
-if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initResearchTab);
-else initResearchTab();
-
-// ═══════════════════════════════════════════════════════
-// TAB 7 — PGR (Simplified placeholder)
-// ═══════════════════════════════════════════════════════
-let pgrAllStudents = [];
-let pgrSupervisorData = [];
-let pgrSettings = { phdHours: 100, mresHours: 100, ptMultiplier: 0.5 };
-window.getPgrTotals = function() {
-  const totals = {};
-  pgrSupervisorData.forEach(s => { if(s.name && s.totalHours > 0) totals[s.name] = s.totalHours; });
-  return totals;
-};
-function pgrParseDate(val){
-  if(!val) return null;
-  if(typeof val === 'number'){ const d = new Date((val - 25569) * 86400 * 1000); if(!isNaN(d)) return d; }
-  const s = String(val).trim();
-  if(!s || s === '—' || s.toLowerCase() === 'n/a') return null;
-  let m;
-  if((m = s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return new Date(+m[1], +m[2]-1, +m[3]);
-  if((m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/))){ const yr = m[3].length === 2 ? 2000 + +m[3] : +m[3]; return new Date(yr, +m[2]-1, +m[1]); }
-  const d = new Date(s);
-  return isNaN(d) ? null : d;
-}
-function pgrIsActive(student){
-  const today = new Date(); today.setHours(0,0,0,0);
-  const start = pgrParseDate(student.startDate);
-  const end   = pgrParseDate(student.endDate);
-  const submitted = pgrParseDate(student.thesisSubmitted);
-  if(submitted && submitted <= today) return false;
-  if(start && start > today) return false;
-  if(end && end < today) return false;
-  return true;
-}
-function parsePgrXlsx(file){
-  const reader = new FileReader();
-  reader.onload = e => {
-    try{
-      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-      if (rows.length < 2) throw new Error('No data rows found.');
-      let hdrIdx = 0;
-      for (let i = 0; i < Math.min(5, rows.length); i++) {
-        const lower = rows[i].map(c => String(c).toLowerCase());
-        if (lower.some(c => c.includes('first name') || c.includes('surname'))) { hdrIdx = i; break; }
-      }
-      const hdrs = rows[hdrIdx].map(c => String(c).trim());
-      const hLow = hdrs.map(c => c.toLowerCase());
-      function col(keywords) { const idx = hLow.findIndex(h => keywords.some(k => h.includes(k))); return idx; }
-      const cFirst = col(['first name','firstname']);
-      const cSurname = col(['surname','last name']);
-      const cStart = col(['start date','start']);
-      const cESD = col(['esd']);
-      const cEnd = col(['end date','end']);
-      const cSubmit = col(['thesis submitted','submitted']);
-      const cProg = col(['plan/programme','programme','program','plan']);
-      const cMode = col(['mode']);
-      const cAssist = col(['assistant supervisor']);
-      const supCols = [];
-      const piNameCi = col(['pi']);
-      const piPctCi = hLow.findIndex((h,i) => (h.includes('% pi') || h.includes('%pi') || (i > piNameCi && h.startsWith('%') && i === piNameCi + 1)));
-      if(piNameCi >= 0){ const ppci = hLow.findIndex(h => h.includes('% pi') || h === '% pi' || h === '%pi'); supCols.push({ nameCi: piNameCi, pctCi: ppci >= 0 ? ppci : piNameCi + 1, label: 'PI' }); }
-      for(let n = 2; n <= 5; n++){
-        const nameIdx = hLow.findIndex(h => { const suffixes = ['nd','rd','th']; return h.includes(`${n}${suffixes[Math.min(n-2,2)]} supervisor`) || h.includes(`${n}th supervisor`) || h.includes(`${n}nd supervisor`) || h.includes(`${n}rd supervisor`); });
-        const pctIdx = hLow.findIndex((h,i) => (h.includes(`% supervisor ${n}`) || h.includes(`%supervisor${n}`) || (h.startsWith('%') && h.includes(`supervisor`) && h.includes(String(n)))));
-        if(nameIdx >= 0) supCols.push({ nameCi: nameIdx, pctCi: pctIdx >= 0 ? pctIdx : nameIdx + 1, label: `Sup ${n}` });
-      }
-      if(supCols.length === 0) throw new Error('Could not find supervisor columns.');
-      const students = [];
-      for(let i = hdrIdx + 1; i < rows.length; i++){
-        const r = rows[i];
-        const firstName = String(r[cFirst] || '').trim();
-        const surname = String(r[cSurname] || '').trim();
-        if(!firstName && !surname) continue;
-        const studentName = [firstName, surname].filter(Boolean).join(' ');
-        const prog = String(r[cProg] || '').trim();
-        const mode = String(r[cMode] || '').trim().toLowerCase();
-        const assistantSup = cAssist >= 0 ? String(r[cAssist] || '').trim() : '';
-        const supervisors = [];
-        supCols.forEach(({ nameCi, pctCi, label }) => {
-          const name = String(r[nameCi] || '').trim();
-          if(!name) return;
-          if(assistantSup && name.toLowerCase() === assistantSup.toLowerCase()) return;
-          const rawPct = r[pctCi];
-          let pct = parseFloat(rawPct);
-          if(!isNaN(pct)){ if(pct <= 1 && pct > 0) pct = pct * 100; } else pct = 0;
-          supervisors.push({ name, pct, label });
-        });
-        students.push({
-          studentName, firstName, surname,
-          startDate: cStart >= 0 ? r[cStart] : '',
-          esd: cESD >= 0 ? r[cESD] : '',
-          endDate: cEnd >= 0 ? r[cEnd] : '',
-          thesisSubmitted: cSubmit >= 0 ? r[cSubmit] : '',
-          programme: prog,
-          mode,
-          supervisors,
-          assistantSup,
-        });
-      }
-      if(students.length === 0) throw new Error('No student rows found.');
-      pgrAllStudents = students;
-      document.getElementById('pgrError').style.display = 'none';
-      pgrCalculateAndRender();
-    }catch(err){
-      const el = document.getElementById('pgrError');
-      el.textContent = 'Error: ' + err.message;
-      el.style.display = 'block';
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-function pgrIsMRes(prog){ const p = String(prog).toLowerCase(); return p.includes('mres') || p.includes('m.res') || p.includes('master of research') || p.includes('masters by research'); }
-function pgrIsPartTime(mode){ const m = String(mode).toLowerCase(); return m.includes('part') || m.includes('pt') || m === 'p'; }
-function pgrCalculate(settings){
-  const today = new Date(); today.setHours(0,0,0,0);
-  const active = pgrAllStudents.filter(s => pgrIsActive(s));
-  const supMap = {};
-  active.forEach(s => {
-    const baseHours = pgrIsMRes(s.programme) ? settings.mresHours : settings.phdHours;
-    const ptMult = pgrIsPartTime(s.mode) ? settings.ptMultiplier : 1.0;
-    const isMRes = pgrIsMRes(s.programme);
-    s.supervisors.forEach(sup => {
-      if(!sup.name) return;
-      const hrs = baseHours * (sup.pct / 100) * ptMult;
-      if(!supMap[sup.name]) supMap[sup.name] = { name: sup.name, phd: [], mres: [], totalHours: 0 };
-      supMap[sup.name].totalHours += hrs;
-      const entry = { studentName: s.studentName, pct: sup.pct, hrs, mode: s.mode, programme: s.programme };
-      if(isMRes) supMap[sup.name].mres.push(entry);
-      else supMap[sup.name].phd.push(entry);
-    });
-  });
-  const supervisors = Object.values(supMap).map(s => ({ ...s, phdCount: s.phd.length, mresCount: s.mres.length, studentCount: s.phd.length + s.mres.length }));
-  return { supervisors, active };
-}
-function pgrGetCurrentSettings(){
-  return { phdHours: +document.getElementById('pgrPhdHours2').value || pgrSettings.phdHours, mresHours: +document.getElementById('pgrMResHours2').value || pgrSettings.mresHours, ptMultiplier: +document.getElementById('pgrPtMultiplier2').value || pgrSettings.ptMultiplier };
-}
-function pgrCalculateAndRender(){
-  pgrSettings = { phdHours: +document.getElementById('pgrPhdHours').value || 100, mresHours: +document.getElementById('pgrMResHours').value || 100, ptMultiplier: +document.getElementById('pgrPtMultiplier').value || 0.5 };
-  document.getElementById('pgrPhdHours2').value = pgrSettings.phdHours;
-  document.getElementById('pgrMResHours2').value = pgrSettings.mresHours;
-  document.getElementById('pgrPtMultiplier2').value = pgrSettings.ptMultiplier;
-  const { supervisors, active } = pgrCalculate(pgrSettings);
-  pgrSupervisorData = supervisors;
-  const totHrs = supervisors.reduce((s,r) => s + r.totalHours, 0);
-  document.getElementById('pgrStatsBar').innerHTML = `<div class="stat-card purple"><div class="sc-v">${active.length}</div><div class="sc-l">Active students</div></div>
-    <div class="stat-card teal"><div class="sc-v">${active.filter(s=>pgrIsMRes(s.programme)).length}</div><div class="sc-l">MRes</div></div>
-    <div class="stat-card rust"><div class="sc-v">${active.filter(s=>!pgrIsMRes(s.programme)).length}</div><div class="sc-l">PhD</div></div>
-    <div class="stat-card gold"><div class="sc-v">${supervisors.length}</div><div class="sc-l">Active supervisors</div></div>
-    <div class="stat-card"><div class="sc-v">${totHrs.toFixed(0)}</div><div class="sc-l">Total hrs/yr</div></div>`;
-  document.getElementById('pgrMeta').textContent = `${active.length} active students · ${supervisors.length} supervisors`;
-  document.getElementById('badge-pgr').textContent = supervisors.length + ' supervisors';
-  pgrRenderTable();
-  document.getElementById('pgr-landing').style.display = 'none';
-  document.getElementById('pgr-content').style.display = 'block';
-  updateCombStatus();
-}
-function pgrGetSorted(){
-  const q = (document.getElementById('pgrSearch')?.value || '').toLowerCase();
-  let data = pgrSupervisorData.filter(s => s.name.toLowerCase().includes(q));
-  const sel = (document.getElementById('pgrSortSel')?.value || 'hours-desc');
-  data.sort((a,b)=>{
-    if(sel === 'name-asc') return a.name.localeCompare(b.name);
-    if(sel === 'hours-asc') return a.totalHours - b.totalHours;
-    if(sel === 'hours-desc') return b.totalHours - a.totalHours;
-    if(sel === 'students-desc') return b.studentCount - a.studentCount;
-    return b.totalHours - a.totalHours;
-  });
-  return data;
-}
-function pgrRenderTable(){
-  const data = pgrGetSorted();
-  const maxHrs = Math.max(...pgrSupervisorData.map(s => s.totalHours), 1);
-  document.getElementById('pgrTbody').innerHTML = data.map(s => {
-    const allStudents = [...s.phd, ...s.mres];
-    const chips = allStudents.map(st => `<span class="pgr-student-chip ${pgrIsMRes(st.programme)?'mres':'phd'} ${pgrIsPartTime(st.mode)?'pt':'ft'}" title="${st.programme} · ${st.mode} · ${st.pct}% · ${st.hrs.toFixed(1)} hrs/yr">${st.studentName} <span style="opacity:0.6">${st.pct}%</span></span>`).join('');
-    return `<tr><td class="name-f">${s.name}</td><td class="num">${s.phdCount > 0 ? s.phdCount : '—'}</td><td class="num">${s.mresCount > 0 ? s.mresCount : '—'}</td><td class="num">${s.studentCount}</td><td class="tot">${s.totalHours.toFixed(1)}</td><td><div style="line-height:1.8">${chips}</div></td></tr>`;
-  }).join('');
-  const totHrs = data.reduce((s,r) => s + r.totalHours, 0);
-  const totPhd = data.reduce((s,r) => s + r.phdCount, 0);
-  const totMRes = data.reduce((s,r) => s + r.mresCount, 0);
-  document.getElementById('pgrFoot').innerHTML = `<tr><td><strong>Total (${data.length} supervisors)</strong></td><td class="num"><strong>${totPhd}</strong></td><td class="num"><strong>${totMRes}</strong></td><td class="num"><strong>${totPhd+totMRes}</strong></td><td class="tot"><strong>${totHrs.toFixed(1)}</strong></td><td></td></tr>`;
-}
-document.addEventListener('DOMContentLoaded', () => {
-  const inp = document.getElementById('pgrFileInput');
-  if(inp) inp.addEventListener('change', e => { if(e.target.files[0]){ document.getElementById('pgrAnalyseBtn').disabled = false; parsePgrXlsx(e.target.files[0]); } });
-  const dz = document.getElementById('pgrDropZone');
-  if(dz){
-    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
-    dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
-    dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if(f){ document.getElementById('pgrAnalyseBtn').disabled = false; parsePgrXlsx(f); } });
-  }
-  const analyseBtn = document.getElementById('pgrAnalyseBtn');
-  if(analyseBtn) analyseBtn.addEventListener('click', () => { if(pgrAllStudents.length > 0) pgrCalculateAndRender(); });
-  document.getElementById('pgrBtnBack')?.addEventListener('click', () => { document.getElementById('pgr-content').style.display = 'none'; document.getElementById('pgr-landing').style.display = 'block'; pgrAllStudents = []; pgrSupervisorData = []; document.getElementById('badge-pgr').textContent = '—'; updateCombStatus(); });
-  document.getElementById('pgrBtnSettings')?.addEventListener('click', () => { const s = document.getElementById('pgrInlineSettings'); s.style.display = s.style.display === 'none' ? 'flex' : 'none'; });
-  document.getElementById('pgrRecalcBtn')?.addEventListener('click', () => { pgrSettings = pgrGetCurrentSettings(); document.getElementById('pgrPhdHours').value = pgrSettings.phdHours; document.getElementById('pgrMResHours').value = pgrSettings.mresHours; document.getElementById('pgrPtMultiplier').value = pgrSettings.ptMultiplier; const { supervisors, active } = pgrCalculate(pgrSettings); pgrSupervisorData = supervisors; const totHrs = supervisors.reduce((s,r) => s + r.totalHours, 0); document.getElementById('pgrStatsBar').innerHTML = `<div class="stat-card purple"><div class="sc-v">${active.length}</div><div class="sc-l">Active students</div></div><div class="stat-card teal"><div class="sc-v">${active.filter(s=>pgrIsMRes(s.programme)).length}</div><div class="sc-l">MRes</div></div><div class="stat-card rust"><div class="sc-v">${active.filter(s=>!pgrIsMRes(s.programme)).length}</div><div class="sc-l">PhD</div></div><div class="stat-card gold"><div class="sc-v">${supervisors.length}</div><div class="sc-l">Active supervisors</div></div><div class="stat-card"><div class="sc-v">${totHrs.toFixed(0)}</div><div class="sc-l">Total hrs/yr</div></div>`; pgrRenderTable(); updateCombStatus(); });
-  document.getElementById('pgrSearch')?.addEventListener('input', pgrRenderTable);
-  document.getElementById('pgrSortSel')?.addEventListener('change', pgrRenderTable);
-  document.addEventListener('click', e => { const th = e.target.closest('th[data-pgrsort]'); if(!th) return; const col = th.dataset.pgrsort; const sel = document.getElementById('pgrSortSel'); if(!sel) return; const map = { name: 'name-asc', hours: 'hours-desc', students: 'students-desc', phd: 'students-desc', mres: 'students-desc' }; if(sel.value === (map[col] || 'hours-desc') && col !== 'name') sel.value = col === 'hours' ? 'hours-asc' : sel.value; else sel.value = map[col] || 'hours-desc'; pgrRenderTable(); });
-  document.getElementById('pgrBtnExport')?.addEventListener('click', () => { if(pgrSupervisorData.length === 0) return; const rows = [['Supervisor','PhD Students','MRes Students','Total Active','Total hrs/yr']]; pgrGetSorted().forEach(s => { rows.push([s.name, s.phdCount, s.mresCount, s.studentCount, +s.totalHours.toFixed(2)]); [...s.phd, ...s.mres].forEach(st => rows.push(['  └ ' + st.studentName, '', '', '', +st.hrs.toFixed(2)])); }); const ws = XLSX.utils.aoa_to_sheet(rows); const wb2 = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb2, ws, 'PGR Supervision'); XLSX.writeFile(wb2, 'pgr_supervision.xlsx'); });
-});
-
-// ═══════════════════════════════════════════════════════
-// TAB 8 — ASSESSMENT (Simplified placeholder)
-// ═══════════════════════════════════════════════════════
-let assAllAssessments = [];
-let assStaffHours = {};
-window.getAssessmentTotals = function() { return { ...assStaffHours }; };
-function assParseDate(val){
-  if(!val) return null;
-  if(typeof val === 'number'){ const d = new Date((val - 25569) * 86400 * 1000); if(!isNaN(d)) return d; }
-  const s = String(val).trim();
-  if(!s || s === '—' || s.toLowerCase() === 'n/a') return null;
-  let m;
-  if((m = s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return new Date(+m[1], +m[2]-1, +m[3]);
-  if((m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/))){ const yr = m[3].length === 2 ? (m[3] < 50 ? 2000 : 1900) + +m[3] : +m[3]; return new Date(yr, +m[2]-1, +m[1]); }
-  const d = new Date(s);
-  return isNaN(d) ? null : d;
-}
-function parseAssessmentXlsx(file){
-  const reader = new FileReader();
-  reader.onload = e => {
-    try{
-      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-      if(rows.length < 3) throw new Error('File must have at least 3 rows.');
-      const hdr1 = rows[0].map(c => String(c).trim());
-      const hdr2 = rows[1].map(c => String(c).trim());
-      const hLow = hdr2.map(c => c.toLowerCase());
-      function col(keywords) { const idx = hLow.findIndex(h => keywords.some(k => { const re = new RegExp(k, 'i'); return re.test(h); })); return idx; }
-      const cDesc = col(['assessment description']);
-      const cYear = col(['year of study','year']);
-      const cCourse = col(['course code']);
-      const cPerStu = col(['load per student','per student']);
-      const cTotal = col(['total students']);
-      const cLoad = col(['total assessment load','total load']);
-      const cAllStf = col(['all staff']);
-      const cBonus1 = col(['staff.*1','1.0']);
-      const cExp1 = col(['expiry.*1','1.0']);
-      const cBonus05 = col(['staff.*0.5','0.5']);
-      const cExp05 = col(['expiry.*0.5','0.5']);
-      if(cLoad < 0) throw new Error('Could not find "Total assessment load" column.');
-      if(cAllStf < 0) throw new Error('Could not find "All staff" column.');
-      const assessments = [];
-      for(let i=2; i<rows.length; i++){
-        const r = rows[i];
-        const desc = String(r[cDesc] || '').trim();
-        if(!desc) continue;
-        const load = parseFloat(r[cLoad]) || 0;
-        if(load <= 0) continue;
-        const allStaffStr = String(r[cAllStf] || '').trim();
-        if(!allStaffStr) continue;
-        const allStaff = allStaffStr.split(',').map(s => s.trim()).filter(s => s);
-        if(allStaff.length === 0) continue;
-        const bonus1Str = cBonus1 >= 0 ? String(r[cBonus1] || '').trim() : '';
-        const exp1Str = cExp1 >= 0 ? String(r[cExp1] || '').trim() : '';
-        const bonus05Str = cBonus05 >= 0 ? String(r[cBonus05] || '').trim() : '';
-        const exp05Str = cExp05 >= 0 ? String(r[cExp05] || '').trim() : '';
-        const bonus1Staff = bonus1Str ? bonus1Str.split(',').map(s => s.trim()).filter(s => s) : [];
-        const exp1Dates = exp1Str ? exp1Str.split(',').map(s => s.trim()) : [];
-        const bonus05Staff = bonus05Str ? bonus05Str.split(',').map(s => s.trim()).filter(s => s) : [];
-        const exp05Dates = exp05Str ? exp05Str.split(',').map(s => s.trim()) : [];
-        assessments.push({
-          description: desc, year: cYear >= 0 ? String(r[cYear] || '').trim() : '', course: cCourse >= 0 ? String(r[cCourse] || '').trim() : '',
-          perStudent: cPerStu >= 0 ? parseFloat(r[cPerStu]) || 0 : 0, numStudents: cTotal >= 0 ? parseInt(r[cTotal]) || 0 : 0,
-          totalLoadHours: load, allStaff,
-          bonus1Staff: bonus1Staff.map((name, idx) => ({ name, expiryStr: exp1Dates[idx] || '', expiry: assParseDate(exp1Dates[idx] || '') })),
-          bonus05Staff: bonus05Staff.map((name, idx) => ({ name, expiryStr: exp05Dates[idx] || '', expiry: assParseDate(exp05Dates[idx] || '') })),
-        });
-      }
-      if(assessments.length === 0) throw new Error('No valid assessment rows found.');
-      assAllAssessments = assessments;
-      document.getElementById('assError').style.display = 'none';
-      assCalculateAndRender();
-    }catch(err){
-      const el = document.getElementById('assError');
-      el.textContent = 'Error: ' + err.message;
-      el.style.display = 'block';
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-function assCalculateAndRender(){
-  const today = new Date(); today.setHours(0,0,0,0);
-  assStaffHours = {};
-  assAllAssessments.forEach(a => {
-    const baseShare = a.totalLoadHours / a.allStaff.length;
-    a.allStaff.forEach(staffName => {
-      if(!assStaffHours[staffName]) assStaffHours[staffName] = { base: 0, bonus1: 0, bonus05: 0, total: 0, count: 0 };
-      assStaffHours[staffName].base += baseShare;
-      assStaffHours[staffName].count++;
-    });
-    a.bonus1Staff.forEach(b => { if(!b.expiry || b.expiry >= today){ if(!assStaffHours[b.name]) assStaffHours[b.name] = { base: 0, bonus1: 0, bonus05: 0, total: 0, count: 0 }; assStaffHours[b.name].bonus1 += baseShare; } });
-    a.bonus05Staff.forEach(b => { if(!b.expiry || b.expiry >= today){ if(!assStaffHours[b.name]) assStaffHours[b.name] = { base: 0, bonus1: 0, bonus05: 0, total: 0, count: 0 }; assStaffHours[b.name].bonus05 += baseShare * 0.5; } });
-  });
-  Object.keys(assStaffHours).forEach(name => { assStaffHours[name].total = assStaffHours[name].base + assStaffHours[name].bonus1 + assStaffHours[name].bonus05; });
-  const totalHrs = Object.values(assStaffHours).reduce((s, d) => s + d.total, 0);
-  document.getElementById('assStatsBar').innerHTML = `<div class="stat-card"><div class="sc-v">${assAllAssessments.length}</div><div class="sc-l">Assessments</div></div><div class="stat-card"><div class="sc-v">${Object.keys(assStaffHours).length}</div><div class="sc-l">Staff members</div></div><div class="stat-card"><div class="sc-v">${totalHrs.toFixed(0)}</div><div class="sc-l">Total hrs/yr</div></div>`;
-  document.getElementById('assMeta').textContent = `${assAllAssessments.length} assessments · ${Object.keys(assStaffHours).length} staff`;
-  document.getElementById('badge-assessment').textContent = assAllAssessments.length + ' assessments';
-  assRenderTable();
-  document.getElementById('ass-landing').style.display = 'none';
-  document.getElementById('ass-content').style.display = 'block';
-  updateCombStatus();
-}
-function assGetSorted(){
-  const q = (document.getElementById('assSearch')?.value || '').toLowerCase();
-  const names = Object.keys(assStaffHours).filter(n => n.toLowerCase().includes(q));
-  const data = names.map(name => ({ name, ...assStaffHours[name] }));
-  const sel = (document.getElementById('assSortSel')?.value || 'hours-desc');
-  data.sort((a,b) => {
-    if(sel === 'name-asc') return a.name.localeCompare(b.name);
-    if(sel === 'hours-asc') return a.total - b.total;
-    if(sel === 'hours-desc') return b.total - a.total;
-    if(sel === 'assessments-desc') return b.count - a.count;
-    return b.total - a.total;
-  });
-  return data;
-}
-function assRenderTable(){
-  const data = assGetSorted();
-  document.getElementById('assTbody').innerHTML = data.map(s => {
-    const bonusHrs = s.bonus1 + s.bonus05;
-    const bonus1Text = s.bonus1 > 0 ? `+${s.bonus1.toFixed(1)}h (1.0×) ` : '';
-    const bonus05Text = s.bonus05 > 0 ? `+${s.bonus05.toFixed(1)}h (0.5×)` : '';
-    const bonusBreakdown = bonus1Text + bonus05Text ? `<span class="ass-bonus-badge ${s.bonus1 > 0 ? 'bonus-1x' : ''}">${bonus1Text}${bonus05Text}</span>` : '';
-    return `<tr><td class="name-f">${s.name}</td><td class="num">${s.count}</td><td class="num">${s.base.toFixed(1)}</td><td class="num">${bonusHrs > 0 ? bonusHrs.toFixed(1) : '—'}</td><td class="tot">${s.total.toFixed(1)}</td><td><div class="ass-breakdown">${bonus1Text || bonus05Text ? `${bonus1Text}${bonus05Text}` : '<span style="opacity:0.5">—</span>'}</div></td></tr>`;
-  }).join('');
-  const totBase = data.reduce((s,r) => s + r.base, 0);
-  const totBonus1 = data.reduce((s,r) => s + r.bonus1, 0);
-  const totBonus05 = data.reduce((s,r) => s + r.bonus05, 0);
-  const totAll = data.reduce((s,r) => s + r.total, 0);
-  document.getElementById('assFoot').innerHTML = `<tr><td><strong>Total (${data.length} staff)</strong></td><td class="num"><strong>${data.reduce((s,r)=>s+r.count,0)}</strong></td><td class="num"><strong>${totBase.toFixed(1)}</strong></td><td class="num"><strong>${(totBonus1 + totBonus05).toFixed(1)}</strong></td><td class="tot"><strong>${totAll.toFixed(1)}</strong></td><td></td></tr>`;
-}
-document.addEventListener('DOMContentLoaded', () => {
-  const inp = document.getElementById('assFileInput');
-  if(inp) inp.addEventListener('change', e => { const f = e.target.files[0]; if(f){ document.getElementById('assAnalyseBtn').disabled = false; parseAssessmentXlsx(f); } });
-  const dz = document.getElementById('assDropZone');
-  if(dz){
-    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
-    dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
-    dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if(f){ document.getElementById('assAnalyseBtn').disabled = false; parseAssessmentXlsx(f); } });
-  }
-  document.getElementById('assAnalyseBtn')?.addEventListener('click', () => { if(assAllAssessments.length > 0) assCalculateAndRender(); });
-  document.getElementById('assBtnBack')?.addEventListener('click', () => { document.getElementById('ass-content').style.display = 'none'; document.getElementById('ass-landing').style.display = 'block'; assAllAssessments = []; assStaffHours = {}; document.getElementById('badge-assessment').textContent = '—'; updateCombStatus(); });
-  document.getElementById('assSearch')?.addEventListener('input', assRenderTable);
-  document.getElementById('assSortSel')?.addEventListener('change', assRenderTable);
-  document.addEventListener('click', e => { const th = e.target.closest('th[data-asssort]'); if(!th) return; const col = th.dataset.asssort; const sel = document.getElementById('assSortSel'); if(!sel) return; const map = { name: 'name-asc', hours: 'hours-desc', assessments: 'assessments-desc' }; if(sel.value === (map[col] || 'hours-desc') && col !== 'name') sel.value = col === 'hours' ? 'hours-asc' : sel.value; else sel.value = map[col] || 'hours-desc'; assRenderTable(); });
-  document.getElementById('assBtnExport')?.addEventListener('click', () => { if(Object.keys(assStaffHours).length === 0) return; const rows = [['Staff Member','Assessments','Base hrs','Bonus hrs (1.0× + 0.5×)','Total hrs']]; assGetSorted().forEach(s => rows.push([s.name, s.count, +s.base.toFixed(2), +(s.bonus1 + s.bonus05).toFixed(2), +s.total.toFixed(2)])); const totBase = assGetSorted().reduce((s,r)=>s+r.base,0); const totBonus = assGetSorted().reduce((s,r)=>s+r.bonus1+r.bonus05,0); const totAll = assGetSorted().reduce((s,r)=>s+r.total,0); rows.push(['Grand Total','',+totBase.toFixed(2),+totBonus.toFixed(2),+totAll.toFixed(2)]); const ws = XLSX.utils.aoa_to_sheet(rows); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Assessment Load'); XLSX.writeFile(wb, 'assessment_load.xlsx'); });
-});
-
-// ═══════════════════════════════════════════════════════
-// TAB 9 — COMBINED TOTALS
-// ═══════════════════════════════════════════════════════
-const SRC_LABELS = { tl:'📅 Teaching', tut:'👥 Tutorial', proj:'🎓 Project', mmi:'🩺 MMI', cit:'🏛 Citizenship', res:'🔬 Research', pgr:'🎓 PGR Supervision', ass:'📝 Assessment' };
-function updateCombStatus(){
-  const hasTL = tlAllStaff.length>0, hasTUT = tutAllTutors.length>0, hasProj = projAllResults.length>0;
-  const hasMmi = mmiResults.filter(r=>r.isActiveStaff).length>0;
-  const hasCit = Object.keys(citizenshipTotals).length>0;
-  const resHours = typeof window.getResHoursTotals==='function'?window.getResHoursTotals():{};
-  const hasRes = Object.keys(resHours).length>0;
-  const pgrHours = typeof window.getPgrTotals==='function'?window.getPgrTotals():{};
-  const hasPgr = Object.keys(pgrHours).length>0;
-  const assHours = typeof window.getAssessmentTotals==='function'?window.getAssessmentTotals():{};
-  const hasAss = Object.keys(assHours).length>0;
-  const pill = (id,loaded,loadedText,defaultText)=>{ const el=document.getElementById(id); if(!el)return; el.className='status-pill'+(loaded?' loaded':''); el.textContent=loaded?loadedText:defaultText; };
-  pill('comb-status-tl',hasTL,`Teaching: ${tlAllStaff.length} staff`,'Teaching Load');
-  pill('comb-status-tut',hasTUT,`Tutorial: ${tutAllTutors.length} tutors`,'Tutorial Workload');
-  pill('comb-status-proj',hasProj,`Project: ${projAllResults.length} academics`,'Project Supervision');
-  pill('comb-status-mmi',hasMmi,`MMI: ${mmiResults.filter(r=>r.isActiveStaff).length} staff`,'MMIs');
-  pill('comb-status-cit',hasCit,`Citizenship: ${Object.keys(citizenshipTotals).length} staff`,'Citizenship');
-  pill('comb-status-res',hasRes,`Research: ${Object.keys(resHours).length} staff`,'Research Hours');
-  pill('comb-status-pgr',hasPgr,`PGR: ${Object.keys(pgrHours).length} supervisors`,'PGR Supervision');
-  pill('comb-status-ass',hasAss,`Assessment: ${Object.keys(assHours).length} staff`,'Assessment Load');
-  document.getElementById('combMergeBtn').disabled = !(hasTL||hasTUT||hasProj||hasMmi||hasCit||hasRes||hasPgr||hasAss);
-}
-function normKey(canonical){ return normaliseName(canonical); }
-function todayDate(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
-function getEffectiveFte(canonical){ return 1.0; }
-function applyBonuses(canonical,contactHours,projHoursBase){ return{ tlTotal:contactHours, projTotal:projHoursBase }; }
-function recomputeCombData(){
-  if(combData) combData.forEach(d => {
-    d.tlHours = typeof d.tlHours === 'number' ? d.tlHours : 0;
-    d.tutHours = typeof d.tutHours === 'number' ? d.tutHours : 0;
-    d.projHours = typeof d.projHours === 'number' ? d.projHours : 0;
-    d.mmiHours = typeof d.mmiHours === 'number' ? d.mmiHours : 0;
-    d.citHours = typeof d.citHours === 'number' ? d.citHours : 0;
-    d.resHours = typeof d.resHours === 'number' ? d.resHours : 0;
-    d.pgrHours = typeof d.pgrHours === 'number' ? d.pgrHours : 0;
-    d.assHours = typeof d.assHours === 'number' ? d.assHours : 0;
-    d.total = (d.tlHours||0)+(d.tutHours||0)+(d.projHours||0)+(d.mmiHours||0)+(d.citHours||0)+(d.resHours||0)+(d.pgrHours||0)+(d.assHours||0);
-  });
-}
-function purgeExpiredAssignments(){}
-function activeTagsForPerson(canonical){ return []; }
-function computeBonuses(canonical){ return{ tlLoad:0, tlPrep:0, proj:0 }; }
-function allTagsSorted(){ return []; }
-function renderRulesEditor(){}
-function renderTagFilterBar(){}
-function saveTagState(){}
-function reattachStoredTags(){}
-let fteTargetVal = 1600;
-function personalTarget(canonical){ return fteTargetVal; }
-function fteClass(pct){ if(typeof pct!=='number'||isNaN(pct)||!isFinite(pct))return'fte-under'; if(pct<80)return'fte-under'; if(pct<=100)return'fte-ok'; if(pct<=115)return'fte-warn'; return'fte-over'; }
-function ftePct(canonical,totalHours){ const target=personalTarget(canonical); if(typeof totalHours!=='number'||isNaN(totalHours)||!isFinite(totalHours))return 0; return target>0?Math.round(totalHours/target*100):0; }
-function fteBarHtml(canonical,totalHours){
-  const pct=ftePct(canonical,totalHours);
-  const safePct=typeof pct==='number'&&!isNaN(pct)&&isFinite(pct)?pct:0;
-  const cls=fteClass(safePct);
-  const fillPct=Math.min(safePct,130)/130*100;
-  const markerLeft=(100/130*100).toFixed(2);
-  return`<div class="fte-wrap"><span class="fte-pct ${cls}">${safePct}%</span><div class="fte-bar-outer"><div class="fte-bar-fill ${cls}" style="width:${fillPct.toFixed(1)}%"></div><div class="fte-target-mark" style="left:${markerLeft}%"></div></div></div>`;
-}
-document.getElementById('combMergeBtn').addEventListener('click',()=>{
-  const lists=[];
-  if(tlAllStaff.length>0) lists.push({source:'tl',names:tlAllStaff});
-  if(tutAllTutors.length>0) lists.push({source:'tut',names:tutAllTutors.map(t=>t.name)});
-  if(projAllResults.length>0) lists.push({source:'proj',names:projAllResults.map(r=>r.name)});
-  const activeMmi=mmiResults.filter(r=>r.isActiveStaff);
-  if(activeMmi.length>0) lists.push({source:'mmi',names:activeMmi.map(r=>r.name)});
-  const citNames=Object.keys(citizenshipTotals);
-  if(citNames.length>0) lists.push({source:'cit',names:citNames});
-  const resHoursTotals=typeof window.getResHoursTotals==='function'?window.getResHoursTotals():{};
-  const resNames=Object.keys(resHoursTotals);
-  if(resNames.length>0) lists.push({source:'res',names:resNames});
-  const pgrTotals=typeof window.getPgrTotals==='function'?window.getPgrTotals():{};
-  const pgrNames=Object.keys(pgrTotals);
-  if(pgrNames.length>0) lists.push({source:'pgr',names:pgrNames});
-  const assTotals=typeof window.getAssessmentTotals==='function'?window.getAssessmentTotals():{};
-  const assNames=Object.keys(assTotals);
-  if(assNames.length>0) lists.push({source:'ass',names:assNames});
-  const groups=mergeNameLists(lists);
-  combData=groups.map(g=>{
-    const tlName=g.sources['tl']||null, tutName=g.sources['tut']||null, projName=g.sources['proj']||null, mmiName=g.sources['mmi']||null, citName=g.sources['cit']||null, resName=g.sources['res']||null, pgrName=g.sources['pgr']||null, assName=g.sources['ass']||null;
-    const contactH=tlName?tlAllWeeks.reduce((s,w)=>s+calcHours(tlStaffData[tlName]?.[w],tlRealisticMode),0):0;
-    const projBase=projName?(projAllResults.find(r=>r.name===projName)?.total||0):0;
-    const {tlTotal,projTotal}=applyBonuses(g.canonical,contactH,projBase);
-    const tlHours=tlName?tlTotal:0;
-    const tutHours=tutName?(tutAllTutors.find(t=>t.name===tutName)?.hours||0):0;
-    const projHours=projName?projTotal:0;
-    const mmiHours=mmiName?(mmiResults.find(r=>r.name===mmiName)?.totalHours||0):0;
-    const citHours=citName?(citizenshipTotals[citName]||0):0;
-    const resHours=resName?(resHoursTotals[resName]||0):0;
-    const pgrHours=pgrName?(pgrTotals[pgrName]||0):0;
-    const assHours=assName?(assTotals[assName]?.total ?? 0):0;
-    const total=tlHours+tutHours+projHours+mmiHours+citHours+resHours+pgrHours+assHours;
-    const matchType=Object.keys(g.sources).length>1?(g.matchType||'exact'):'only';
-    return{canonical:g.canonical,tlName,tutName,projName,mmiName,citName,resName,pgrName,assName,tlHours,tutHours,projHours,mmiHours,citHours,resHours,pgrHours,assHours,total,matchType,score:g.score,sources:g.sources};
-  });
-  recomputeCombData();
-  const maxTotal=Math.max(...combData.map(d=>d.total),1);
-  document.getElementById('combMeta').textContent=`${combData.length} academics · ${combData.filter(d=>Object.keys(d.sources).length>1).length} matched across sources`;
-  document.getElementById('badge-combined').textContent=combData.length+' academics';
-  document.getElementById('comb-result').style.display='block';
-  combRender(maxTotal);
-});
-function combGetSorted(){
-  const q=document.getElementById('combSearch').value.toLowerCase();
-  let data=combData.filter(d=>d.canonical.toLowerCase().includes(q));
-  const[col,dir]=combSortKey.split('-');
-  data.sort((a,b)=>{
-    const safe=v=>typeof v==='number'&&!isNaN(v)?v:0;
-    if(col==='name')return dir==='asc'?a.canonical.localeCompare(b.canonical):b.canonical.localeCompare(a.canonical);
-    if(col==='fte'){const ap=ftePct(a.canonical,a.total),bp=ftePct(b.canonical,b.total);return dir==='asc'?safe(ap)-safe(bp):safe(bp)-safe(ap);}
-    const av=col==='teaching'?a.tlHours:col==='tutorial'?a.tutHours:col==='project'?a.projHours:col==='mmi'?a.mmiHours:col==='citizenship'?a.citHours:col==='research'?(a.resHours||0):col==='pgr'?(a.pgrHours||0):col==='assessment'?(a.assHours||0):a.total;
-    const bv=col==='teaching'?b.tlHours:col==='tutorial'?b.tutHours:col==='project'?b.projHours:col==='mmi'?b.mmiHours:col==='citizenship'?b.citHours:col==='research'?(b.resHours||0):col==='pgr'?(b.pgrHours||0):col==='assessment'?(b.assHours||0):b.total;
-    return dir==='asc'?safe(av)-safe(bv):safe(bv)-safe(av);
-  });
-  return data;
-}
-function combRender(maxTotal){
-  const data=combGetSorted();
-  const visMax=Math.max(...data.map(d=>typeof d.total==='number'?d.total:0),1);
-  const safeToFixed=(val,decimals=1)=>{ if(typeof val==='number'&&!isNaN(val)) return val.toFixed(decimals); if(typeof val==='string'&&!isNaN(parseFloat(val))) return parseFloat(val).toFixed(decimals); return '—'; };
-  document.getElementById('combTbody').innerHTML=data.map(d=>{
-    const enc=encodeURIComponent(d.canonical);
-    const chk=combSelected.has(d.canonical)?'checked':'';
-    const tagHtml='';
-    return`<tr data-canonical="${enc}"><td style="text-align:center;padding:8px 6px"><input type="checkbox" class="comb-chk" data-canonical="${enc}" ${chk} onclick="event.stopPropagation()"></td><td class="cn" style="cursor:pointer">${d.canonical}</td><td class="tag-cell">${tagHtml}<button class="tag-add-btn comb-tag-add" data-canonical="${enc}" onclick="event.stopPropagation()">+ tag</button></td><td class="num">${d.tlHours>0?safeToFixed(d.tlHours):'—'}</td><td class="num">${d.tutHours>0?safeToFixed(d.tutHours):'—'}</td><td class="num">${d.projHours>0?safeToFixed(d.projHours):'—'}</td><td class="num">${d.mmiHours>0?safeToFixed(d.mmiHours):'—'}</td><td class="num">${d.citHours>0?safeToFixed(d.citHours):'—'}</td><td class="num">${d.resHours>0?safeToFixed(d.resHours):'—'}</td><td class="num">${d.pgrHours>0?safeToFixed(d.pgrHours):'—'}</td><td class="num">${d.assHours>0?safeToFixed(d.assHours):'—'}</td><td class="tot">${safeToFixed(d.total,1)}h</td><td>${fteBarHtml(d.canonical,d.total)}</td><td><span class="match-badge ${d.matchType==='exact'?'match-exact':d.matchType==='fuzzy'?'match-fuzzy':'match-only'}">${d.matchType==='exact'?'✓ matched':d.matchType==='fuzzy'?'fuzzy':'only'}</span></td></tr>`;
-  }).join('');
-  const data2=combGetSorted();
-  const totTL=data2.reduce((s,d)=>s+(typeof d.tlHours==='number'?d.tlHours:0),0);
-  const totTut=data2.reduce((s,d)=>s+(typeof d.tutHours==='number'?d.tutHours:0),0);
-  const totProj=data2.reduce((s,d)=>s+(typeof d.projHours==='number'?d.projHours:0),0);
-  const totMmi=data2.reduce((s,d)=>s+(typeof d.mmiHours==='number'?d.mmiHours:0),0);
-  const totCit=data2.reduce((s,d)=>s+(typeof d.citHours==='number'?d.citHours:0),0);
-  const totRes=data2.reduce((s,d)=>s+(typeof d.resHours==='number'?d.resHours:0),0);
-  const totPgr=data2.reduce((s,d)=>s+(typeof d.pgrHours==='number'?d.pgrHours:0),0);
-  const totAss=data2.reduce((s,d)=>s+(typeof d.assHours==='number'?d.assHours:0),0);
-  const totAll=data2.reduce((s,d)=>{ const total=(typeof d.tlHours==='number'?d.tlHours:0)+(typeof d.tutHours==='number'?d.tutHours:0)+(typeof d.projHours==='number'?d.projHours:0)+(typeof d.mmiHours==='number'?d.mmiHours:0)+(typeof d.citHours==='number'?d.citHours:0)+(typeof d.resHours==='number'?d.resHours:0)+(typeof d.pgrHours==='number'?d.pgrHours:0)+(typeof d.assHours==='number'?d.assHours:0); return s+total; },0);
-  document.getElementById('combFoot').innerHTML=`<tr><td></td><td class="cn">Total</td><td></td><td class="num">${safeToFixed(totTL,1)}</td><td class="num">${safeToFixed(totTut,1)}</td><td class="num">${safeToFixed(totProj,1)}</td><td class="num">${safeToFixed(totMmi,1)}</td><td class="num">${safeToFixed(totCit,1)}</td><td class="num">${safeToFixed(totRes,1)}</td><td class="num">${safeToFixed(totPgr,1)}</td><td class="num">${safeToFixed(totAss,1)}</td><td class="tot">${safeToFixed(totAll,1)}h</td><td></td><td></td></tr>`;
-  document.querySelectorAll('#combTbody tr').forEach(row=>{ row.querySelector('.cn').addEventListener('click',()=>{ const canonical=decodeURIComponent(row.dataset.canonical), d=combData.find(x=>x.canonical===canonical); if(!d)return; let html=`<div class="panel-section"><h4>Load Summary</h4>${d.tlHours>0?`<div class="panel-row"><span class="k">📅 Teaching</span><span class="v">${safeToFixed(d.tlHours)}h</span></div>`:''}${d.tutHours>0?`<div class="panel-row"><span class="k">👥 Tutorial</span><span class="v">${safeToFixed(d.tutHours)}h</span></div>`:''}${d.projHours>0?`<div class="panel-row"><span class="k">🎓 Project supervision</span><span class="v">${safeToFixed(d.projHours)}h</span></div>`:''}${d.mmiHours>0?`<div class="panel-row"><span class="k">🩺 MMIs</span><span class="v">${safeToFixed(d.mmiHours)}h</span></div>`:''}${d.citHours>0?`<div class="panel-row"><span class="k">🏛 Citizenship</span><span class="v">${safeToFixed(d.citHours)}h</span></div>`:''}${(d.resHours||0)>0?`<div class="panel-row"><span class="k">🔬 Research</span><span class="v">${safeToFixed(d.resHours||0)}h</span></div>`:''}${(d.pgrHours||0)>0?`<div class="panel-row"><span class="k">🎓 PGR Supervision</span><span class="v">${safeToFixed(d.pgrHours||0)}h</span></div>`:''}${(d.assHours||0)>0?`<div class="panel-row"><span class="k">📝 Assessment</span><span class="v">${safeToFixed(d.assHours||0)}h</span></div>`:''}<div class="panel-row"><span class="k"><strong>Total</strong></span><span class="v big">${safeToFixed(d.total)}h</span></div></div>`; openPanel(d.canonical,`${safeToFixed(d.total)}h total`,html); }); });
-  combUpdateDetailBtn();
-}
-function combUpdateDetailBtn(){ document.getElementById('combDetailBtn').disabled=combSelected.size===0; document.getElementById('combDetailBtn').textContent=combSelected.size>0?`📄 Detailed Report (${combSelected.size})`:'📄 Detailed Report'; }
-document.getElementById('combSearch').addEventListener('input',()=>combRender());
-document.getElementById('combSort').addEventListener('change',e=>{ combSortKey=e.target.value; combRender(); });
-document.querySelector('#comb-result table.comb-table thead').addEventListener('click',e=>{ const th=e.target.closest('th[data-combsort]'); if(!th)return; const col=th.dataset.combsort; const[curCol,curDir]=combSortKey.split('-'); if(curCol===col)combSortKey=col+'-'+(curDir==='desc'?'asc':'desc'); else combSortKey=col+'-'+(col==='name'?'asc':'desc'); combRender(); });
-document.getElementById('combSelectAll').addEventListener('change',e=>{ const checked=e.target.checked; document.querySelectorAll('.comb-chk').forEach(chk=>{ chk.checked=checked; const c=decodeURIComponent(chk.dataset.canonical); if(checked)combSelected.add(c); else combSelected.delete(c); }); combUpdateDetailBtn(); });
-document.getElementById('combFteBtn').addEventListener('click',()=>document.getElementById('fteSettings').classList.toggle('open'));
-document.getElementById('fteTarget').addEventListener('change',e=>{ fteTargetVal=+e.target.value||1600; combRender(); });
-document.getElementById('combDetailBtn').addEventListener('click',()=>{ if(combSelected.size===0)return; generateDetailedReport([...combSelected]); });
-function generateDetailedReport(canonicals){
-  const dateStr=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-  let sections='';
-  for(const canonical of canonicals){
-    const d=combData.find(x=>x.canonical===canonical);
-    if(!d)continue;
-    sections+=`<div class="rpt-person"><div class="rpt-person-header"><div><div class="rpt-person-name">${canonical}</div><div class="rpt-person-sub">Academic Workload Report · ${dateStr}</div></div><div style="display:flex;gap:1rem;flex-shrink:0"><div class="rpt-total-badge">${d.total.toFixed(1)}<span>hrs total</span></div></div></div><div class="rpt-overview"><div class="rpt-overview-left"><h3>Load Summary</h3>${['Teaching',d.tlHours,'#0066cc'],['Tutorial',d.tutHours,'#1a7a4a'],['Projects',d.projHours,'#b84c2a'],['MMI',d.mmiHours,'#6b21a8'],['Citizenship',d.citHours,'#c89b2a'],['Research',(d.resHours||0),'#0a7a9a'],['PGR Supervision',(d.pgrHours||0),'#5b17a0'],['Assessment',(d.assHours||0),'#0066cc'].filter(([,h])=>h>0).map(([label,h,col])=>`<div style="display:flex;align-items:center;gap:10px;margin-bottom:5px"><div style="width:110px;font-size:0.82rem;color:#444">${label}</div><div style="flex:1;height:12px;background:#eee;border-radius:6px;overflow:hidden"><div style="height:100%;width:${(h/d.total*100).toFixed(1)}%;background:${col};border-radius:6px"></div></div><div style="width:52px;text-align:right;font-family:monospace;font-size:0.82rem;font-weight:600">${h.toFixed(1)}h</div><div style="width:36px;text-align:right;font-size:0.75rem;color:#888">${(h/d.total*100).toFixed(0)}%</div></div>`).join('')}</div></div></div>`;
-  }
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Academic Workload Report</title><style>body{font-family:sans-serif;font-size:13px;margin:2rem;}.rpt-person{background:white;border:1px solid #ccc;margin-bottom:2rem;border-radius:8px;overflow:hidden;}.rpt-person-header{background:#041e42;color:white;padding:1rem;display:flex;justify-content:space-between;}.rpt-person-name{font-size:1.4rem;font-weight:600;}.rpt-total-badge{background:rgba(255,255,255,0.1);padding:0.5rem 1rem;border-radius:8px;text-align:center;}.rpt-total-badge span{display:block;font-size:0.68rem;opacity:0.7;}.rpt-overview{padding:1rem;background:#f5f6f8;}.rpt-overview-left{background:white;padding:1rem;border-radius:8px;}</style></head><body><div style="max-width:900px;margin:auto">${sections}</div></body></html>`;
-  const w=window.open('','_blank');
-  w.document.write(html);
-  w.document.close();
-}
-document.getElementById('combExportBtn').addEventListener('click',()=>{
-  const wb2=XLSX.utils.book_new();
-  const rows=[['Academic','Teaching Name','Tutorial Name','Project Name','MMI Name','Citizenship Name','Research Name','PGR Name','Assessment Name','Teaching Hrs','Tutorial Hrs','Project Hrs','MMI Hrs','Citizenship Hrs','Research Hrs','PGR Hrs','Assessment Hrs','Total Hrs','Match Type']];
-  for(const d of combData)rows.push([d.canonical,d.tlName||'',d.tutName||'',d.projName||'',d.mmiName||'',d.citName||'',d.resName||'',d.pgrName||'',d.assName||'',+d.tlHours.toFixed(2),+d.tutHours.toFixed(2),+d.projHours.toFixed(2),+d.mmiHours.toFixed(2),+d.citHours.toFixed(2),+(d.resHours||0).toFixed(2),+(d.pgrHours||0).toFixed(2),+(d.assHours||0).toFixed(2),+d.total.toFixed(2),d.matchType]);
-  rows.push(['Grand Total','','','','','','','','',+combData.reduce((s,d)=>s+d.tlHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.tutHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.projHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.mmiHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.citHours,0).toFixed(2),+combData.reduce((s,d)=>s+(d.resHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+(d.pgrHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+(d.assHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+d.total,0).toFixed(2),'']);
-  XLSX.utils.book_append_sheet(wb2,XLSX.utils.aoa_to_sheet(rows),'Combined Load');
-  XLSX.writeFile(wb2,'academic_load_combined.xlsx');
-});
-updateCombStatus();
-</script>
+  <script src="opp.js"></script>
 </body>
+
+
 </html>
