@@ -14,7 +14,7 @@
     <div class="logo-mark">AL</div>
     <div>
       <div class="header-title">Academic Load — Combined View</div>
-      <div class="header-sub">Teaching · Tutorial · Projects · MMIs · Research · PGR · Merged totals</div>
+      <div class="header-sub">Teaching · Assessment · Projects · Tutorial · MMIs · Citizenship · Research · PGR · Merged totals</div>
     </div>
   </div>
   <div class="header-badge">100% browser-based · data never leaves your device</div>
@@ -23,13 +23,13 @@
 <main>
   <div class="main-tabs">
     <button class="main-tab-btn active" data-panel="panel-teaching">📅 Teaching Load <span class="tab-badge" id="badge-teaching">—</span></button>
-    <button class="main-tab-btn" data-panel="panel-tutorial">👥 Tutorial Workload <span class="tab-badge" id="badge-tutorial">—</span></button>
+    <button class="main-tab-btn" data-panel="panel-assessment">📝 Assessment <span class="tab-badge" id="badge-assessment">—</span></button>
     <button class="main-tab-btn" data-panel="panel-project">🎓 Project Supervision <span class="tab-badge" id="badge-project">—</span></button>
+    <button class="main-tab-btn" data-panel="panel-tutorial">👥 Tutorial Workload <span class="tab-badge" id="badge-tutorial">—</span></button>
     <button class="main-tab-btn" data-panel="panel-mmi">🩺 MMIs <span class="tab-badge" id="badge-mmi">—</span></button>
     <button class="main-tab-btn" data-panel="panel-citizenship">🏛 Citizenship <span class="tab-badge" id="badge-citizenship">—</span></button>
     <button class="main-tab-btn" data-panel="panel-research">🔬 Staff Research Hours <span class="tab-badge" id="badge-research">—</span></button>
     <button class="main-tab-btn" data-panel="panel-pgr">👨‍🎓 PGR Supervision <span class="tab-badge" id="badge-pgr">—</span></button>
-    <button class="main-tab-btn" data-panel="panel-assessment">📝 Assessment <span class="tab-badge" id="badge-assessment">—</span></button>
 <button class="main-tab-btn" data-panel="panel-combined">⚡ Combined Totals <span class="tab-badge" id="badge-combined">—</span></button>
   </div>
 
@@ -88,7 +88,7 @@
         <button class="tab-btn" data-tltab="types">🏷 Session Types</button>
       </div>
       <div id="tl-tab-staff"><div class="sort-bar"><label>Sort:</label><button class="btn-sort" id="tlSortStaffName">By Name</button><button class="btn-sort" id="tlSortStaffTotal">By Total ↓</button><span class="sort-info" id="tlStaffSortInfo"></span></div><div class="grid-wrap" id="tlStaffGridWrap"></div><div class="legend" id="tlStaffLegend"></div></div>
-      <div id="tl-tab-modules" style="display:none"><div class="sort-bar"><label>Sort:</label><button class="btn-sort" id="tlSortModName">By Name</button><button class="btn-sort" id="tlSortModTotal">By Total ↓</button><span class="sort-info" id="tlModSortInfo"></span></div><div class="grid-wrap" id="tlModGridWrap"></div><div class="legend" id="tlModLegend"></div></div>
+      <div id="tl-tab-modules" style="display:none"><div class="sort-bar"><label>Sort:</label><button class="btn-sort" id="tlSortModName">By Name</button><button class="btn-sort" id="tlSortModTotal">By Total ↓</button><span class="sort-info" id="tlModSortInfo"></span></div><div class="tag-filter-bar" id="modTagFilterBar"><span class="tfl">Filter by tag:</span><span id="modTagFilterPills"></span><button class="tag-filter-clear" id="modTagFilterClear" style="display:none">✕ Clear filter</button></div><div class="grid-wrap" id="tlModGridWrap"></div><div class="legend" id="tlModLegend"></div></div>
       <div id="tl-tab-types" style="display:none"><div class="sort-bar"><label>Sort:</label><button class="btn-sort" id="tlSortTypeName">By Name</button><button class="btn-sort" id="tlSortTypeTotal">By Total ↓</button><span class="sort-info" id="tlTypeSortInfo"></span></div><div class="grid-wrap" id="tlTypeGridWrap"></div><div class="legend" id="tlTypeLegend"></div></div>
     </div>
   </div>
@@ -110,6 +110,8 @@
           <div class="hours-config">
             <div class="hc-row"><label>Year 1 tutee hours:</label><input type="number" id="tutY1Hours" value="16" min="1" max="100"><span>hrs per tutee</span></div>
             <div class="hc-row"><label>Other year hours:</label><input type="number" id="tutOtherHours" value="8" min="1" max="100"><span>hrs per tutee</span></div>
+            <div class="hc-row"><label>Extra CPD/PDP allowance per student-year:</label><input type="number" id="tutExtraAllowance" value="1" min="0" max="10" step="0.5"><span>hrs per student</span></div>
+            <div class="hc-row"><label>Selected course codes (comma separated):</label><input type="text" id="tutSelectedCourses" value="B230,B230 2+2,B236,B23T,B23A" placeholder="e.g., B230,B236"><span>default B230,B230 2+2,B236,B23T,B23A</span></div>
           </div>
         </div>
       </div>
@@ -438,13 +440,13 @@
       <p>Load data in Tabs 1–4, then merge here. Names are matched across all sources using title-stripping and fuzzy matching.</p>
       <div class="combined-status">
         <span class="status-pill" id="comb-status-tl">Teaching Load</span>
-        <span class="status-pill" id="comb-status-tut">Tutorial Workload</span>
+        <span class="status-pill" id="comb-status-assessment">Assessment</span>
         <span class="status-pill" id="comb-status-proj">Project Supervision</span>
+        <span class="status-pill" id="comb-status-tut">Tutorial Workload</span>
         <span class="status-pill" id="comb-status-mmi">MMIs</span>
         <span class="status-pill" id="comb-status-cit">Citizenship</span>
         <span class="status-pill" id="comb-status-res">Research Hours</span>
         <span class="status-pill" id="comb-status-pgr">PGR Supervision</span>
-        <span class="status-pill" id="comb-status-assessment">Assessment</span>
       </div>
       <button class="btn-primary" id="combMergeBtn" style="width:auto;padding:0.65rem 1.8rem" disabled>⚡ Merge &amp; Calculate</button>
     </div>
@@ -477,13 +479,13 @@
           <option value="total-desc">Total Load ↓</option>
           <option value="total-asc">Total Load ↑</option>
           <option value="teaching-desc">Teaching ↓</option>
-          <option value="tutorial-desc">Tutorial ↓</option>
+          <option value="assessment-desc">Assessment ↓</option>
           <option value="project-desc">Project ↓</option>
+          <option value="tutorial-desc">Tutorial ↓</option>
           <option value="mmi-desc">MMI ↓</option>
           <option value="citizenship-desc">Citizenship ↓</option>
           <option value="research-desc">Research ↓</option>
           <option value="pgr-desc">PGR ↓</option>
-          <option value="assessment-desc">Assessment ↓</option>
           <option value="name-asc">Name A–Z</option>
         </select>
       </div>
@@ -530,13 +532,13 @@
             <th data-combsort="name" style="cursor:pointer;user-select:none">Academic ↕</th>
             <th style="min-width:140px">Tags</th>
             <th data-combsort="teaching" style="cursor:pointer;user-select:none;text-align:right">Teaching ↕</th>
-            <th data-combsort="tutorial" style="cursor:pointer;user-select:none;text-align:right">Tutorial ↕</th>
+            <th data-combsort="assessment" style="cursor:pointer;user-select:none;text-align:right">Assessment ↕</th>
             <th data-combsort="project" style="cursor:pointer;user-select:none;text-align:right">Project ↕</th>
+            <th data-combsort="tutorial" style="cursor:pointer;user-select:none;text-align:right">Tutorial ↕</th>
             <th data-combsort="mmi" style="cursor:pointer;user-select:none;text-align:right">MMI ↕</th>
             <th data-combsort="citizenship" style="cursor:pointer;user-select:none;text-align:right">Citizenship ↕</th>
             <th data-combsort="research" style="cursor:pointer;user-select:none;text-align:right">Research ↕</th>
             <th data-combsort="pgr" style="cursor:pointer;user-select:none;text-align:right">PGR ↕</th>
-            <th data-combsort="assessment" style="cursor:pointer;user-select:none;text-align:right">Assessment ↕</th>
             <th data-combsort="total" style="cursor:pointer;user-select:none;text-align:right">Total ↕</th>
             <th data-combsort="fte" style="cursor:pointer;user-select:none;min-width:170px">FTE % ↕</th>
             <th>Sources</th>
@@ -564,6 +566,16 @@
   </div>
   <div id="tagPopoverSuggestions" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px"></div>
 </div>
+<div id="modTagPopover" class="tag-popover" style="display:none">
+  <button class="tag-popover-close" id="modTagPopoverClose">✕</button>
+  <h4 id="modTagPopoverTitle">Module Tags</h4>
+  <div class="tag-existing" id="modTagPopoverExisting"></div>
+  <div class="tag-popover-input-row">
+    <input type="text" id="modTagPopoverInput" placeholder="New tag…" maxlength="30">
+    <button id="modTagPopoverAdd">Add</button>
+  </div>
+  <div id="modTagPopoverSuggestions" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px"></div>
+</div>
 <div class="detail-panel" id="detailPanel">
   <div class="panel-header"><button class="close-btn" onclick="closePanel()">✕</button><h3 id="panelName"></h3><p id="panelSub"></p></div>
   <div class="panel-body" id="panelBody"></div>
@@ -578,7 +590,7 @@
 <div style="padding:20px;max-width:1200px;margin:auto">
 
 <h2>Citizenship Roles</h2>
-<p>Paste SharePoint tables for <a href="https://uniofnottm.sharepoint.com/sites/SchoolofPharmacy/SitePages/Research-Academic-Leadership-and-Management-Roles.aspx?CT=1774694534056&OR=OWA-NT-Mail&CID=f87661dc-dad3-b906-df98-44b0da2ced07">Teaching</a>, <a href="https://uniofnottm.sharepoint.com/sites/SchoolofPharmacy/SitePages/Research-Leadership-and-Management-Roles.aspx?CT=1774694512064&OR=OWA-NTB-Mail&CID=59802290-25da-053c-3ae7-d10f99d23910">Research</a>, and <a href="https://uniofnottm.sharepoint.com/sites/SchoolofPharmacy/SitePages/School-and-Citizenship-Roles.aspx?CT=1774694564268&OR=OWA-NT-Mail&CID=a708f218-08e3-af29-4de2-2fdf650e9495">School/Citizenship</a> roles.</p>
+<p>Paste SharePoint tables for <a href="https://uniofnottm.sharepoint.com/sites/SchoolofPharmacy/SitePages/Research-Academic-Leadership-and-Management-Roles.aspx">Teaching</a>, <a href="https://uniofnottm.sharepoint.com/sites/SchoolofPharmacy/SitePages/Research-Leadership-and-Management-Roles.aspx">Research</a>, and <a href="https://uniofnottm.sharepoint.com/sites/SchoolofPharmacy/SitePages/School-and-Citizenship-Roles.aspx">School/Citizenship</a> roles.</p>
 
 <h3>Teaching Roles</h3>
 <textarea id="cit-teaching" style="width:100%;height:120px"></textarea>

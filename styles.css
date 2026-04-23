@@ -210,6 +210,31 @@ td.tutor-name{font-weight:500;font-family:'Source Serif 4',serif;font-size:0.88r
 .res-hrs-bar-fill{height:100%;background:var(--mid-blue);border-radius:4px;}
 .res-fte-badge{display:inline-block;font-size:0.68rem;font-weight:600;border-radius:10px;padding:2px 8px;background:var(--light-blue);color:var(--mid-blue);}
 
+/* PGR HOURS BAR */
+.pgr-hrs-bar-wrap{display:flex;align-items:center;gap:8px;}
+.pgr-hrs-bar{flex:1;height:8px;background:var(--light-blue);border-radius:4px;overflow:hidden;min-width:60px;}
+.pgr-hrs-bar-fill{height:100%;background:var(--teal);border-radius:4px;}
+
+/* ASSESSMENT TABLE */
+.assessment-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
+.assessment-table th{background:var(--navy);color:white;padding:9px 12px;font-weight:500;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;}
+.assessment-table th:hover{background:#0a2a5a;}
+.assessment-table td{padding:8px 12px;border-bottom:1px solid var(--border);}
+.assessment-table tr:hover td{background:var(--light-blue);}
+.assessment-table .num{font-family:'IBM Plex Mono',monospace;text-align:right;}
+.assessment-table .tot{font-family:'IBM Plex Mono',monospace;text-align:right;font-weight:600;color:var(--navy);}
+.assessment-table tfoot td{font-weight:600;background:var(--light-blue);border-top:2px solid var(--border);}
+
+/* PGR SUPERVISION TABLE */
+.pgr-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
+.pgr-table th{background:var(--navy);color:white;padding:9px 12px;font-weight:500;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;}
+.pgr-table th:hover{background:#0a2a5a;}
+.pgr-table td{padding:8px 12px;border-bottom:1px solid var(--border);}
+.pgr-table tr:hover td{background:var(--teal-light);}
+.pgr-table .num{font-family:'IBM Plex Mono',monospace;text-align:right;}
+.pgr-table .tot{font-family:'IBM Plex Mono',monospace;text-align:right;font-weight:600;color:var(--navy);}
+.pgr-table tfoot td{font-weight:600;background:var(--teal-light);border-top:2px solid var(--teal);}
+
 /* MMI session card */
 .mmi-session-card{background:var(--bg);border-left:3px solid var(--purple);border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:0.8rem;}
 .mmi-session-card .ms-title{font-weight:600;color:var(--navy);margin-bottom:3px;}
