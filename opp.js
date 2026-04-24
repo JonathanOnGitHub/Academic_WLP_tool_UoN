@@ -381,6 +381,7 @@ function parseHTMLFile(html){const doc=new DOMParser().parseFromString(html,'tex
 function calcHours(sessions,realistic){if(!sessions||sessions.length===0)return 0;if(realistic&&sessions.staffMap){let total=0;for(const ss of sessions.staffMap.values())total+=calcHours(ss,true);return Math.round(total*100)/100;}if(!realistic)return sessions.reduce((s,x)=>s+sessionDuration(x),0);const byDay={};for(const s of sessions){const d=s.day||'unknown';if(!byDay[d])byDay[d]=[];byDay[d].push({start:timeToHours(s.start),end:timeToHours(s.end)});}let total=0;for(const slots of Object.values(byDay)){const sorted=slots.filter(s=>s.end>s.start).sort((a,b)=>a.start-b.start);let merged=[];for(const s of sorted){if(merged.length&&s.start<merged[merged.length-1].end)merged[merged.length-1].end=Math.max(merged[merged.length-1].end,s.end);else merged.push({...s});}total+=merged.reduce((s,x)=>s+(x.end-x.start),0);}return Math.round(total*100)/100;}
 function sessionKey(s){return[s.moduleCode,s.moduleTitle,s.sessionTitle,s.day,s.start,s.end,s.type,s.location].join('|');}
 function deduplicateSessions(sessions){const seen=new Map();for(const s of sessions){const k=sessionKey(s);if(!seen.has(k))seen.set(k,s);}return[...seen.values()];}
+function formatWeekRange(weeks){if(!weeks||weeks.length===0)return'—';const sorted=[...weeks].sort((a,b)=>a-b);if(sorted.length===1)return'Wk '+sorted[0];let contiguous=true;for(let i=1;i<sorted.length;i++){if(sorted[i]!==sorted[i-1]+1){contiguous=false;break;}}if(contiguous)return'Wk '+sorted[0]+'–'+sorted[sorted.length-1];return'Wk '+sorted.join(', ');}
 function tlAggregate(sessions,wFrom,wTo){tlStaffData={};tlModuleData={};tlTypeData={};for(const sess of sessions){const fw=sess.weeks.filter(w=>w>=wFrom&&w<=wTo);if(fw.length===0)continue;for(const name of sess.staff){if(!tlStaffData[name])tlStaffData[name]={};for(const w of fw){if(!tlStaffData[name][w])tlStaffData[name][w]=[];tlStaffData[name][w].push(sess);}const mk=sess.moduleCode||sess.moduleTitle||'Unknown';if(!tlModuleData[mk])tlModuleData[mk]={};for(const w of fw){if(!tlModuleData[mk][w]){const _arr=[];Object.defineProperty(_arr,'staffMap',{value:new Map(),enumerable:false});tlModuleData[mk][w]=_arr;}tlModuleData[mk][w].push(sess);if(!tlModuleData[mk][w].staffMap.has(name))tlModuleData[mk][w].staffMap.set(name,[]);tlModuleData[mk][w].staffMap.get(name).push(sess);}const tk=(sess.type||'').trim()||'Undefined';if(!tlTypeData[tk])tlTypeData[tk]={};for(const w of fw){if(!tlTypeData[tk][w]){const _arr=[];Object.defineProperty(_arr,'staffMap',{value:new Map(),enumerable:false});tlTypeData[tk][w]=_arr;}tlTypeData[tk][w].push(sess);if(!tlTypeData[tk][w].staffMap.has(name))tlTypeData[tk][w].staffMap.set(name,[]);tlTypeData[tk][w].staffMap.get(name).push(sess);}}}tlAllStaff=Object.keys(tlStaffData).sort();tlAllModules=Object.keys(tlModuleData).sort();tlAllTypes=Object.keys(tlTypeData).sort((a,b)=>a==='Undefined'?1:b==='Undefined'?-1:a.localeCompare(b));const ws=new Set();for(const s of sessions)for(const w of s.weeks)if(w>=wFrom&&w<=wTo)ws.add(w);tlAllWeeks=[...ws].sort((a,b)=>a-b);}
 function buildGrid(dataMap,entities,weeks,sortConfig,realistic,prepRatio){const pr=prepRatio||0;if(entities.length===0)return{html:'<div style="padding:2rem;color:var(--muted)">No data found.</div>',legendHtml:''};const sorted=[...entities];if(sortConfig.col==='name')sorted.sort((a,b)=>sortConfig.dir*a.localeCompare(b));else if(sortConfig.col==='total')sorted.sort((a,b)=>sortConfig.dir*(weeks.reduce((s,w)=>s+calcHours(dataMap[a]?.[w],realistic)*(1+pr),0)-weeks.reduce((s,w)=>s+calcHours(dataMap[b]?.[w],realistic)*(1+pr),0)));else sorted.sort((a,b)=>sortConfig.dir*(calcHours(dataMap[a]?.[sortConfig.col],realistic)*(1+pr)-calcHours(dataMap[b]?.[sortConfig.col],realistic)*(1+pr)));let maxH=0;for(const e of entities)for(const w of weeks){const h=calcHours(dataMap[e]?.[w],realistic)*(1+pr);if(h>maxH)maxH=h;}const breaks=[0,maxH*0.1,maxH*0.25,maxH*0.45,maxH*0.65,maxH*0.85];const heatClass=h=>{if(h<=0)return'';for(let i=breaks.length-1;i>=0;i--)if(h>=breaks[i])return`heat-${i}`;return'heat-0';};const totArr=sortConfig.col==='total'?(sortConfig.dir>0?' ↑':' ↓'):'';const nameArr=sortConfig.col==='name'?(sortConfig.dir>0?' ↑':' ↓'):'';let html=`<table class="grid-table"><thead><tr><th style="text-align:left" data-sort="name">Name${nameArr}</th>`;for(const w of weeks){const arr=sortConfig.col===w?(sortConfig.dir>0?' ↑':' ↓'):'';html+=`<th class="week-header" data-sort-week="${w}">W${w}${arr}</th>`;}html+=`<th class="week-header" data-sort="total" style="background:#0a3060">Total${totArr}</th></tr></thead><tbody>`;for(const entity of sorted){html+=`<tr><td class="name-cell" data-entity="${encodeURIComponent(entity)}" title="${entity}">${entity}</td>`;let rowTotal=0;for(const w of weeks){const contact=calcHours(dataMap[entity]?.[w],realistic);const h=contact*(1+pr);rowTotal+=h;if(h>0){const tip=pr>0?`title="${contact.toFixed(1)}h contact + ${(contact*pr).toFixed(1)}h prep"`:'' ;html+=`<td class="data-cell ${heatClass(h)}" data-entity="${encodeURIComponent(entity)}" data-week="${w}" ${tip}><span>${h.toFixed(1)}</span><small>${pr>0?'incl. prep':'hrs'}</small></td>`;}else html+=`<td class="data-cell empty" data-entity="${encodeURIComponent(entity)}" data-week="${w}">–</td>`;}html+=`<td class="data-cell heat-3" data-entity="${encodeURIComponent(entity)}" data-week="total"><span>${rowTotal.toFixed(1)}</span><small>${pr>0?'incl. prep':'hrs'}</small></td></tr>`;}html+='<tr class="totals-row"><td class="name-cell" data-week="total" data-entity="all">Grand Total</td>';let gt=0;for(const w of weeks){const wt=entities.reduce((s,e)=>s+calcHours(dataMap[e]?.[w],realistic)*(1+pr),0);gt+=wt;html+=`<td class="data-cell" data-week="${w}" data-entity="all"><span>${wt.toFixed(1)}</span><small>hrs</small></td>`;}html+=`<td class="data-cell" data-week="total" data-entity="all"><span>${gt.toFixed(1)}</span><small>hrs</small></td></tr></tbody></table>`;const legendHtml=`<span>Colour scale:</span>${breaks.map((b,i)=>`<span class="legend-item"><span class="legend-swatch heat-${i}"></span>${b.toFixed(0)}${i<breaks.length-1?'–'+breaks[i+1].toFixed(0):'+'}</span>`).join('')}`;return{html,legendHtml};}
 function tlRenderGrid(id,dataMap,allEntities,weeks,sortCfg,realistic,legendId,prepRatio){const res=buildGrid(dataMap,allEntities,weeks,sortCfg,realistic,prepRatio||0);const wrap=document.getElementById(id);wrap.innerHTML=res.html;if(legendId)document.getElementById(legendId).innerHTML=res.legendHtml;tlAttachGridEvents(wrap,dataMap,id.includes('Staff')?'staff':id.includes('Mod')?'module':'type');}
@@ -895,7 +896,12 @@ function combGetSorted(){
 }
 
 let combSelected=new Set();
-function combUpdateDetailBtn(){document.getElementById('combDetailBtn').disabled=combSelected.size===0;document.getElementById('combDetailBtn').textContent=combSelected.size>0?`📄 Detailed Report (${combSelected.size})`:'📄 Detailed Report';}
+function combUpdateDetailBtn(){
+  document.getElementById('combDetailBtn').disabled=combSelected.size===0;
+  document.getElementById('combDetailBtn').textContent=combSelected.size>0?`📄 Detailed Report (${combSelected.size})`:'📄 Detailed Report';
+  const cBtn=document.getElementById('combCombinedBtn');
+  if(cBtn){cBtn.disabled=combSelected.size===0;cBtn.textContent=combSelected.size>0?`📄 Combined PDF (${combSelected.size})`:'📄 Combined PDF';}
+}
 
 // ── Tag & Rule helpers ────────────────────────────────────────────────────────
 
@@ -1423,7 +1429,7 @@ document.getElementById('fteTarget').addEventListener('change',e=>{fteTarget=+e.
 // ── Detailed Report generation ────────────────────────────────────────────────
 function generateDetailedReport(canonicals){
   const dateStr=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-  let sections='';
+  const safeWindowName=(name)=>name.replace(/[^a-zA-Z0-9_-]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'').slice(0,50)||'report';
 
   for(const canonical of canonicals){
     const d=combData.find(x=>x.canonical===canonical);
@@ -1437,44 +1443,38 @@ function generateDetailedReport(canonicals){
     let teachingHtml='';
     if(d.tlName&&tlStaffData[d.tlName]){
       const staffWeekMap=tlStaffData[d.tlName];
-      // Gather all sessions across all weeks for this person
       const allSess=[];
       for(const w of tlAllWeeks)(staffWeekMap[w]||[]).forEach(s=>allSess.push({...s,week:w}));
-      // Group by module
-      const byModule={};
-      for(const s of allSess){
-        const mk=s.moduleCode?`${s.moduleCode}${s.moduleTitle?' – '+s.moduleTitle:''}`:s.moduleTitle||'Unknown Module';
-        if(!byModule[mk])byModule[mk]=[];
-        byModule[mk].push(s);
-      }
+      const dayOrder={monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6,sunday:7};
+      const sortedSess = allSess.slice().sort((a,b)=>{
+        if(a.week!==b.week)return a.week-b.week;
+        const aD=dayOrder[(a.day||'').toLowerCase()]||99,bD=dayOrder[(b.day||'').toLowerCase()]||99;
+        if(aD!==bD)return aD-bD;
+        return(timeToHours(a.start)||0)-(timeToHours(b.start)||0);
+      });
       const contactTotal=tlAllWeeks.reduce((sum,w)=>sum+calcHours(staffWeekMap[w],tlRealisticMode),0);
       const prepTotal=contactTotal*tlPrepRatio;
       teachingHtml=`<div class="rpt-section">
-        <h3>📅 Teaching Load</h3>
+        <h3>Teaching Load</h3>
         <div class="rpt-summary-row">
           <span>Contact hours: <strong>${contactTotal.toFixed(1)}h</strong></span>
           ${tlPrepRatio>0?`<span>Preparation (${tlPrepRatio}× ratio): <strong>${prepTotal.toFixed(1)}h</strong></span><span>Total incl. prep: <strong>${d.tlHours.toFixed(1)}h</strong></span>`:''}
         </div>
         <table class="rpt-table">
-          <thead><tr><th>Module</th><th>Session / Activity</th><th>Type</th><th>Day</th><th>Time</th><th style="text-align:right">Wks</th><th style="text-align:right">hrs/session</th><th style="text-align:right">Total hrs</th></tr></thead>
+          <thead><tr><th>Module</th><th>Session / Activity</th><th>Type</th><th>Day</th><th>Time</th><th style="text-align:center">Week</th><th style="text-align:right">hrs/session</th><th style="text-align:right">Total hrs</th></tr></thead>
           <tbody>
-          ${Object.entries(byModule).map(([mod,sessions])=>{
-            // Deduplicate within module (same session taught multiple weeks)
-            const unique=deduplicateSessions(sessions);
-            return unique.map((s,i)=>{
-              const dur=sessionDuration(s);
-              const weekCount=sessions.filter(x=>sessionKey(x)===sessionKey(s)).length;
-              return`<tr${i===0?' class="rpt-mod-first"':''}>
-                ${i===0?`<td class="rpt-mod-cell" rowspan="${unique.length}">${mod}</td>`:''}
-                <td>${s.sessionTitle||s.activity||'—'}</td>
-                <td>${s.type||'—'}</td>
-                <td>${s.day||'—'}</td>
-                <td>${s.start&&s.end?s.start+'–'+s.end:'—'}</td>
-                <td style="text-align:right">${weekCount}</td>
-                <td style="text-align:right">${dur.toFixed(1)}</td>
-                <td style="text-align:right">${(dur*weekCount).toFixed(1)}</td>
-              </tr>`;
-            }).join('');
+          ${sortedSess.map(s=>{
+            const dur=sessionDuration(s);
+            return `<tr>
+              <td>${s.moduleCode?`${s.moduleCode}${s.moduleTitle?' – '+s.moduleTitle:''}`:s.moduleTitle||'Unknown Module'}</td>
+              <td>${s.sessionTitle||s.activity||'—'}</td>
+              <td>${s.type||'—'}</td>
+              <td>${s.day||'—'}</td>
+              <td>${s.start&&s.end?s.start+'–'+s.end:'—'}</td>
+              <td style="text-align:center">Wk ${s.week}</td>
+              <td style="text-align:right">${dur.toFixed(1)}</td>
+              <td style="text-align:right">${dur.toFixed(1)}</td>
+            </tr>`;
           }).join('')}
           </tbody>
           <tfoot><tr><td colspan="7"><strong>Total contact hours</strong></td><td style="text-align:right"><strong>${contactTotal.toFixed(1)}h</strong></td></tr>
@@ -1482,10 +1482,6 @@ function generateDetailedReport(canonicals){
           <tr class="rpt-total-row"><td colspan="7"><strong>Total teaching load (incl. prep)</strong></td><td style="text-align:right"><strong>${d.tlHours.toFixed(1)}h</strong></td></tr>`:''}
           </tfoot>
         </table>
-        <div class="rpt-comment-block">
-          <div class="rpt-comment-label">Comments on teaching activities:</div>
-          <div class="rpt-comment-area" contenteditable="true" data-placeholder="Add context about your teaching responsibilities, module leadership, curriculum development, innovations…"></div>
-        </div>
       </div>`;
     }
 
@@ -1493,25 +1489,21 @@ function generateDetailedReport(canonicals){
     let tutorialHtml='';
     if(tutor){
       tutorialHtml=`<div class="rpt-section">
-        <h3>👥 Personal Tutoring</h3>
+        <h3>Personal Tutoring</h3>
         <div class="rpt-summary-row">
           <span>Year 1 tutees: <strong>${tutor.year1.length}</strong></span>
           <span>Other year tutees: <strong>${tutor.other.length}</strong></span>
           <span>Total: <strong>${tutor.totalTutees}</strong></span>
           <span>Hours: <strong>${d.tutHours.toFixed(1)}h</strong></span>
         </div>
-        ${tutor.year1.length>0?`<h4 style="margin:0.8rem 0 0.4rem;font-size:0.82rem;color:#555">Year 1 Tutees</h4>
+        ${tutor.year1.length>0?`<h4 style="margin:0.8rem 0 0.4rem;font-size:0.82rem;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">Year 1 Tutees</h4>
         <table class="rpt-table"><thead><tr><th>Name</th><th>Course</th><th>Email</th></tr></thead><tbody>
         ${tutor.year1.map(s=>`<tr><td>${s.name||'—'}</td><td>${s.course||'—'}</td><td>${s.email||'—'}</td></tr>`).join('')}
         </tbody></table>`:''}
-        ${tutor.other.length>0?`<h4 style="margin:0.8rem 0 0.4rem;font-size:0.82rem;color:#555">Other Year Tutees</h4>
+        ${tutor.other.length>0?`<h4 style="margin:0.8rem 0 0.4rem;font-size:0.82rem;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">Other Year Tutees</h4>
         <table class="rpt-table"><thead><tr><th>Name</th><th>Year</th><th>Course</th></tr></thead><tbody>
         ${tutor.other.map(s=>`<tr><td>${s.name||'—'}</td><td>${s.year||'—'}</td><td>${s.course||'—'}</td></tr>`).join('')}
         </tbody></table>`:''}
-        <div class="rpt-comment-block">
-          <div class="rpt-comment-label">Comments on personal tutoring:</div>
-          <div class="rpt-comment-area" contenteditable="true" data-placeholder="Add context about your tutoring approach, pastoral support, student outcomes…"></div>
-        </div>
       </div>`;
     }
 
@@ -1526,7 +1518,7 @@ function generateDetailedReport(canonicals){
         p.poster1===proj.name||p.poster2===proj.name?'Poster Assessor':'',
       ].filter(Boolean).join(', ');
       projectHtml=`<div class="rpt-section">
-        <h3>🎓 Project Supervision &amp; Assessment</h3>
+        <h3>Project Supervision &amp; Assessment</h3>
         <div class="rpt-summary-row">
           <span>Supervised: <strong>${proj.supervised.length}</strong> (${proj.nSup.toFixed(2)} share)</span>
           <span>Co-supervised: <strong>${proj.cosupervised.length}</strong> (${proj.nCoSup.toFixed(2)} share)</span>
@@ -1548,10 +1540,6 @@ function generateDetailedReport(canonicals){
           </tbody>
           <tfoot><tr><td colspan="2"><strong>Total</strong></td><td style="text-align:right"><strong>${d.projHours.toFixed(1)}h</strong></td></tr></tfoot>
         </table>
-        <div class="rpt-comment-block">
-          <div class="rpt-comment-label">Comments on project supervision:</div>
-          <div class="rpt-comment-area" contenteditable="true" data-placeholder="Add context about student projects, outcomes, examinations, prizes…"></div>
-        </div>
       </div>`;
     }
 
@@ -1560,7 +1548,7 @@ function generateDetailedReport(canonicals){
     if(mmiR){
       const activeSess=mmiR.sessions.filter(s=>!s.isReserve);
       mmiHtml=`<div class="rpt-section">
-        <h3>🩺 MMI Interviewing</h3>
+        <h3>MMI Interviewing</h3>
         <div class="rpt-summary-row">
           <span>Sessions: <strong>${activeSess.length}</strong></span>
           <span>Total hours: <strong>${d.mmiHours.toFixed(1)}h</strong></span>
@@ -1572,10 +1560,6 @@ function generateDetailedReport(canonicals){
           </tbody>
           <tfoot><tr><td colspan="3"><strong>Total</strong></td><td style="text-align:right"><strong>${d.mmiHours.toFixed(1)}h</strong></td></tr></tfoot>
         </table>
-        <div class="rpt-comment-block">
-          <div class="rpt-comment-label">Comments on admissions interviewing:</div>
-          <div class="rpt-comment-area" contenteditable="true" data-placeholder="Add context about your contribution to student admissions…"></div>
-        </div>
       </div>`;
     }
 
@@ -1583,7 +1567,7 @@ function generateDetailedReport(canonicals){
     let citHtml='';
     if(citRows.length>0){
       citHtml=`<div class="rpt-section">
-        <h3>🏛 Citizenship &amp; Service Roles</h3>
+        <h3>Citizenship &amp; Service Roles</h3>
         <table class="rpt-table">
           <thead><tr><th>Role</th><th>Category</th><th style="text-align:right">hrs/yr</th><th>Term</th><th>End Date</th></tr></thead>
           <tbody>
@@ -1591,11 +1575,397 @@ function generateDetailedReport(canonicals){
           </tbody>
           <tfoot><tr><td colspan="2"><strong>Total</strong></td><td style="text-align:right"><strong>${d.citHours.toFixed(1)}h</strong></td><td colspan="2"></td></tr></tfoot>
         </table>
-        <div class="rpt-comment-block">
-          <div class="rpt-comment-label">Comments on citizenship and service:</div>
-          <div class="rpt-comment-area" contenteditable="true" data-placeholder="Add context about your leadership, committee work, outreach, administrative contributions…"></div>
-        </div>
       </div>`;
+    }
+
+    // Assessment detail
+    let assessmentHtml='';
+    if(d.assessmentName && assessmentAllData.length>0){
+      const rows=assessmentAllData.filter(r=>r.supervisor===d.assessmentName);
+      if(rows.length>0){
+        assessmentHtml=`<div class="rpt-section">
+        <h3>Assessment Workload</h3>
+        <div class="rpt-summary-row">
+          <span>Assessments: <strong>${rows.length}</strong></span>
+          <span>Total hours: <strong>${d.assessmentHours.toFixed(1)}h</strong></span>
+        </div>
+        <table class="rpt-table">
+          <thead><tr><th>Assessment</th><th>Year</th><th>Course</th><th style="text-align:right">Students</th><th style="text-align:right">Total Load (h)</th><th style="text-align:right">Hours</th></tr></thead>
+          <tbody>
+          ${rows.map(r=>`<tr><td>${r.assessmentDesc||'—'}</td><td>${r.year||'—'}</td><td>${r.course||'—'}</td><td style="text-align:right">${r.totalStudents||'—'}</td><td style="text-align:right">${r.totalLoad.toFixed(1)}</td><td style="text-align:right">${r.hours.toFixed(1)}</td></tr>`).join('')}
+          </tbody>
+          <tfoot><tr><td colspan="5"><strong>Total assessment hours</strong></td><td style="text-align:right"><strong>${d.assessmentHours.toFixed(1)}h</strong></td></tr></tfoot>
+        </table>
+      </div>`;
+      }
+    }
+
+    // Research detail
+    let researchHtml='';
+    if(d.resName && resAllData.length>0){
+      const row=resAllData.find(r=>r.name===d.resName);
+      if(row){
+        const resHrs=d.resHours||0;
+        researchHtml=`<div class="rpt-section">
+        <h3>Staff Research Hours</h3>
+        <div class="rpt-summary-row">
+          <span>Department: <strong>${row.dept||'—'}</strong></span>
+          <span>FTE: <strong>${row.fte>0?row.fte.toFixed(2):'—'}</strong></span>
+          <span>Projects: <strong>${row.projects||0}</strong></span>
+          <span>Hours/week: <strong>${row.hrsWeek>0?row.hrsWeek.toFixed(1):'—'}</strong></span>
+          <span>Total hours: <strong>${resHrs.toFixed(1)}h</strong></span>
+        </div>
+        <table class="rpt-table">
+          <thead><tr><th>Staff ID</th><th>Name</th><th>Department</th><th style="text-align:right">FTE</th><th style="text-align:right">Projects</th><th style="text-align:right">Hrs/Week</th><th style="text-align:right">Curr. Year (h)</th>${resYearPref==='next'?'<th style="text-align:right">Next Year (h)</th>':''}</tr></thead>
+          <tbody>
+            <tr><td>${row.identifier||'—'}</td><td>${row.name}</td><td>${row.dept||'—'}</td><td style="text-align:right">${row.fte>0?row.fte.toFixed(2):'—'}</td><td style="text-align:right">${row.projects||0}</td><td style="text-align:right">${row.hrsWeek>0?row.hrsWeek.toFixed(1):'—'}</td><td style="text-align:right">${row.currHours.toFixed(1)}</td>${resYearPref==='next'?`<td style="text-align:right">${row.nextHours.toFixed(1)}</td>`:''}</tr>
+          </tbody>
+          <tfoot><tr><td colspan="${resYearPref==='next'?'7':'6'}"><strong>Total research hours</strong></td><td style="text-align:right"><strong>${resHrs.toFixed(1)}h</strong></td></tr></tfoot>
+        </table>
+      </div>`;
+      }
+    }
+
+    // PGR Supervision detail
+    let pgrHtml='';
+    if(d.pgrName && pgrAllData.length>0){
+      const rows=pgrAllData.filter(r=>r.supervisor===d.pgrName);
+      if(rows.length>0){
+        pgrHtml=`<div class="rpt-section">
+        <h3>PGR Supervision</h3>
+        <div class="rpt-summary-row">
+          <span>Students: <strong>${rows.length}</strong></span>
+          <span>Total hours: <strong>${d.pgrHours.toFixed(1)}h</strong></span>
+        </div>
+        <table class="rpt-table">
+          <thead><tr><th>Student</th><th>Plan</th><th>Mode</th><th style="text-align:right">%</th><th>Start</th><th>End</th><th style="text-align:right">Hours</th></tr></thead>
+          <tbody>
+          ${rows.map(r=>`<tr><td>${r.studentName||'—'}</td><td>${r.plan||'—'}</td><td>${r.mode||'—'}</td><td style="text-align:right">${r.percent.toFixed(0)}%</td><td>${r.startDate||'—'}</td><td>${r.endDate||'—'}</td><td style="text-align:right">${r.hours.toFixed(1)}</td></tr>`).join('')}
+          </tbody>
+          <tfoot><tr><td colspan="6"><strong>Total PGR supervision hours</strong></td><td style="text-align:right"><strong>${d.pgrHours.toFixed(1)}h</strong></td></tr></tfoot>
+        </table>
+      </div>`;
+      }
+    }
+
+    // Summary donut-style bar
+    const cats=[['Teaching',d.tlHours,'#0066cc'],['Assessment',d.assessmentHours,'#8a2be2'],['Projects',d.projHours,'#b84c2a'],['Tutorial',d.tutHours,'#1a7a4a'],['MMI',d.mmiHours,'#6b21a8'],['Citizenship',d.citHours,'#c89b2a'],['Research',(d.resHours||0),'#0a7a9a'],['PGR',d.pgrHours,'#d2691e']].filter(([,h])=>h>0);
+    const summaryBars=cats.map(([label,h,col])=>`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
+        <div style="width:110px;font-size:0.82rem;color:#444">${label}</div>
+        <div style="flex:1;height:12px;background:#eee;border-radius:6px;overflow:hidden"><div style="height:100%;width:${(h/d.total*100).toFixed(1)}%;background:${col};border-radius:6px"></div></div>
+        <div style="width:52px;text-align:right;font-family:monospace;font-size:0.82rem;font-weight:600">${h.toFixed(1)}h</div>
+        <div style="width:36px;text-align:right;font-size:0.75rem;color:#888">${(h/d.total*100).toFixed(0)}%</div>
+      </div>`).join('');
+
+    const html=`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<title>Academic Workload Report – ${canonical} – ${dateStr}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:#1a1f2e;background:#f5f6f8;line-height:1.5;}
+  .rpt-toolbar{background:#041e42;color:white;padding:12px 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:1rem;flex-wrap:wrap;}
+  .rpt-toolbar h2{font-family:'Source Serif 4',serif;font-size:1rem;font-weight:600;opacity:0.9;}
+  .rpt-toolbar-btns{display:flex;gap:8px;}
+  .rpt-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.82rem;font-family:'IBM Plex Sans',sans-serif;transition:background 0.2s;}
+  .rpt-btn:hover{background:rgba(255,255,255,0.25);}
+  .rpt-btn.primary{background:#0066cc;border-color:#004fa3;}
+  .rpt-wrap{max-width:900px;margin:2rem auto;padding:0 1.5rem 4rem;}
+  .rpt-person{background:white;border-radius:12px;border:1px solid #d0d7e3;overflow:hidden;margin-bottom:2.5rem;}
+  .rpt-person-header{background:#041e42;color:white;padding:2rem 2rem 1.5rem;display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;}
+  .rpt-person-name{font-family:'Source Serif 4',serif;font-size:1.8rem;font-weight:600;margin-bottom:4px;}
+  .rpt-person-sub{font-size:0.78rem;opacity:0.6;}
+  .rpt-total-badge{text-align:center;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:1rem 1.5rem;font-family:'IBM Plex Mono',monospace;font-size:2rem;font-weight:500;line-height:1.1;flex-shrink:0;}
+  .rpt-total-badge span{display:block;font-family:'IBM Plex Sans',sans-serif;font-size:0.68rem;font-weight:400;opacity:0.7;margin-top:2px;}
+  .rpt-overview{display:block;padding:1.5rem 2rem;background:#f8f9fb;border-bottom:1px solid #d0d7e3;}
+  .rpt-overview-left{background:white;border-radius:8px;border:1px solid #d0d7e3;padding:1rem 1.2rem;}
+  .rpt-section{padding:1.5rem 2rem;border-bottom:1px solid #eef0f5;}
+  .rpt-section:last-child{border-bottom:none;}
+  .rpt-section h3{font-family:'Source Serif 4',serif;font-size:1.05rem;color:#041e42;margin-bottom:0.8rem;padding-left:12px;border-left:3px solid #0066cc;line-height:1.3;}
+  .rpt-summary-row{display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:1rem;background:#f0f4ff;border-radius:6px;padding:0.6rem 0.8rem;font-size:0.82rem;}
+  .rpt-table{width:100%;border-collapse:collapse;font-size:0.8rem;margin-bottom:1rem;}
+  .rpt-table th{background:#041e42;color:white;padding:6px 10px;font-weight:500;text-align:left;font-size:0.75rem;}
+  .rpt-table td{padding:6px 10px;border-bottom:1px solid #eef0f5;}
+  .rpt-table tfoot td{font-weight:600;background:#f0f4ff;border-top:2px solid #d0d7e3;}
+  .rpt-total-row td{background:#e8f0fb;}
+  @media print{
+    body{background:white;font-size:11px;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .rpt-toolbar{display:none!important;}
+    .rpt-wrap{max-width:100%;margin:0;padding:0 1.5cm;}
+    .rpt-person{border:1px solid #ccc;border-radius:4px;box-shadow:none;margin-bottom:0;page-break-inside:avoid;}
+    .rpt-person-header{background:#041e42!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:1.5rem 2rem 1rem;}
+    .rpt-table th{background:#041e42!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .rpt-summary-row{background:#f0f4ff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .rpt-table tfoot td{background:#f0f4ff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .rpt-overview{background:#f8f9fb!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .rpt-total-badge{border:1px solid rgba(255,255,255,0.3);}
+    .rpt-total-badge span{opacity:0.7;}
+    .rpt-section h3{color:#041e42;}
+    @page{margin:2cm 0;}
+  }
+</style>
+</head><body>
+<div class="rpt-toolbar">
+  <div>
+    <h2>Academic Workload Report — ${canonical}</h2>
+  </div>
+  <div class="rpt-toolbar-btns">
+    <button class="rpt-btn" onclick="window.print()">Print / Save PDF</button>
+    <button class="rpt-btn" onclick="window.close()">Close</button>
+  </div>
+</div>
+<div class="rpt-wrap"><div class="rpt-person">
+  <div class="rpt-person-header">
+    <div>
+      <div class="rpt-person-name">${canonical}</div>
+      <div class="rpt-person-sub">Academic Workload Report · ${dateStr}</div>
+    </div>
+    <div style="display:flex;gap:1rem;flex-shrink:0">
+      <div class="rpt-total-badge">${d.total.toFixed(1)}<span>hrs total</span></div>
+      <div class="rpt-total-badge" style="font-size:1.4rem;background:rgba(255,255,255,0.08)">${ftePct(d.canonical,d.total)}%<span>of ${personalTarget(d.canonical).toFixed(0)}h target</span></div>
+    </div>
+  </div>
+  <div class="rpt-overview">
+    <div class="rpt-overview-left">
+      <h3 style="margin:0 0 0.8rem;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.06em;color:#666;padding-left:10px;border-left:2px solid #0066cc;line-height:1.2;">Load Summary</h3>
+      ${summaryBars}
+      <div style="border-top:2px solid #041e42;margin-top:8px;padding:10px 0 0;display:flex;justify-content:space-between;font-size:0.9rem;">
+        <span style="font-weight:700;color:#041e42;">Total</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#0066cc;font-size:1rem;">${d.total.toFixed(1)}h</span>
+      </div>
+    </div>
+  </div>
+  ${teachingHtml}${assessmentHtml}${projectHtml}${tutorialHtml}${mmiHtml}${citHtml}${researchHtml}${pgrHtml}
+</div></div>
+</body></html>`;
+
+    const w=window.open('', safeWindowName(canonical));
+    w.document.write(html);
+    w.document.close();
+  }
+}
+
+
+
+function generateCombinedReport(canonicals){
+  const dateStr=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  let sections='';
+
+  for(let i=0;i<canonicals.length;i++){
+    const canonical=canonicals[i];
+    const d=combData.find(x=>x.canonical===canonical);
+    if(!d)continue;
+    const tutor=d.tutName?tutAllTutors.find(t=>t.name===d.tutName):null;
+    const proj=d.projName?projAllResults.find(r=>r.name===d.projName):null;
+    const mmiR=d.mmiName?mmiResults.find(r=>r.name===d.mmiName):null;
+    const citRows=d.citName?citAllData.filter(r=>r.holder===d.citName):[];
+
+    // Teaching detail
+    let teachingHtml='';
+    if(d.tlName&&tlStaffData[d.tlName]){
+      const staffWeekMap=tlStaffData[d.tlName];
+      const allSess=[];
+      for(const w of tlAllWeeks)(staffWeekMap[w]||[]).forEach(s=>allSess.push({...s,week:w}));
+      const dayOrder={monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6,sunday:7};
+      const sortedSess = allSess.slice().sort((a,b)=>{
+        if(a.week!==b.week)return a.week-b.week;
+        const aD=dayOrder[(a.day||'').toLowerCase()]||99,bD=dayOrder[(b.day||'').toLowerCase()]||99;
+        if(aD!==bD)return aD-bD;
+        return(timeToHours(a.start)||0)-(timeToHours(b.start)||0);
+      });
+      const contactTotal=tlAllWeeks.reduce((sum,w)=>sum+calcHours(staffWeekMap[w],tlRealisticMode),0);
+      const prepTotal=contactTotal*tlPrepRatio;
+      teachingHtml=`<div class="rpt-section">
+        <h3>Teaching Load</h3>
+        <div class="rpt-summary-row">
+          <span>Contact hours: <strong>${contactTotal.toFixed(1)}h</strong></span>
+          ${tlPrepRatio>0?`<span>Preparation (${tlPrepRatio}× ratio): <strong>${prepTotal.toFixed(1)}h</strong></span><span>Total incl. prep: <strong>${d.tlHours.toFixed(1)}h</strong></span>`:''}
+        </div>
+        <table class="rpt-table">
+          <thead><tr><th>Module</th><th>Session / Activity</th><th>Type</th><th>Day</th><th>Time</th><th style="text-align:center">Week</th><th style="text-align:right">hrs/session</th><th style="text-align:right">Total hrs</th></tr></thead>
+          <tbody>
+          ${sortedSess.map(s=>{
+            const dur=sessionDuration(s);
+            return `<tr>
+              <td>${s.moduleCode?`${s.moduleCode}${s.moduleTitle?' – '+s.moduleTitle:''}`:s.moduleTitle||'Unknown Module'}</td>
+              <td>${s.sessionTitle||s.activity||'—'}</td>
+              <td>${s.type||'—'}</td>
+              <td>${s.day||'—'}</td>
+              <td>${s.start&&s.end?s.start+'–'+s.end:'—'}</td>
+              <td style="text-align:center">Wk ${s.week}</td>
+              <td style="text-align:right">${dur.toFixed(1)}</td>
+              <td style="text-align:right">${dur.toFixed(1)}</td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+          <tfoot><tr><td colspan="7"><strong>Total contact hours</strong></td><td style="text-align:right"><strong>${contactTotal.toFixed(1)}h</strong></td></tr>
+          ${tlPrepRatio>0?`<tr><td colspan="7">Preparation hours (${tlPrepRatio}× contact)</td><td style="text-align:right">${prepTotal.toFixed(1)}h</td></tr>
+          <tr class="rpt-total-row"><td colspan="7"><strong>Total teaching load (incl. prep)</strong></td><td style="text-align:right"><strong>${d.tlHours.toFixed(1)}h</strong></td></tr>`:''}
+          </tfoot>
+        </table>
+      </div>`;
+    }
+
+    // Tutorial detail
+    let tutorialHtml='';
+    if(tutor){
+      tutorialHtml=`<div class="rpt-section">
+        <h3>Personal Tutoring</h3>
+        <div class="rpt-summary-row">
+          <span>Year 1 tutees: <strong>${tutor.year1.length}</strong></span>
+          <span>Other year tutees: <strong>${tutor.other.length}</strong></span>
+          <span>Total: <strong>${tutor.totalTutees}</strong></span>
+          <span>Hours: <strong>${d.tutHours.toFixed(1)}h</strong></span>
+        </div>
+        ${tutor.year1.length>0?`<h4 style="margin:0.8rem 0 0.4rem;font-size:0.82rem;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">Year 1 Tutees</h4>
+        <table class="rpt-table"><thead><tr><th>Name</th><th>Course</th><th>Email</th></tr></thead><tbody>
+        ${tutor.year1.map(s=>`<tr><td>${s.name||'—'}</td><td>${s.course||'—'}</td><td>${s.email||'—'}</td></tr>`).join('')}
+        </tbody></table>`:''}
+        ${tutor.other.length>0?`<h4 style="margin:0.8rem 0 0.4rem;font-size:0.82rem;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">Other Year Tutees</h4>
+        <table class="rpt-table"><thead><tr><th>Name</th><th>Year</th><th>Course</th></tr></thead><tbody>
+        ${tutor.other.map(s=>`<tr><td>${s.name||'—'}</td><td>${s.year||'—'}</td><td>${s.course||'—'}</td></tr>`).join('')}
+        </tbody></table>`:''}
+      </div>`;
+    }
+
+    // Project detail
+    let projectHtml='';
+    if(proj){
+      const allProj=[...new Set([...proj.supervised,...proj.cosupervised,...proj.diss_assessed,...proj.poster_assessed])];
+      const rolePills=p=>[
+        p.supervisors.includes(proj.name)?'Supervisor':'',
+        p.cosupervisors.includes(proj.name)?'Co-supervisor':'',
+        p.diss1===proj.name||p.diss2===proj.name?'Diss. Assessor':'',
+        p.poster1===proj.name||p.poster2===proj.name?'Poster Assessor':'',
+      ].filter(Boolean).join(', ');
+      projectHtml=`<div class="rpt-section">
+        <h3>Project Supervision &amp; Assessment</h3>
+        <div class="rpt-summary-row">
+          <span>Supervised: <strong>${proj.supervised.length}</strong> (${proj.nSup.toFixed(2)} share)</span>
+          <span>Co-supervised: <strong>${proj.cosupervised.length}</strong> (${proj.nCoSup.toFixed(2)} share)</span>
+          <span>Diss. assessed: <strong>${proj.nDissAss}</strong></span>
+          <span>Poster assessed: <strong>${proj.nPostAss}</strong></span>
+        </div>
+        <table class="rpt-table">
+          <thead><tr><th>Project Title</th><th>Role(s)</th><th style="text-align:right">Hrs</th></tr></thead>
+          <tbody>
+          ${allProj.map(p=>{
+            const supShare=p.supervisors.includes(proj.name)?1/(p.supervisors.length||1):0;
+            const coSupShare=p.cosupervisors.includes(proj.name)?1/(p.cosupervisors.length||1):0;
+            const hrs=(supShare*(projSettings.supervision+projSettings.diss_feedback+projSettings.poster_feedback))
+                     +(coSupShare*projSettings.cosupervision)
+                     +((p.diss1===proj.name||p.diss2===proj.name)?projSettings.diss_marking:0)
+                     +((p.poster1===proj.name||p.poster2===proj.name)?projSettings.poster_marking:0);
+            return`<tr><td>${p.theme||'(No title)'}</td><td>${rolePills(p)}</td><td style="text-align:right">${hrs.toFixed(1)}</td></tr>`;
+          }).join('')}
+          </tbody>
+          <tfoot><tr><td colspan="2"><strong>Total</strong></td><td style="text-align:right"><strong>${d.projHours.toFixed(1)}h</strong></td></tr></tfoot>
+        </table>
+      </div>`;
+    }
+
+    // MMI detail
+    let mmiHtml='';
+    if(mmiR){
+      const activeSess=mmiR.sessions.filter(s=>!s.isReserve);
+      mmiHtml=`<div class="rpt-section">
+        <h3>MMI Interviewing</h3>
+        <div class="rpt-summary-row">
+          <span>Sessions: <strong>${activeSess.length}</strong></span>
+          <span>Total hours: <strong>${d.mmiHours.toFixed(1)}h</strong></span>
+        </div>
+        <table class="rpt-table">
+          <thead><tr><th>Date</th><th>Label</th><th>Time</th><th style="text-align:right">Duration (h)</th></tr></thead>
+          <tbody>
+          ${activeSess.map(s=>`<tr><td>${s.dateStr||'—'}</td><td>${s.label||'—'}</td><td>${formatHour(s.startH)}–${formatHour(s.endH)}</td><td style="text-align:right">${s.durationH.toFixed(2)}</td></tr>`).join('')}
+          </tbody>
+          <tfoot><tr><td colspan="3"><strong>Total</strong></td><td style="text-align:right"><strong>${d.mmiHours.toFixed(1)}h</strong></td></tr></tfoot>
+        </table>
+      </div>`;
+    }
+
+    // Citizenship detail
+    let citHtml='';
+    if(citRows.length>0){
+      citHtml=`<div class="rpt-section">
+        <h3>Citizenship &amp; Service Roles</h3>
+        <table class="rpt-table">
+          <thead><tr><th>Role</th><th>Category</th><th style="text-align:right">hrs/yr</th><th>Term</th><th>End Date</th></tr></thead>
+          <tbody>
+          ${citRows.map(r=>`<tr><td>${r.role}</td><td>${r.category}</td><td style="text-align:right">${r.hours%1===0?r.hours.toFixed(0):r.hours.toFixed(2)}</td><td>${r.term||'—'}</td><td>${r.end||'—'}</td></tr>`).join('')}
+          </tbody>
+          <tfoot><tr><td colspan="2"><strong>Total</strong></td><td style="text-align:right"><strong>${d.citHours.toFixed(1)}h</strong></td><td colspan="2"></td></tr></tfoot>
+        </table>
+      </div>`;
+    }
+
+    // Assessment detail
+    let assessmentHtml='';
+    if(d.assessmentName && assessmentAllData.length>0){
+      const rows=assessmentAllData.filter(r=>r.supervisor===d.assessmentName);
+      if(rows.length>0){
+        assessmentHtml=`<div class="rpt-section">
+        <h3>Assessment Workload</h3>
+        <div class="rpt-summary-row">
+          <span>Assessments: <strong>${rows.length}</strong></span>
+          <span>Total hours: <strong>${d.assessmentHours.toFixed(1)}h</strong></span>
+        </div>
+        <table class="rpt-table">
+          <thead><tr><th>Assessment</th><th>Year</th><th>Course</th><th style="text-align:right">Students</th><th style="text-align:right">Total Load (h)</th><th style="text-align:right">Hours</th></tr></thead>
+          <tbody>
+          ${rows.map(r=>`<tr><td>${r.assessmentDesc||'—'}</td><td>${r.year||'—'}</td><td>${r.course||'—'}</td><td style="text-align:right">${r.totalStudents||'—'}</td><td style="text-align:right">${r.totalLoad.toFixed(1)}</td><td style="text-align:right">${r.hours.toFixed(1)}</td></tr>`).join('')}
+          </tbody>
+          <tfoot><tr><td colspan="5"><strong>Total assessment hours</strong></td><td style="text-align:right"><strong>${d.assessmentHours.toFixed(1)}h</strong></td></tr></tfoot>
+        </table>
+      </div>`;
+      }
+    }
+
+    // Research detail
+    let researchHtml='';
+    if(d.resName && resAllData.length>0){
+      const row=resAllData.find(r=>r.name===d.resName);
+      if(row){
+        const resHrs=d.resHours||0;
+        researchHtml=`<div class="rpt-section">
+        <h3>Staff Research Hours</h3>
+        <div class="rpt-summary-row">
+          <span>Department: <strong>${row.dept||'—'}</strong></span>
+          <span>FTE: <strong>${row.fte>0?row.fte.toFixed(2):'—'}</strong></span>
+          <span>Projects: <strong>${row.projects||0}</strong></span>
+          <span>Hours/week: <strong>${row.hrsWeek>0?row.hrsWeek.toFixed(1):'—'}</strong></span>
+          <span>Total hours: <strong>${resHrs.toFixed(1)}h</strong></span>
+        </div>
+        <table class="rpt-table">
+          <thead><tr><th>Staff ID</th><th>Name</th><th>Department</th><th style="text-align:right">FTE</th><th style="text-align:right">Projects</th><th style="text-align:right">Hrs/Week</th><th style="text-align:right">Curr. Year (h)</th>${resYearPref==='next'?'<th style="text-align:right">Next Year (h)</th>':''}</tr></thead>
+          <tbody>
+            <tr><td>${row.identifier||'—'}</td><td>${row.name}</td><td>${row.dept||'—'}</td><td style="text-align:right">${row.fte>0?row.fte.toFixed(2):'—'}</td><td style="text-align:right">${row.projects||0}</td><td style="text-align:right">${row.hrsWeek>0?row.hrsWeek.toFixed(1):'—'}</td><td style="text-align:right">${row.currHours.toFixed(1)}</td>${resYearPref==='next'?`<td style="text-align:right">${row.nextHours.toFixed(1)}</td>`:''}</tr>
+          </tbody>
+          <tfoot><tr><td colspan="${resYearPref==='next'?'7':'6'}"><strong>Total research hours</strong></td><td style="text-align:right"><strong>${resHrs.toFixed(1)}h</strong></td></tr></tfoot>
+        </table>
+      </div>`;
+      }
+    }
+
+    // PGR Supervision detail
+    let pgrHtml='';
+    if(d.pgrName && pgrAllData.length>0){
+      const rows=pgrAllData.filter(r=>r.supervisor===d.pgrName);
+      if(rows.length>0){
+        pgrHtml=`<div class="rpt-section">
+        <h3>PGR Supervision</h3>
+        <div class="rpt-summary-row">
+          <span>Students: <strong>${rows.length}</strong></span>
+          <span>Total hours: <strong>${d.pgrHours.toFixed(1)}h</strong></span>
+        </div>
+        <table class="rpt-table">
+          <thead><tr><th>Student</th><th>Plan</th><th>Mode</th><th style="text-align:right">%</th><th>Start</th><th>End</th><th style="text-align:right">Hours</th></tr></thead>
+          <tbody>
+          ${rows.map(r=>`<tr><td>${r.studentName||'—'}</td><td>${r.plan||'—'}</td><td>${r.mode||'—'}</td><td style="text-align:right">${r.percent.toFixed(0)}%</td><td>${r.startDate||'—'}</td><td>${r.endDate||'—'}</td><td style="text-align:right">${r.hours.toFixed(1)}</td></tr>`).join('')}
+          </tbody>
+          <tfoot><tr><td colspan="6"><strong>Total PGR supervision hours</strong></td><td style="text-align:right"><strong>${d.pgrHours.toFixed(1)}h</strong></td></tr></tfoot>
+        </table>
+      </div>`;
+      }
     }
 
     // Summary donut-style bar
@@ -1609,7 +1979,7 @@ function generateDetailedReport(canonicals){
       </div>`).join('');
 
     sections+=`
-    <div class="rpt-person ${canonicals.length>1?'rpt-person-break':''}">
+    <div class="rpt-person${i>0?' rpt-person-break':''}">
       <div class="rpt-person-header">
         <div>
           <div class="rpt-person-name">${canonical}</div>
@@ -1620,27 +1990,23 @@ function generateDetailedReport(canonicals){
           <div class="rpt-total-badge" style="font-size:1.4rem;background:rgba(255,255,255,0.08)">${ftePct(d.canonical,d.total)}%<span>of ${personalTarget(d.canonical).toFixed(0)}h target</span></div>
         </div>
       </div>
-
       <div class="rpt-overview">
         <div class="rpt-overview-left">
-          <h3 style="margin:0 0 0.8rem;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.06em;color:#666">Load Summary</h3>
+          <h3 style="margin:0 0 0.8rem;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.06em;color:#666;padding-left:10px;border-left:2px solid #0066cc;line-height:1.2;">Load Summary</h3>
           ${summaryBars}
-          <div style="border-top:2px solid #041e42;margin-top:8px;padding-top:8px;display:flex;justify-content:space-between">
-            <strong>Total</strong><strong style="font-family:monospace">${d.total.toFixed(1)}h</strong>
+          <div style="border-top:2px solid #041e42;margin-top:8px;padding:10px 0 0;display:flex;justify-content:space-between;font-size:0.9rem;">
+            <span style="font-weight:700;color:#041e42;">Total</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#0066cc;font-size:1rem;">${d.total.toFixed(1)}h</span>
           </div>
         </div>
-        <div class="rpt-overview-right">
-          <h3 style="margin:0 0 0.8rem;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.06em;color:#666">Personal Statement</h3>
-          <div class="rpt-comment-area rpt-statement" contenteditable="true" data-placeholder="Provide an overall narrative for your promotion application — highlight key contributions, impact, and context for this workload…" style="min-height:100px"></div>
-        </div>
       </div>
-
-      ${teachingHtml}${tutorialHtml}${projectHtml}${mmiHtml}${citHtml}
+      ${teachingHtml}${assessmentHtml}${projectHtml}${tutorialHtml}${mmiHtml}${citHtml}${researchHtml}${pgrHtml}
     </div>`;
   }
 
+  if(!sections)return;
+
   const html=`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
-<title>Academic Workload Report · ${canonicals.join(', ')} · ${dateStr}</title>
+<title>Academic Workload Report – Combined – ${dateStr}</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -1651,7 +2017,6 @@ function generateDetailedReport(canonicals){
   .rpt-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.82rem;font-family:'IBM Plex Sans',sans-serif;transition:background 0.2s;}
   .rpt-btn:hover{background:rgba(255,255,255,0.25);}
   .rpt-btn.primary{background:#0066cc;border-color:#004fa3;}
-  .rpt-toolbar-note{font-size:0.72rem;opacity:0.6;font-style:italic;}
   .rpt-wrap{max-width:900px;margin:2rem auto;padding:0 1.5rem 4rem;}
   .rpt-person{background:white;border-radius:12px;border:1px solid #d0d7e3;overflow:hidden;margin-bottom:2.5rem;}
   .rpt-person-break{page-break-before:always;}
@@ -1660,43 +2025,42 @@ function generateDetailedReport(canonicals){
   .rpt-person-sub{font-size:0.78rem;opacity:0.6;}
   .rpt-total-badge{text-align:center;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:1rem 1.5rem;font-family:'IBM Plex Mono',monospace;font-size:2rem;font-weight:500;line-height:1.1;flex-shrink:0;}
   .rpt-total-badge span{display:block;font-family:'IBM Plex Sans',sans-serif;font-size:0.68rem;font-weight:400;opacity:0.7;margin-top:2px;}
-  .rpt-overview{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;padding:1.5rem 2rem;background:#f8f9fb;border-bottom:1px solid #d0d7e3;}
-  .rpt-overview-left,.rpt-overview-right{background:white;border-radius:8px;border:1px solid #d0d7e3;padding:1rem 1.2rem;}
+  .rpt-overview{display:block;padding:1.5rem 2rem;background:#f8f9fb;border-bottom:1px solid #d0d7e3;}
+  .rpt-overview-left{background:white;border-radius:8px;border:1px solid #d0d7e3;padding:1rem 1.2rem;}
   .rpt-section{padding:1.5rem 2rem;border-bottom:1px solid #eef0f5;}
   .rpt-section:last-child{border-bottom:none;}
-  .rpt-section h3{font-family:'Source Serif 4',serif;font-size:1.1rem;color:#041e42;margin-bottom:0.8rem;display:flex;align-items:center;gap:8px;}
+  .rpt-section h3{font-family:'Source Serif 4',serif;font-size:1.05rem;color:#041e42;margin-bottom:0.8rem;padding-left:12px;border-left:3px solid #0066cc;line-height:1.3;}
   .rpt-summary-row{display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:1rem;background:#f0f4ff;border-radius:6px;padding:0.6rem 0.8rem;font-size:0.82rem;}
   .rpt-table{width:100%;border-collapse:collapse;font-size:0.8rem;margin-bottom:1rem;}
   .rpt-table th{background:#041e42;color:white;padding:6px 10px;font-weight:500;text-align:left;font-size:0.75rem;}
   .rpt-table td{padding:6px 10px;border-bottom:1px solid #eef0f5;}
   .rpt-table tfoot td{font-weight:600;background:#f0f4ff;border-top:2px solid #d0d7e3;}
-  .rpt-mod-cell{font-weight:500;background:#f8f9fb;border-right:2px solid #d0d7e3;vertical-align:top;padding-top:8px;}
   .rpt-total-row td{background:#e8f0fb;}
-  .rpt-comment-block{margin-top:1rem;}
-  .rpt-comment-label{font-size:0.72rem;font-weight:600;color:#6b7494;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
-  .rpt-comment-area{border:1.5px dashed #b0b8d0;border-radius:6px;padding:0.7rem 0.9rem;min-height:60px;background:#fafbff;color:#1a1f2e;font-family:'IBM Plex Sans',sans-serif;font-size:0.85rem;line-height:1.6;outline:none;transition:border-color 0.2s;}
-  .rpt-comment-area:focus{border-color:#0066cc;background:white;}
-  .rpt-comment-area:empty::before{content:attr(data-placeholder);color:#aab;font-style:italic;}
   @media print{
-    body{background:white;}
+    body{background:white;font-size:11px;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .rpt-toolbar{display:none!important;}
-    .rpt-wrap{max-width:100%;margin:0;padding:0 1cm;}
-    .rpt-person{border:none;border-radius:0;box-shadow:none;margin-bottom:0;}
-    .rpt-person-break{page-break-before:always;}
-    .rpt-comment-area{border:1px solid #ccc;background:white;}
-    .rpt-comment-area:empty{display:none;}
-    .rpt-comment-area:empty::before{display:none;}
+    .rpt-wrap{max-width:100%;margin:0;padding:0 1.5cm;}
+    .rpt-person{border:1px solid #ccc;border-radius:4px;box-shadow:none;margin-bottom:0;page-break-inside:avoid;}
+    .rpt-person-break{page-break-before:always!important;}
+    .rpt-person-header{background:#041e42!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:1.5rem 2rem 1rem;}
+    .rpt-table th{background:#041e42!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .rpt-summary-row{background:#f0f4ff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .rpt-table tfoot td{background:#f0f4ff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .rpt-overview{background:#f8f9fb!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .rpt-total-badge{border:1px solid rgba(255,255,255,0.3);}
+    .rpt-total-badge span{opacity:0.7;}
+    .rpt-section h3{color:#041e42;}
+    @page{margin:2cm 0;}
   }
 </style>
 </head><body>
 <div class="rpt-toolbar">
   <div>
-    <h2>Academic Workload Report — ${canonicals.length===1?canonicals[0]:canonicals.length+' staff members'}</h2>
-    <div class="rpt-toolbar-note">Fill in the comment boxes below, then print or save as PDF</div>
+    <h2>Academic Workload Report — ${canonicals.length} staff members</h2>
   </div>
   <div class="rpt-toolbar-btns">
-    <button class="rpt-btn" onclick="window.print()">🖨 Print / Save PDF</button>
-    <button class="rpt-btn" onclick="window.close()">✕ Close</button>
+    <button class="rpt-btn" onclick="window.print()">Print / Save PDF</button>
+    <button class="rpt-btn" onclick="window.close()">Close</button>
   </div>
 </div>
 <div class="rpt-wrap">${sections}</div>
@@ -1707,9 +2071,15 @@ function generateDetailedReport(canonicals){
   w.document.close();
 }
 
+
 document.getElementById('combDetailBtn').addEventListener('click',()=>{
   if(combSelected.size===0)return;
   generateDetailedReport([...combSelected]);
+});
+
+document.getElementById('combCombinedBtn').addEventListener('click',()=>{
+  if(combSelected.size===0)return;
+  generateCombinedReport([...combSelected]);
 });
 
 document.getElementById('combExportBtn').addEventListener('click',()=>{
@@ -2260,14 +2630,19 @@ function renderPgrTable() {
   const data = pgrGetSorted();
   const maxHours = Math.max(...data.map(r => r.hours), 1);
   document.getElementById('pgrTbody').innerHTML = data.map(r => {
+    const enc = encodeURIComponent(r.supervisor);
     const barPct = Math.min(r.hours / maxHours * 100, 100).toFixed(1);
     return `<tr>
-      <td class="name-f">${r.supervisor}</td>
+      <td class="name-f" data-supervisor="${enc}" style="cursor:pointer">${r.supervisor}</td>
       <td class="num">${r.studentCount}</td>
       <td class="num">${r.hours.toFixed(1)}</td>
       <td><div class="pgr-hrs-bar-wrap"><div class="pgr-hrs-bar"><div class="pgr-hrs-bar-fill" style="width:${barPct}%" title="${r.hours.toFixed(1)} hours"></div></div></td>
     </tr>`;
   }).join('');
+  // Wire up row clicks for deep-dive
+  document.querySelectorAll('#pgrTbody .name-f').forEach(cell => {
+    cell.addEventListener('click', () => pgrOpenDetail(decodeURIComponent(cell.dataset.supervisor)));
+  });
 
   // Footer
   const totalHours = data.reduce((s, r) => s + r.hours, 0);
@@ -2278,6 +2653,36 @@ function renderPgrTable() {
     <td class="num"><strong>${totalHours.toFixed(1)}</strong></td>
     <td></td>
   </tr>`;
+}
+
+function pgrOpenDetail(supervisorName) {
+  const rows = pgrAllData.filter(r => r.supervisor === supervisorName);
+  if (rows.length === 0) return;
+  const totalHours = rows.reduce((s, r) => r.hours + s, 0);
+  const studentCount = new Set(rows.map(r => r.studentName)).size;
+
+  let html = `<div class="panel-section"><h4>Hours Breakdown</h4>
+    <div class="panel-row"><span class="k">Total hours</span><span class="v big">${totalHours.toFixed(1)}h</span></div>
+    <div class="panel-row"><span class="k">Students</span><span class="v">${studentCount}</span></div>
+  </div>`;
+
+  html += `<div class="panel-section"><h4>Students (${rows.length} supervisor rows)</h4>`;
+  for (const r of rows) {
+    const startStr = r.startDate ? r.startDate.toISOString().slice(0, 10) : '—';
+    const endStr = r.endDate ? r.endDate.toISOString().slice(0, 10) : '—';
+    html += `<div class="proj-student">
+      <div class="sn">${r.studentName}</div>
+      <div class="sr">
+        ${r.plan ? '<span style="margin-right:8px">📋 ' + r.plan + '</span>' : ''}
+        ${r.mode ? '<span style="margin-right:8px">📐 ' + r.mode + '</span>' : ''}
+        <span style="margin-right:8px">📅 ${startStr} → ${endStr}</span>
+        <span style="font-weight:600;color:var(--teal)">${r.hours.toFixed(1)}h @ ${r.percent}%</span>
+      </div>
+    </div>`;
+  }
+  html += '</div>';
+
+  openPanel(supervisorName, `${totalHours.toFixed(1)}h total · ${studentCount} student${studentCount !== 1 ? 's' : ''}`, html);
 }
 
 function renderPgr(data) {
