@@ -14,11 +14,7 @@
     <div class="logo-mark">AL</div>
     <div>
       <div class="header-title">Academic Load — Combined View</div>
-<<<<<<< HEAD
-      <div class="header-sub">Teaching · Assessment · Projects · Tutorial · MMIs · Citizenship · Research · PGR · Merged totals</div>
-=======
       <div class="header-sub">Teaching · Non-timetabled assessment · Projects · Tutorial · MMIs · Citizenship · Research · PGR · Merged totals</div>
->>>>>>> 512c08d (Refactor)
     </div>
   </div>
   <div class="header-badge">100% browser-based · data never leaves your device</div>
@@ -27,11 +23,7 @@
 <main>
   <div class="main-tabs">
     <button class="main-tab-btn active" data-panel="panel-teaching">📅 Teaching Load <span class="tab-badge" id="badge-teaching">—</span></button>
-<<<<<<< HEAD
-    <button class="main-tab-btn" data-panel="panel-assessment">📝 Assessment <span class="tab-badge" id="badge-assessment">—</span></button>
-=======
     <button class="main-tab-btn" data-panel="panel-assessment">📝 Non-timetabled assessment <span class="tab-badge" id="badge-assessment">—</span></button>
->>>>>>> 512c08d (Refactor)
     <button class="main-tab-btn" data-panel="panel-project">🎓 Project Supervision <span class="tab-badge" id="badge-project">—</span></button>
     <button class="main-tab-btn" data-panel="panel-tutorial">👥 Tutorial Workload <span class="tab-badge" id="badge-tutorial">—</span></button>
     <button class="main-tab-btn" data-panel="panel-mmi">🩺 MMIs <span class="tab-badge" id="badge-mmi">—</span></button>
@@ -392,21 +384,12 @@
       <div class="landing-grid">
         <div class="landing-hero" style="background:linear-gradient(135deg,#6a11cb,#2575fc)">
           <div class="hero-eyebrow">Tab 8 of 9</div>
-<<<<<<< HEAD
-          <h1 class="hero-h1">Assessment Load</h1>
-          <p class="hero-desc">Upload the assessment spreadsheet (XLSX). Calculates load per academic based on total assessment hours divided among all staff, with extra allowances for staff listed in 1.0x/0.5x extra columns if expiry date is in the future.</p>
-          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">Columns A–G empty, H–I merged 'Allow 1.0x extra', J–K merged 'Allow 0.5x extra'. Row 2: Assessment description · Year of study · Course code(s) · Load per student (minutes) · Total students · Total assessment load (hours) · All staff (comma separated) · Staff · Expiry (XX/YY/ZZ) · Staff · Expiry (XX/YY/ZZ)</strong></div>
-        </div>
-        <div class="landing-panel">
-          <h2 class="panel-h2">Upload Assessment Spreadsheet</h2>
-=======
           <h1 class="hero-h1">Non-timetabled Assessment Load</h1>
           <p class="hero-desc">Upload the non-timetabled assessment spreadsheet (XLSX). Calculates load per academic based on total non-timetabled assessment hours divided among all staff, with extra allowances for staff listed in 1.0x/0.5x extra columns if expiry date is in the future.</p>
           <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">Columns A–G empty, H–I merged 'Allow 1.0x extra', J–K merged 'Allow 0.5x extra'. Row 2: Non-timetabled assessment description · Year of study · Course code(s) · Load per student (minutes) · Total students · Total non-timetabled assessment load (hours) · All staff (comma separated) · Staff · Expiry (XX/YY/ZZ) · Staff · Expiry (XX/YY/ZZ)</strong></div>
         </div>
         <div class="landing-panel">
           <h2 class="panel-h2">Upload Non-timetabled Assessment Spreadsheet</h2>
->>>>>>> 512c08d (Refactor)
           <p class="panel-sub">XLSX or XLS file. Double-row header expected.</p>
           <div class="drop-zone" id="assessmentDropZone" style="border-color:#2575fc;background:#e8f0ff">
             <input type="file" id="assessmentFileInput" accept=".xlsx,.xls">
@@ -420,11 +403,7 @@
     </div>
     <div id="assessment-content" style="display:none">
       <div class="analyser-header">
-<<<<<<< HEAD
-        <div class="analyser-title-block"><h2>Assessment Load</h2><div class="analyser-meta" id="assessmentMeta"></div></div>
-=======
         <div class="analyser-title-block"><h2>Non-timetabled Assessment Load</h2><div class="analyser-meta" id="assessmentMeta"></div></div>
->>>>>>> 512c08d (Refactor)
         <div class="analyser-actions">
           <button class="btn-action" id="assessmentBtnBack">← Back</button>
           <button class="btn-action" id="assessmentBtnExport">⬇ Export XLSX</button>
@@ -461,11 +440,7 @@
       <p>Load data in Tabs 1–4, then merge here. Names are matched across all sources using title-stripping and fuzzy matching.</p>
       <div class="combined-status">
         <span class="status-pill" id="comb-status-tl">Teaching Load</span>
-<<<<<<< HEAD
-        <span class="status-pill" id="comb-status-assessment">Assessment</span>
-=======
         <span class="status-pill" id="comb-status-assessment">Non-timetabled assess.</span>
->>>>>>> 512c08d (Refactor)
         <span class="status-pill" id="comb-status-proj">Project Supervision</span>
         <span class="status-pill" id="comb-status-tut">Tutorial Workload</span>
         <span class="status-pill" id="comb-status-mmi">MMIs</span>
@@ -505,11 +480,7 @@
           <option value="total-desc">Total Load ↓</option>
           <option value="total-asc">Total Load ↑</option>
           <option value="teaching-desc">Teaching ↓</option>
-<<<<<<< HEAD
-          <option value="assessment-desc">Assessment ↓</option>
-=======
           <option value="assessment-desc">Non-timetabled assess. ↓</option>
->>>>>>> 512c08d (Refactor)
           <option value="project-desc">Project ↓</option>
           <option value="tutorial-desc">Tutorial ↓</option>
           <option value="mmi-desc">MMI ↓</option>
@@ -562,11 +533,7 @@
             <th data-combsort="name" style="cursor:pointer;user-select:none">Academic ↕</th>
             <th style="min-width:140px">Tags</th>
             <th data-combsort="teaching" style="cursor:pointer;user-select:none;text-align:right">Teaching ↕</th>
-<<<<<<< HEAD
-            <th data-combsort="assessment" style="cursor:pointer;user-select:none;text-align:right">Assessment ↕</th>
-=======
             <th data-combsort="assessment" style="cursor:pointer;user-select:none;text-align:right">Non-timetabled assess. ↕</th>
->>>>>>> 512c08d (Refactor)
             <th data-combsort="project" style="cursor:pointer;user-select:none;text-align:right">Project ↕</th>
             <th data-combsort="tutorial" style="cursor:pointer;user-select:none;text-align:right">Tutorial ↕</th>
             <th data-combsort="mmi" style="cursor:pointer;user-select:none;text-align:right">MMI ↕</th>
@@ -658,9 +625,6 @@
 </div>
 </div>
 
-<<<<<<< HEAD
-  <script src="opp.js"></script>
-=======
   <script src="js/shared/utils.js"></script>
   <script src="js/shared/storage.js"></script>
   <script src="js/tabs/teaching.js"></script>
@@ -672,7 +636,6 @@
   <script src="js/tabs/assessment.js"></script>
   <script src="js/tabs/citizenship.js"></script>
   <script src="js/tabs/combined.js"></script>
->>>>>>> 512c08d (Refactor)
 </body>
 
 
