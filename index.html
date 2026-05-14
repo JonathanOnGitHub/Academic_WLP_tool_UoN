@@ -14,23 +14,37 @@
     <div class="logo-mark">AL</div>
     <div>
       <div class="header-title">Academic Load — Combined View</div>
-      <div class="header-sub">Teaching · Non-timetabled assessment · Projects · Tutorial · MMIs · Citizenship · Research · PGR · Merged totals</div>
+      <div class="header-sub">Teaching · Citizenship · Research · Combined Totals</div>
     </div>
   </div>
   <div class="header-badge">100% browser-based · data never leaves your device</div>
+  <button class="header-help-btn" id="helpBtn" onclick="openHelp()" title="Help &amp; methodology">?</button>
 </header>
 
 <main>
   <div class="main-tabs">
-    <button class="main-tab-btn active" data-panel="panel-teaching">📅 Teaching Load <span class="tab-badge" id="badge-teaching">—</span></button>
-    <button class="main-tab-btn" data-panel="panel-assessment">📝 Non-timetabled assessment <span class="tab-badge" id="badge-assessment">—</span></button>
-    <button class="main-tab-btn" data-panel="panel-project">🎓 Project Supervision <span class="tab-badge" id="badge-project">—</span></button>
-    <button class="main-tab-btn" data-panel="panel-tutorial">👥 Tutorial Workload <span class="tab-badge" id="badge-tutorial">—</span></button>
-    <button class="main-tab-btn" data-panel="panel-mmi">🩺 MMIs <span class="tab-badge" id="badge-mmi">—</span></button>
-    <button class="main-tab-btn" data-panel="panel-citizenship">🏛 Citizenship <span class="tab-badge" id="badge-citizenship">—</span></button>
-    <button class="main-tab-btn" data-panel="panel-research">🔬 Staff Research Hours <span class="tab-badge" id="badge-research">—</span></button>
-    <button class="main-tab-btn" data-panel="panel-pgr">👨‍🎓 PGR Supervision <span class="tab-badge" id="badge-pgr">—</span></button>
-<button class="main-tab-btn" data-panel="panel-combined">⚡ Combined Totals <span class="tab-badge" id="badge-combined">—</span></button>
+    <button class="main-tab-btn active" data-maingroup="teaching">📚 Teaching</button>
+    <button class="main-tab-btn" data-maingroup="citizenship">🏛 Citizenship</button>
+    <button class="main-tab-btn" data-maingroup="research">🔬 Research</button>
+    <button class="main-tab-btn" data-maingroup="combined">⚡ Combined Totals <span class="tab-badge" id="badge-combined">—</span></button>
+  </div>
+
+  <div class="sub-tabs-bar" id="subtab-teaching">
+    <button class="sub-tab-btn active" data-panel="panel-teaching">📅 Timetabled teaching load <span class="tab-badge" id="badge-teaching">—</span></button>
+    <button class="sub-tab-btn" data-panel="panel-assessment">📝 Non-timetabled assessment <span class="tab-badge" id="badge-assessment">—</span></button>
+    <button class="sub-tab-btn" data-panel="panel-project">🎓 Research Projects <span class="tab-badge" id="badge-project">—</span></button>
+    <button class="sub-tab-btn" data-panel="panel-staffing">👥 Staffing &amp; Concurrency <span class="tab-badge" id="badge-staffing">—</span></button>
+  </div>
+
+  <div class="sub-tabs-bar" id="subtab-citizenship" style="display:none">
+    <button class="sub-tab-btn active" data-panel="panel-tutorial">👥 Tutorials <span class="tab-badge" id="badge-tutorial">—</span></button>
+    <button class="sub-tab-btn" data-panel="panel-mmi">🩺 MMIs <span class="tab-badge" id="badge-mmi">—</span></button>
+    <button class="sub-tab-btn" data-panel="panel-citizenship">🏛 School Citizenship <span class="tab-badge" id="badge-citizenship">—</span></button>
+  </div>
+
+  <div class="sub-tabs-bar" id="subtab-research" style="display:none">
+    <button class="sub-tab-btn active" data-panel="panel-research">🔬 Staff research hours <span class="tab-badge" id="badge-research">—</span></button>
+    <button class="sub-tab-btn" data-panel="panel-pgr">👨‍🎓 PGR supervision <span class="tab-badge" id="badge-pgr">—</span></button>
   </div>
 
   <!-- ═══ TAB 1: TEACHING LOAD ═══ -->
@@ -38,7 +52,7 @@
     <div id="tl-landing">
       <div class="landing-grid">
         <div class="landing-hero">
-          <div class="hero-eyebrow">Tab 1 of 5</div>
+          <div class="hero-eyebrow">📚 Teaching · Timetabled load</div>
           <h1 class="hero-h1">Teaching Load Analyser</h1>
           <p class="hero-desc">Upload exported HTML timetable files. Parses session data and calculates weekly contact hours per staff member.</p>
         </div>
@@ -66,16 +80,16 @@
         <h3>Teaching Preparation Hours</h3>
         <div class="is-grid">
           <div class="is-group">
-            <label>Prep ratio (hrs prep per contact hr)</label>
+            <label>Prep hours per timetabled activity</label>
             <input type="number" id="tl_prep_ratio" value="2.0" min="0" max="10" step="0.5">
-            <span class="hint">2.0 = 2 prep hrs per timetabled hr</span>
+            <span class="hint">2.0 = 2 prep hrs per timetabled activity</span>
           </div>
           <div class="is-group" style="justify-content:flex-end;padding-top:1.4rem">
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
               <input type="checkbox" id="tl_prep_enabled" style="accent-color:var(--mid-blue);width:15px;height:15px">
               Include preparation hours
             </label>
-            <span class="hint" style="margin-top:4px">Adds prep hrs to all totals transparently</span>
+            <span class="hint" style="margin-top:4px">Adds prep hrs to all totals</span>
           </div>
         </div>
         <button class="btn-recalc" id="tlRecalcBtn">↻ Apply</button>
@@ -93,12 +107,64 @@
     </div>
   </div>
 
+  <!-- ═══ STAFFING & CONCURRENCY ═══ -->
+  <div class="main-tab-panel" id="panel-staffing">
+    <div id="st-landing">
+      <div class="landing-grid">
+        <div class="landing-hero" style="background:linear-gradient(135deg,#2a1a50,#6b21a8)">
+          <div class="hero-eyebrow">👥 Staffing · Concurrency</div>
+          <h1 class="hero-h1">Staffing &amp; Concurrency Analysis</h1>
+          <p class="hero-desc">Analyses timetabled sessions to find peak staffing demand — how many staff are needed simultaneously, when, and for which activities. Works with data loaded in the Teaching tab.</p>
+        </div>
+        <div class="landing-panel" id="st-no-data">
+          <h2 class="panel-h2">No Timetable Data</h2>
+          <p class="panel-sub">Go to <strong>Teaching → Timetabled teaching load</strong> and analyse a timetable first. This view reuses the same parsed session data.</p>
+        </div>
+      </div>
+    </div>
+    <div id="st-results" style="display:none">
+      <div class="analyser-header">
+        <div class="analyser-title-block">
+          <h2>Staffing &amp; Concurrency Analysis</h2>
+          <div class="analyser-meta" id="stMeta"></div>
+        </div>
+      </div>
+      <div class="stats-bar" id="stStatsBar"></div>
+      <div id="stPeakCard"></div>
+      <div class="st-two-col">
+        <div>
+          <h3 class="st-section-title">Concurrency Distribution</h3>
+          <div id="stHistogram"></div>
+        </div>
+        <div>
+          <h3 class="st-section-title">Peak Concurrency per Week</h3>
+          <div id="stWeekPeaks"></div>
+        </div>
+      </div>
+      <div class="st-term-section">
+        <div class="st-term-header">
+          <h3 class="st-section-title" style="margin:0">Term-Time Staffing Requirements</h3>
+          <div class="st-term-params">
+            <label>Max teaching intensity:</label>
+            <input type="number" id="stMaxIntensity" value="14" min="4" max="40" step="1">
+            <span>h/week/person</span>
+          </div>
+        </div>
+        <div class="stats-bar" id="stTermStats"></div>
+        <div id="stTermWeekly"></div>
+        <div id="stTermIntensity"></div>
+      </div>
+      <h3 class="st-section-title" style="margin-top:1.5rem">Sessions with Highest Staff Demand</h3>
+      <div id="stHighDemand" class="st-table-wrap"></div>
+    </div>
+  </div>
+
   <!-- ═══ TAB 2: TUTORIAL WORKLOAD ═══ -->
   <div class="main-tab-panel" id="panel-tutorial">
     <div id="tut-landing">
       <div class="landing-grid">
         <div class="landing-hero" style="background:linear-gradient(135deg,#0a3d2a,#1a7a4a)">
-          <div class="hero-eyebrow">Tab 2 of 5</div>
+          <div class="hero-eyebrow">🏛 Citizenship · Tutorials</div>
           <h1 class="hero-h1">Tutor Workload Calculator</h1>
           <p class="hero-desc">Upload the student allocation spreadsheet (XLSX). Calculates hours per tutor based on year of study.</p>
         </div>
@@ -119,7 +185,17 @@
     <div id="tut-content" style="display:none">
       <div class="analyser-header">
         <div class="analyser-title-block"><h2>Tutorial Workload</h2><div class="analyser-meta" id="tutMeta"></div></div>
-        <div class="analyser-actions"><button class="btn-action" id="tutBtnBack">← Back</button></div>
+        <div class="analyser-actions"><button class="btn-action" id="tutBtnBack">← Back</button><button class="btn-action" id="tutBtnSettings">⚙ Settings</button></div>
+      </div>
+      <div class="inline-settings" id="tutInlineSettings">
+        <h3>Hour Rates — adjust and click Recalculate</h3>
+        <div class="is-grid">
+          <div class="is-group"><label>Year 1 tutee hours</label><input type="number" id="as_tutY1" min="1" max="100" step="1"><span class="hint">hrs/tutee</span></div>
+          <div class="is-group"><label>Other year hours</label><input type="number" id="as_tutOther" min="1" max="100" step="1"><span class="hint">hrs/tutee</span></div>
+          <div class="is-group"><label>Extra CPD/PDP allowance</label><input type="number" id="as_tutExtra" min="0" max="10" step="0.5"><span class="hint">hrs/student</span></div>
+          <div class="is-group" style="grid-column:1/-1"><label>Selected course codes</label><input type="text" id="as_tutCourses" style="width:100%"><span class="hint">comma separated</span></div>
+        </div>
+        <button class="btn-primary" id="tutRecalcBtn" style="margin-top:0.6rem">Recalculate</button>
       </div>
       <div class="tut-summary" id="tutSummary"></div>
       <div class="search-row"><input type="text" id="tutSearch" placeholder="Search tutor…"><select id="tutSort"><option value="hours-desc">Hours ↓</option><option value="hours-asc">Hours ↑</option><option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option></select></div>
@@ -132,7 +208,7 @@
     <div id="proj-landing">
       <div class="landing-grid">
         <div class="landing-hero" style="background:linear-gradient(135deg,#3a1f0a,#b84c2a)">
-          <div class="hero-eyebrow">Tab 3 of 5</div>
+          <div class="hero-eyebrow">📚 Teaching · Research Projects</div>
           <h1 class="hero-h1">Project Supervision &amp; Assessment</h1>
           <p class="hero-desc">Upload the project allocation spreadsheet. Calculates supervision, dissertation, and poster hours per academic.</p>
           <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected: <strong style="color:rgba(255,255,255,0.85)">Theme · Supervisor · Co_Supervisors · Poster_1/2_Assessor · Dissertation_1/2_Assessor</strong></div>
@@ -146,7 +222,7 @@
             <div class="proj-settings-hdr" id="projSettingsHdr"><h3>⚙️ Hour settings</h3><span class="chev">▾</span></div>
             <div class="proj-settings-body" id="projSettingsBody">
               <div class="ps-row"><label>Supervision <span class="hint">Per student supervised</span></label><input type="number" id="ps_sup" value="12" min="0" step="0.5"></div>
-              <div class="ps-row"><label>Co-supervision <span class="hint">Per student co-supervised</span></label><input type="number" id="ps_cosup" value="6" min="0" step="0.5"></div>
+              <div class="ps-row"><label>Co-supervision <span class="hint">Per student co-supervised</span></label><input type="number" id="ps_cosup" value="0" min="0" step="0.5"></div>
               <div class="ps-row"><label>Dissertation feedback <span class="hint">Supervisor's students only</span></label><input type="number" id="ps_diss_fb" value="3" min="0" step="0.5"></div>
               <div class="ps-row"><label>Dissertation marking <span class="hint">Assessor_1 / Assessor_2</span></label><input type="number" id="ps_diss_mk" value="2" min="0" step="0.5"></div>
               <div class="ps-row"><label>Poster feedback <span class="hint">Supervisor's students only</span></label><input type="number" id="ps_post_fb" value="0.5" min="0" step="0.25"></div>
@@ -190,7 +266,7 @@
     <div id="mmi-landing">
       <div class="landing-grid">
         <div class="landing-hero" style="background:linear-gradient(135deg,#2d1b69,#6b21a8)">
-          <div class="hero-eyebrow">Tab 4 of 5</div>
+          <div class="hero-eyebrow">🏛 Citizenship · MMIs</div>
           <h1 class="hero-h1">MMI Workload Calculator</h1>
           <p class="hero-desc">Upload the MMI allocation spreadsheet. Each tab is one interview session — the tab name encodes the date and time. Staff names are read from column B starting at row 5. Reserve staff (flagged in column A) are listed but not counted toward load hours.</p>
           <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">
@@ -256,7 +332,7 @@
     <div id="res-landing">
       <div class="landing-grid">
         <div class="landing-hero" style="background:linear-gradient(135deg,#042a3a,#0a7a9a)">
-          <div class="hero-eyebrow">Tab 6 of 7</div>
+          <div class="hero-eyebrow">🔬 Research · Staff hours</div>
           <h1 class="hero-h1">Staff Research Hours</h1>
           <p class="hero-desc">Upload the staff research hours spreadsheet (XLSX). Displays FTE, project count, and current/next year hours per staff member, and feeds into the Combined Totals view.</p>
           <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">Staff Identifier · Name · Department · Sum of Max FTE · Project Count · Hrs Per Week · Current Year Hours · Next Year Hours</strong></div>
@@ -325,7 +401,7 @@
     <div id="pgr-landing">
       <div class="landing-grid">
         <div class="landing-hero" style="background:linear-gradient(135deg,#0a4a3a,#0a9a7a)">
-          <div class="hero-eyebrow">Tab 7 of 8</div>
+          <div class="hero-eyebrow">🔬 Research · PGR supervision</div>
           <h1 class="hero-h1">PGR Supervision</h1>
           <p class="hero-desc">Upload the PGR supervision spreadsheet (XLSX). Calculates 100 hours per year per PhD/MRes student, split according to supervision percentages, and feeds into the Combined Totals view.</p>
           <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">First Name · Surname · Start date · ESD · End date · Thesis Submitted Date · Plan/Programme · PI · % PI · 2nd Supervisor · % Supervisor 2 · 3rd Supervisor · % Supervisor 3 · 4th Supervisor · % Supervisor 4 · 5th Supervisor · % Supervisor 5 · Assistant Supervisor · Mode</strong></div>
@@ -383,14 +459,14 @@
     <div id="assessment-landing">
       <div class="landing-grid">
         <div class="landing-hero" style="background:linear-gradient(135deg,#6a11cb,#2575fc)">
-          <div class="hero-eyebrow">Tab 8 of 9</div>
+          <div class="hero-eyebrow">📚 Teaching · Non-timetabled assessment</div>
           <h1 class="hero-h1">Non-timetabled Assessment Load</h1>
-          <p class="hero-desc">Upload the non-timetabled assessment spreadsheet (XLSX). Calculates load per academic based on total non-timetabled assessment hours divided among all staff, with extra allowances for staff listed in 1.0x/0.5x extra columns if expiry date is in the future.</p>
-          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">Columns A–G empty, H–I merged 'Allow 1.0x extra', J–K merged 'Allow 0.5x extra'. Row 2: Non-timetabled assessment description · Year of study · Course code(s) · Load per student (minutes) · Total students · Total non-timetabled assessment load (hours) · All staff (comma separated) · Staff · Expiry (XX/YY/ZZ) · Staff · Expiry (XX/YY/ZZ)</strong></div>
+          <p class="hero-desc">Upload the <a href="https://uniofnottm.sharepoint.com/:x:/s/SchoolofPharmacy/IQALTGX_d9itQpc2yuJXZnwfAUdEaoCFnpwOVZLroItDP5I?e=3ehwvq&CID=6dbe41ef-e783-d1d6-08b4-8f24b11289f5" style="color:#fff;text-decoration:underline;text-underline-offset:2px">non-timetabled assessment spreadsheet</a> (XLSX). Calculates load per academic based on total hours divided equally among all listed staff. Extra allowances for staff new to assessment (+1.0x), handing over (+0.5x), or moderating (+0.1x).</p>
+          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">Assessment description · Year of study · Course code(s) · Load per student (minutes) · Total students · Total assessment load (hours) · All staff (comma separated) · New to assessment (+ 1.0x) · Handing over assessment (+ 0.5x) · Moderators (0.1x) · Notes</strong></div>
         </div>
         <div class="landing-panel">
           <h2 class="panel-h2">Upload Non-timetabled Assessment Spreadsheet</h2>
-          <p class="panel-sub">XLSX or XLS file. Double-row header expected.</p>
+          <p class="panel-sub">XLSX or XLS file. Single-row header with 11 columns.</p>
           <div class="drop-zone" id="assessmentDropZone" style="border-color:#2575fc;background:#e8f0ff">
             <input type="file" id="assessmentFileInput" accept=".xlsx,.xls">
             <div class="drop-icon">📝</div>
@@ -448,6 +524,12 @@
         <span class="status-pill" id="comb-status-res">Research Hours</span>
         <span class="status-pill" id="comb-status-pgr">PGR Supervision</span>
       </div>
+      <div class="anon-toggle" style="margin:6px 0;display:flex;align-items:center;gap:8px;font-size:0.82rem">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none">
+          <input type="checkbox" id="combAnonMode" style="cursor:pointer">
+          <span>🕵️ Anonymous mode — replace staff names with Flintstones-style pseudonyms</span>
+        </label>
+      </div>
       <button class="btn-primary" id="combMergeBtn" style="width:auto;padding:0.65rem 1.8rem" disabled>⚡ Merge &amp; Calculate</button>
     </div>
     <div id="comb-result" style="display:none">
@@ -472,6 +554,11 @@
         <div class="fte-set-group" style="align-self:flex-end">
           <span class="hint" style="font-size:0.72rem;color:var(--muted)">Per-person FTE fractions set via tag rules below, or manually in each row's tag popover</span>
         </div>
+        <div class="fte-set-group">
+          <label>Academic housekeeping rate</label>
+          <input type="number" id="housekeepingRate" value="10" min="0" max="50" step="0.5" style="width:70px"> %
+          <span class="hint">Flat-rate overhead (compulsory training, general emails, etc.) applied to each academic's total</span>
+        </div>
       </div>
       <div class="merge-info" id="combMergeInfo"></div>
       <div class="search-row">
@@ -487,6 +574,7 @@
           <option value="citizenship-desc">Citizenship ↓</option>
           <option value="research-desc">Research ↓</option>
           <option value="pgr-desc">PGR ↓</option>
+          <option value="housekeeping-desc">🧹 Housekeeping ↓</option>
           <option value="name-asc">Name A–Z</option>
         </select>
       </div>
@@ -540,6 +628,7 @@
             <th data-combsort="citizenship" style="cursor:pointer;user-select:none;text-align:right">Citizenship ↕</th>
             <th data-combsort="research" style="cursor:pointer;user-select:none;text-align:right">Research ↕</th>
             <th data-combsort="pgr" style="cursor:pointer;user-select:none;text-align:right">PGR ↕</th>
+            <th data-combsort="housekeeping" style="cursor:pointer;user-select:none;text-align:right">🧹 Housekeeping ↕</th>
             <th data-combsort="total" style="cursor:pointer;user-select:none;text-align:right">Total ↕</th>
             <th data-combsort="fte" style="cursor:pointer;user-select:none;min-width:170px">FTE % ↕</th>
             <th>Sources</th>
@@ -551,6 +640,85 @@
     </div>
   </div>
 </main>
+
+<div class="help-overlay" id="helpOverlay" onclick="closeHelp()"></div>
+<div class="help-modal" id="helpModal">
+  <div class="help-modal-header">
+    <h3>About this tool</h3>
+    <button class="help-modal-close" onclick="closeHelp()">✕</button>
+  </div>
+  <div class="help-modal-body">
+    <div class="help-section">
+      <h4>Overview</h4>
+      <p>This tool calculates the total academic workload for each staff member by combining data from multiple sources. It mirrors the University's Academic Workload Planning (WLP) framework, grouping activities into <strong>Teaching</strong>, <strong>Citizenship</strong>, and <strong>Research</strong>, with a final <strong>Combined Totals</strong> view that merges everything together.</p>
+    </div>
+
+    <div class="help-section">
+      <h4>📚 Teaching</h4>
+      <p><strong>Timetabled teaching load</strong> — Parses exported HTML timetables and calculates weekly contact hours per staff member. Hours are calculated from session start/end times. A flat-rate preparation allowance (default 2 hours per timetabled activity) can be added. The <em>Realistic hours</em> option deduplicates overlapping sessions so you are not counted as being in two places at once.</p>
+      <p><strong>Non-timetabled assessment</strong> — Upload the assessment spreadsheet. Total load hours are divided equally among all listed staff, with optional 1.0× or 0.5× extra allowance for staff with unexpired entries.</p>
+      <p><strong>Research Projects</strong> — Upload the project allocation spreadsheet. Calculates supervision (12 hrs/student share), dissertation feedback (3 hrs/student), dissertation marking (2 hrs/assessment), poster feedback (0.5 hr/student), and poster marking (0.333 hr/assessment) for each academic. Co-supervision hours are displayed for information but set to zero.</p>
+    </div>
+
+    <div class="help-section">
+      <h4>🏛 Citizenship</h4>
+      <p><strong>Tutorials</strong> — Upload the student allocation spreadsheet. Year 1 tutees are allocated 16 hrs each, other-year tutees 8 hrs each. An extra CPD/PDP allowance (default 1 hr per student on selected courses) can be added.</p>
+      <p><strong>MMIs</strong> — Upload the multi-tab MMI spreadsheet. Each tab is one interview session; the tab name encodes the date and time. Staff are listed per session, and total hours are calculated from session duration. Reserve staff are identified and their hours are excluded from workload totals.</p>
+      <p><strong>School Citizenship</strong> — Paste SharePoint tables for Teaching, Research, and School/Citizenship roles. Hours per role are shared equally among named role-holders. &amp;-separated names indicate shared roles.</p>
+    </div>
+
+    <div class="help-section">
+      <h4>🔬 Research</h4>
+      <p><strong>Staff research hours</strong> — Upload the research hours spreadsheet. Shows FTE, project count, and current/next year hours per staff member. The Combined view uses whichever year you select.</p>
+      <p><strong>PGR supervision</strong> — Upload the PGR supervision spreadsheet. Each PhD/MRes student contributes 100 hours per year, split according to the supervision percentages assigned to each supervisor.</p>
+    </div>
+
+    <div class="help-section">
+      <h4>⚡ Combined Totals</h4>
+      <p>The combined view merges names across all sources using fuzzy matching (title-stripped, nickname-aware). Staff appearing in multiple sources are consolidated into a single row. The total for each academic is the sum of:</p>
+      <div class="help-cats">
+        <div><span class="help-cat" style="background:#0066cc10;border-left:3px solid #0066cc">Teaching</span> Contact hours × (1 + bonus) + prep hours</div>
+        <div><span class="help-cat" style="background:#8a2be210;border-left:3px solid #8a2be2">Non-timetabled assess.</span> Equal share × multiplier</div>
+        <div><span class="help-cat" style="background:#b84c2a10;border-left:3px solid #b84c2a">Projects</span> Sum of all project roles × (1 + bonus)</div>
+        <div><span class="help-cat" style="background:#1a7a4a10;border-left:3px solid #1a7a4a">Tutorial</span> Sum of tutee hours per year group</div>
+        <div><span class="help-cat" style="background:#6b21a810;border-left:3px solid #6b21a8">MMI</span> Sum of active session durations</div>
+        <div><span class="help-cat" style="background:#c89b2a10;border-left:3px solid #c89b2a">Citizenship</span> Sum of role hours</div>
+        <div><span class="help-cat" style="background:#0a7a9a10;border-left:3px solid #0a7a9a">Research</span> Current/next year hours from spreadsheet</div>
+        <div><span class="help-cat" style="background:#d2691e10;border-left:3px solid #d2691e">PGR</span> Sum of (100 hrs × supervision share) per student</div>
+        <div><span class="help-cat" style="background:#88888810;border-left:3px solid #888">Academic housekeeping</span> Flat % of FTE target (default 10%)</div>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <h4>🎯 FTE &amp; Protected Time</h4>
+      <p>The annual FTE target defaults to <strong>1,600 hours</strong> (full-time). Each academic's personal target is <code>1,600 × effective FTE</code>.</p>
+      <p>FTE fractions can be set per person via <strong>tag rules</strong> or a manual override. Common conventions include:</p>
+      <ul>
+        <li><strong>0.75 FTE</strong> — Research &amp; Teaching (R&amp;T) staff with 0.25 FTE protected research time. Teaching load target = 1,600 × 0.75 = 1,200 hours.</li>
+        <li><strong>0.90 FTE</strong> — Teaching-only staff with 0.10 FTE scholarship allocation.</li>
+        <li><strong>1.00 FTE</strong> — Full-time Education &amp; Research or Teaching-only staff with no protected time adjustment.</li>
+      </ul>
+      <p>When multiple tag rules with FTE fractions apply to the same person, the fractions <strong>multiply</strong> (e.g. 0.75 × 0.5 = 0.375 effective FTE). You can also set a manual FTE override per person via the tag popover, which bypasses all tag-based fractions.</p>
+      <p>The FTE bar in the Combined view compares each academic's total hours against their personal target, colour-coded for under/on/over.</p>
+    </div>
+
+    <div class="help-section">
+      <h4>🧹 Academic Housekeeping</h4>
+      <p>A flat-rate overhead (default <strong>10%</strong> of the personal FTE target) added to each academic's total. This covers compulsory training, general emails, staff meetings, and other non-specific activities not captured by the main categories. The rate is configurable in the FTE Settings panel (0–50%).</p>
+    </div>
+
+    <div class="help-section">
+      <h4>📐 Calculation Notes</h4>
+      <ul>
+        <li><strong>Tag bonuses</strong> are additive multipliers applied on top of global settings. A Teaching Load bonus of +0.5 means 1.5× the contact hours. Prep bonuses add to the global prep rate (e.g. global 2.0 + bonus 0.5 = 2.5 hrs prep per session).</li>
+        <li><strong>Realistic mode</strong> — overlapping sessions on the same day are merged so you are not double-counted for simultaneous activities. This applies to timetabled teaching and flows through to the Combined view.</li>
+        <li><strong>Deduplication</strong> — identical sessions across different week ranges are counted once per week. Prep hours are calculated per unique session, not per timetable row.</li>
+        <li><strong>Anonymous mode</strong> replaces staff names with Flintstones-style pseudonyms for screen sharing or demonstrations.</li>
+        <li><strong>All data stays in your browser.</strong> Nothing is uploaded to any server. Settings, tags, and rules are persisted in localStorage and can be exported/imported as a JSON file.</li>
+      </ul>
+    </div>
+  </div>
+</div>
 
 <div class="overlay" id="overlay" onclick="closePanel()"></div>
 <div id="tagPopover" class="tag-popover" style="display:none">
@@ -636,6 +804,7 @@
   <script src="js/tabs/assessment.js"></script>
   <script src="js/tabs/citizenship.js"></script>
   <script src="js/tabs/combined.js"></script>
+  <script src="js/tabs/staffing.js"></script>
 </body>
 
 

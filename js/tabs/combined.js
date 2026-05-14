@@ -3,6 +3,35 @@
 // ═══════════════════════════════════════════════════════
 let combData=[],combSortKey='total-desc';
 const SRC_LABELS={tl:'📅 Teaching',assessment:'📝 Non-timetabled assess.',proj:'🎓 Project',tut:'👥 Tutorial',mmi:'🩺 MMI',cit:'🏛 Citizenship',res:'🔬 Research',pgr:'👨‍🎓 PGR'};
+let anonymousMode=false;
+const FLINTSTONES_NAMES=[
+  'Fred Flintstone','Wilma Flintstone','Pebbles Flintstone',
+  'Barney Rubble','Betty Rubble','Bamm-Bamm Rubble',
+  'Dino','Mr. Slate','Joe Rockhead',
+  'The Great Gazoo','Hoppy','Arnold the Paperboy',
+  'Pearl Slaghoople','Stoney Curtis','Tex Hardrock',
+  'Weirdly Gruesome','Creepella Gruesome','Mrs. Pyrite',
+  'Moonrock Crater','Bedrock Bob','Shale Shoplifter',
+  'Sandy Stone','Granite Gravel','Slate Slabrock',
+  'Rocky Quartz','Ruby Stone','Crystal Gem',
+  'Maggie Sandstone','Percy Pebble','Betty Boulder',
+  'Granny Gravel','Dusty Dustrock','Cliff Side',
+  'Gemma Stone','Bridget Bolder','Brad Andstone',
+  'Carny Rockwell','Bob Slate','Martha Slate',
+  'Dave Granite','Stella Stone','Chip Rubble',
+  'Trixie','Fabian','Ed Bolder',
+  'Gobby','Sam Slagheap','Roxy Rubble',
+  'Judy Rubble','Elroy Flintstone'
+];
+function getAnonymousName(canonical){
+  let hash=0;
+  for(let i=0;i<canonical.length;i++){hash=((hash<<5)-hash)+canonical.charCodeAt(i);hash|=0;}
+  return FLINTSTONES_NAMES[Math.abs(hash)%FLINTSTONES_NAMES.length];
+}
+function dispName(name){
+  if(!anonymousMode)return name;
+  return getAnonymousName(name);
+}
 const staffTags=new Map();
 const tagRules=new Map();
 let activeTagFilter=null;
@@ -11,6 +40,7 @@ const moduleTags=new Map();
 const manualMappings = new Map(); // normKey(sourceName) → targetCanonical
 
 let fteTarget=1600;
+let housekeepingRate=0.1;
 const staffFte=new Map();
 
 function getEffectiveFte(canonical){
@@ -96,14 +126,17 @@ function recomputeCombData(){
   const assessmentHoursTotals=typeof window.getAssessmentHoursTotals==='function'?window.getAssessmentHoursTotals():{};
   combData.forEach(d=>{
     const contactH=d.tlName?tlAllWeeks.reduce((s,w)=>s+calcHours(tlStaffData[d.tlName]?.[w],tlRealisticMode),0):0;
+    const sessionCnt=d.tlName?tlAllWeeks.reduce((s,w)=>{const arr=tlStaffData[d.tlName]?.[w]||[];return s+(arr.length?(tlRealisticMode?deduplicateSessions(arr).length:arr.length):0);},0):0;
     const projBase=d.projName?(projAllResults.find(r=>r.name===d.projName)?.total||0):0;
-    const{tlTotal,projTotal}=applyBonuses(d.canonical,contactH,projBase);
+    const{tlTotal,projTotal}=applyBonuses(d.canonical,contactH,sessionCnt,projBase);
     d.tlHours=d.tlName?tlTotal:0;
     d.projHours=d.projName?projTotal:0;
     d.resHours=d.resName?(resHoursTotals[d.resName]||0):0;
     d.pgrHours=d.pgrName?(pgrHoursTotals[d.pgrName]||0):0;
     d.assessmentHours=d.assessmentName?(assessmentHoursTotals[d.assessmentName]||0):0;
-    d.total=d.tlHours+d.assessmentHours+d.projHours+d.tutHours+d.mmiHours+d.citHours+d.resHours+d.pgrHours;
+    const otherTotal=d.tlHours+d.assessmentHours+d.projHours+d.tutHours+d.mmiHours+d.citHours+d.resHours+d.pgrHours;
+    d.housekeepingHours=personalTarget(d.canonical)*housekeepingRate;
+    d.total=otherTotal+d.housekeepingHours;
     d._bonuses=computeBonuses(d.canonical);
   });
 }
@@ -159,8 +192,15 @@ function doMerge(){
       tlExtra.forEach(en=>h+=calcHours(tlStaffData[en]?.[w],tlRealisticMode));
       return s+h;
     },0):0;
+    const cntSessions=(name,week)=>{const arr=tlStaffData[name]?.[week]||[];return arr.length?(tlRealisticMode?deduplicateSessions(arr).length:arr.length):0;};
+    const sessionCnt=tlName||tlExtra.length?tlAllWeeks.reduce((s,w)=>{
+      let c=0;
+      if(tlName)c+=cntSessions(tlName,w);
+      tlExtra.forEach(en=>c+=cntSessions(en,w));
+      return s+c;
+    },0):0;
     const projBase=(projName?projAllResults.find(r=>r.name===projName)?.total||0:0)+projExtra.reduce((s,en)=>s+(projAllResults.find(r=>r.name===en)?.total||0),0);
-    const{tlTotal,projTotal}=applyBonuses(g.canonical,contactH,projBase);
+    const{tlTotal,projTotal}=applyBonuses(g.canonical,contactH,sessionCnt,projBase);
     const tlHours=tlName||tlExtra.length?tlTotal:0;
     const tutHours=(tutName?tutAllTutors.find(t=>t.name===tutName)?.hours||0:0)+tutExtra.reduce((s,en)=>s+(tutAllTutors.find(t=>t.name===en)?.hours||0),0);
     const projHours=projName||projExtra.length?projTotal:0;
@@ -239,8 +279,8 @@ function combGetSorted(){
   data.sort((a,b)=>{
     if(col==='name')return dir==='asc'?a.canonical.localeCompare(b.canonical):b.canonical.localeCompare(a.canonical);
     if(col==='fte'){const ap=ftePct(a.canonical,a.total),bp=ftePct(b.canonical,b.total);return dir==='asc'?ap-bp:bp-ap;}
-    const av=col==='teaching'?a.tlHours:col==='assessment'?a.assessmentHours:col==='project'?a.projHours:col==='tutorial'?a.tutHours:col==='mmi'?a.mmiHours:col==='citizenship'?a.citHours:col==='research'?(a.resHours||0):col==='pgr'?a.pgrHours:a.total;
-    const bv=col==='teaching'?b.tlHours:col==='assessment'?b.assessmentHours:col==='project'?b.projHours:col==='tutorial'?b.tutHours:col==='mmi'?b.mmiHours:col==='citizenship'?b.citHours:col==='research'?(b.resHours||0):col==='pgr'?b.pgrHours:b.total;
+    const av=col==='teaching'?a.tlHours:col==='assessment'?a.assessmentHours:col==='project'?a.projHours:col==='tutorial'?a.tutHours:col==='mmi'?a.mmiHours:col==='citizenship'?a.citHours:col==='research'?(a.resHours||0):col==='pgr'?a.pgrHours:col==='housekeeping'?(a.housekeepingHours||0):a.total;
+    const bv=col==='teaching'?b.tlHours:col==='assessment'?b.assessmentHours:col==='project'?b.projHours:col==='tutorial'?b.tutHours:col==='mmi'?b.mmiHours:col==='citizenship'?b.citHours:col==='research'?(b.resHours||0):col==='pgr'?b.pgrHours:col==='housekeeping'?(b.housekeepingHours||0):b.total;
     return dir==='asc'?av-bv:bv-av;
   });
   return data;
@@ -335,11 +375,11 @@ function computeBonuses(canonical){
   return{tlLoad,tlPrep,proj};
 }
 
-function applyBonuses(canonical,contactHours,projHoursBase){
+function applyBonuses(canonical,contactHours,sessionCount,projHoursBase){
   const b=computeBonuses(canonical);
   const loadMult=1+b.tlLoad;
-  const prepRatio=tlPrepRatio+b.tlPrep;
-  const tlTotal=contactHours*loadMult*(1+prepRatio);
+  const flatPrep=sessionCount*(tlPrepRatio+b.tlPrep);
+  const tlTotal=contactHours*loadMult+flatPrep;
   const projTotal=projHoursBase*(1+b.proj);
   return{tlTotal,projTotal,bonuses:b};
 }
@@ -575,7 +615,7 @@ let tagPopoverCanonical=null;
 function openTagPopover(canonical,anchorEl){
   tagPopoverCanonical=canonical;
   const pop=document.getElementById('tagPopover');
-  document.getElementById('tagPopoverTitle').textContent=canonical;
+  document.getElementById('tagPopoverTitle').textContent=dispName(canonical);
   document.getElementById('tagPopoverInput').value='';
   const manualFte=staffFte.get(normKey(canonical));
   document.getElementById('tagPopoverFte').value=manualFte!=null?manualFte.toFixed(2):'';
@@ -685,7 +725,7 @@ function ensureMapPopover(){
 function openMapPopover(canonical,anchorEl){
   ensureMapPopover();
   mapPopoverCanonical=canonical;
-  document.getElementById('mapPopoverTitle').textContent=canonical;
+  document.getElementById('mapPopoverTitle').textContent=dispName(canonical);
   document.getElementById('mapPopoverSearch').value='';
 
   const fromNk=normKey(canonical);
@@ -779,7 +819,7 @@ function combRender(maxTotal){
     const adjTip=(hasTLAdj||hasProjAdj)?`title="Adjustments active: ${hasTLAdj?`teaching load +${b.tlLoad}, prep +${b.tlPrep}`:''}${hasTLAdj&&hasProjAdj?'; ':''}${hasProjAdj?`project +${b.proj}`:''}"`:'';
     return`<tr data-canonical="${enc}">
     <td style="text-align:center;padding:8px 6px"><input type="checkbox" class="comb-chk" data-canonical="${enc}" ${chk} onclick="event.stopPropagation()"></td>
-    <td class="cn" style="cursor:pointer">${d.canonical}${hasTLAdj||hasProjAdj?`<span class="adj-badge" ${adjTip}>⚖️ adj</span>`:''}</td>
+    <td class="cn" style="cursor:pointer">${dispName(d.canonical)}${hasTLAdj||hasProjAdj?`<span class="adj-badge" ${adjTip}>⚖️ adj</span>`:''}</td>
     <td class="tag-cell">${tagHtml}<button class="tag-add-btn comb-tag-add" data-canonical="${enc}" onclick="event.stopPropagation()">+ tag</button></td>
     <td class="num">${d.tlHours>0?d.tlHours.toFixed(1):'—'}</td>
     <td class="num">${d.assessmentHours>0?d.assessmentHours.toFixed(1):'—'}</td>
@@ -789,15 +829,16 @@ function combRender(maxTotal){
     <td class="num">${d.citHours>0?d.citHours.toFixed(1):'—'}</td>
     <td class="num">${(d.resHours||0)>0?(d.resHours).toFixed(1):'—'}</td>
     <td class="num">${d.pgrHours>0?d.pgrHours.toFixed(1):'—'}</td>
+    <td class="num">${(d.housekeepingHours||0)>0?d.housekeepingHours.toFixed(1):'—'}</td>
     <td class="tot">${d.total.toFixed(1)}</td>
     <td>${fteBarHtml(d.canonical,d.total)}</td>
     <td>${matchBadge(d,enc)}</td>
   </tr>`;}).join('');
-  const totTL=data.reduce((s,d)=>s+d.tlHours,0),totAssessment=data.reduce((s,d)=>s+d.assessmentHours,0),totProj=data.reduce((s,d)=>s+d.projHours,0),totTut=data.reduce((s,d)=>s+d.tutHours,0),totMmi=data.reduce((s,d)=>s+d.mmiHours,0),totCit=data.reduce((s,d)=>s+d.citHours,0),totRes=data.reduce((s,d)=>s+(d.resHours||0),0),totPgr=data.reduce((s,d)=>s+d.pgrHours,0),totAll=data.reduce((s,d)=>s+d.total,0);
+  const totTL=data.reduce((s,d)=>s+d.tlHours,0),totAssessment=data.reduce((s,d)=>s+d.assessmentHours,0),totProj=data.reduce((s,d)=>s+d.projHours,0),totTut=data.reduce((s,d)=>s+d.tutHours,0),totMmi=data.reduce((s,d)=>s+d.mmiHours,0),totCit=data.reduce((s,d)=>s+d.citHours,0),totRes=data.reduce((s,d)=>s+(d.resHours||0),0),totPgr=data.reduce((s,d)=>s+d.pgrHours,0),totHousekeeping=data.reduce((s,d)=>s+(d.housekeepingHours||0),0),totAll=data.reduce((s,d)=>s+d.total,0);
   const avgFte=data.length>0?Math.round(data.reduce((s,d)=>s+ftePct(d.canonical,d.total),0)/data.length):0;
   const avgCls=fteClass(avgFte);
   const filterNote=activeTagFilter?` <span style="font-size:0.72rem;font-weight:400;color:var(--gold);margin-left:6px">tag: ${activeTagFilter} (${data.length})</span>`:'';
-  document.getElementById('combFoot').innerHTML=`<tr><td></td><td class="cn">Total${filterNote}</td><td></td><td class="num">${totTL.toFixed(1)}</td><td class="num">${totAssessment.toFixed(1)}</td><td class="num">${totProj.toFixed(1)}</td><td class="num">${totTut.toFixed(1)}</td><td class="num">${totMmi.toFixed(1)}</td><td class="num">${totCit.toFixed(1)}</td><td class="num">${totRes.toFixed(1)}</td><td class="num">${totPgr.toFixed(1)}</td><td class="tot">${totAll.toFixed(1)}</td><td><span style="font-size:0.78rem;font-weight:600" class="fte-pct ${avgCls}">avg ${avgFte}%</span></td><td></td></tr>`;
+  document.getElementById('combFoot').innerHTML=`<tr><td></td><td class="cn">Total${filterNote}</td><td></td><td class="num">${totTL.toFixed(1)}</td><td class="num">${totAssessment.toFixed(1)}</td><td class="num">${totProj.toFixed(1)}</td><td class="num">${totTut.toFixed(1)}</td><td class="num">${totMmi.toFixed(1)}</td><td class="num">${totCit.toFixed(1)}</td><td class="num">${totRes.toFixed(1)}</td><td class="num">${totPgr.toFixed(1)}</td><td class="num">${totHousekeeping.toFixed(1)}</td><td class="tot">${totAll.toFixed(1)}</td><td><span style="font-size:0.78rem;font-weight:600" class="fte-pct ${avgCls}">avg ${avgFte}%</span></td><td></td></tr>`;
   document.querySelectorAll('#combTbody .tag-x').forEach(x=>{
     x.addEventListener('click',e=>{e.stopPropagation();const c=decodeURIComponent(x.dataset.canonical),t=decodeURIComponent(x.dataset.tag);removeTag(c,t);recomputeCombData();renderTagFilterBar();renderRulesEditor();saveTagState();combRender();});
   });
@@ -819,15 +860,16 @@ function combRender(maxTotal){
       ${d.citHours>0?`<div class="panel-row"><span class="k">🏛 Citizenship</span><span class="v">${d.citHours.toFixed(1)}h</span></div>`:''}
       ${(d.resHours||0)>0?`<div class="panel-row"><span class="k">🔬 Research</span><span class="v">${d.resHours.toFixed(1)}h</span></div>`:''}
       ${d.pgrHours>0?`<div class="panel-row"><span class="k">👨‍🎓 PGR Supervision</span><span class="v">${d.pgrHours.toFixed(1)}h</span></div>`:''}
+      ${(d.housekeepingHours||0)>0?`<div class="panel-row"><span class="k">🧹 Academic housekeeping</span><span class="v">${d.housekeepingHours.toFixed(1)}h</span></div>`:''}
       <div class="panel-row"><span class="k"><strong>Total</strong></span><span class="v big">${d.total.toFixed(1)}h</span></div>
       <div class="panel-row"><span class="k">FTE target</span><span class="v">${personalTarget(d.canonical).toFixed(0)}h (${(getFte(d.canonical)*100).toFixed(0)}% FTE)</span></div>
       <div class="panel-row"><span class="k">FTE %</span><span class="v ${fteClass(ftePct(d.canonical,d.total))}">${ftePct(d.canonical,d.total)}%</span></div>
     </div>`;
-    if(Object.keys(d.sources).length>1){html+=`<div class="panel-section"><h4>Source Names</h4>${Object.entries(d.sources).map(([src,nm])=>`<div class="panel-row"><span class="k">${SRC_LABELS[src]||src}</span><span class="v" style="font-family:inherit;font-size:0.82rem">${nm}</span></div>`).join('')}</div>`;}
+    if(Object.keys(d.sources).length>1){html+=`<div class="panel-section"><h4>Source Names</h4>${Object.entries(d.sources).map(([src,nm])=>`<div class="panel-row"><span class="k">${SRC_LABELS[src]||src}</span><span class="v" style="font-family:inherit;font-size:0.82rem">${anonymousMode?dispName(d.canonical):nm}</span></div>`).join('')}</div>`;}
     if(tutor)html+=`<div class="panel-section"><h4>Tutorial Detail</h4><div class="panel-row"><span class="k">Y1 tutees</span><span class="v">${tutor.year1.length}</span></div><div class="panel-row"><span class="k">Other tutees</span><span class="v">${tutor.other.length}</span></div></div>`;
     if(proj)html+=`<div class="panel-section"><h4>Project Breakdown</h4><div class="panel-row"><span class="k">Projects supervised</span><span class="v">${proj.supervised.length} (${proj.nSup.toFixed?proj.nSup.toFixed(2):proj.nSup} share)</span></div><div class="panel-row"><span class="k">Co-supervised</span><span class="v">${proj.cosupervised.length} (${proj.nCoSup.toFixed?proj.nCoSup.toFixed(2):proj.nCoSup} share)</span></div><div class="panel-row"><span class="k">Diss. assessed</span><span class="v">${proj.nDissAss}</span></div><div class="panel-row"><span class="k">Poster assessed</span><span class="v">${proj.nPostAss}</span></div></div>`;
     if(mmiR){const activeSess=mmiR.sessions.filter(s=>!s.isReserve);html+=`<div class="panel-section"><h4>MMI Detail</h4><div class="panel-row"><span class="k">Active sessions</span><span class="v">${activeSess.length}</span></div><div class="panel-row"><span class="k">Total hours</span><span class="v">${fmt(mmiR.totalHours)}h</span></div></div>`;}
-    openPanel(d.canonical,`${d.total.toFixed(1)}h total · ${Object.keys(d.sources).length} source${Object.keys(d.sources).length!==1?'s':''}`,html);
+    openPanel(dispName(d.canonical),`${d.total.toFixed(1)}h total · ${Object.keys(d.sources).length} source${Object.keys(d.sources).length!==1?'s':''}`,html);
   });});
   combUpdateDetailBtn();
   wireMapButtons();
@@ -842,6 +884,12 @@ document.getElementById('combSelectAll').addEventListener('change',e=>{const che
 // FTE settings
 document.getElementById('combFteBtn').addEventListener('click',()=>document.getElementById('fteSettings').classList.toggle('open'));
 document.getElementById('fteTarget').addEventListener('change',e=>{fteTarget=+e.target.value||1600;saveTagState();combRender();});
+document.getElementById('housekeepingRate').addEventListener('change',e=>{housekeepingRate=(+e.target.value||0)/100;recomputeCombData();saveTagState();combRender();});
+document.getElementById('combAnonMode').addEventListener('change',e=>{
+  anonymousMode=e.target.checked;
+  saveTagState();
+  combRender();
+});
 
 // ── Detailed Report generation ────────────────────────────────────────────────
 function generateDetailedReport(canonicals){
@@ -849,6 +897,7 @@ function generateDetailedReport(canonicals){
   const safeWindowName=(name)=>name.replace(/[^a-zA-Z0-9_-]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'').slice(0,50)||'report';
 
   for(const canonical of canonicals){
+    const nameDisplay=dispName(canonical);
     const d=combData.find(x=>x.canonical===canonical);
     if(!d)continue;
     const tutor=d.tutName?tutAllTutors.find(t=>t.name===d.tutName):null;
@@ -870,12 +919,13 @@ function generateDetailedReport(canonicals){
         return(timeToHours(a.start)||0)-(timeToHours(b.start)||0);
       });
       const contactTotal=tlAllWeeks.reduce((sum,w)=>sum+calcHours(staffWeekMap[w],tlRealisticMode),0);
-      const prepTotal=contactTotal*tlPrepRatio;
+      const sessionCount=tlAllWeeks.reduce((sum,w)=>{const arr=staffWeekMap[w]||[];return sum+(arr.length?(tlRealisticMode?deduplicateSessions(arr).length:arr.length):0);},0);
+      const prepTotal=sessionCount*tlPrepRatio;
       teachingHtml=`<div class="rpt-section">
         <h3>Teaching Load</h3>
         <div class="rpt-summary-row">
           <span>Contact hours: <strong>${contactTotal.toFixed(1)}h</strong></span>
-          ${tlPrepRatio>0?`<span>Preparation (${tlPrepRatio}× ratio): <strong>${prepTotal.toFixed(1)}h</strong></span><span>Total incl. prep: <strong>${d.tlHours.toFixed(1)}h</strong></span>`:''}
+          ${tlPrepRatio>0?`<span>Preparation (${tlPrepRatio.toFixed(1)}h/activity): <strong>${prepTotal.toFixed(1)}h</strong></span><span>Total incl. prep: <strong>${d.tlHours.toFixed(1)}h</strong></span>`:''}
         </div>
         <table class="rpt-table">
           <thead><tr><th>Module</th><th>Session / Activity</th><th>Type</th><th>Day</th><th>Time</th><th style="text-align:center">Week</th><th style="text-align:right">hrs/session</th><th style="text-align:right">Total hrs</th></tr></thead>
@@ -895,7 +945,7 @@ function generateDetailedReport(canonicals){
           }).join('')}
           </tbody>
           <tfoot><tr><td colspan="7"><strong>Total contact hours</strong></td><td style="text-align:right"><strong>${contactTotal.toFixed(1)}h</strong></td></tr>
-          ${tlPrepRatio>0?`<tr><td colspan="7">Preparation hours (${tlPrepRatio}× contact)</td><td style="text-align:right">${prepTotal.toFixed(1)}h</td></tr>
+          ${tlPrepRatio>0?`<tr><td colspan="7">Preparation hours (${tlPrepRatio.toFixed(1)}h/activity)</td><td style="text-align:right">${prepTotal.toFixed(1)}h</td></tr>
           <tr class="rpt-total-row"><td colspan="7"><strong>Total teaching load (incl. prep)</strong></td><td style="text-align:right"><strong>${d.tlHours.toFixed(1)}h</strong></td></tr>`:''}
           </tfoot>
         </table>
@@ -1007,11 +1057,11 @@ function generateDetailedReport(canonicals){
           <span>Total hours: <strong>${d.assessmentHours.toFixed(1)}h</strong></span>
         </div>
         <table class="rpt-table">
-          <thead><tr><th>Non-timetabled assess.</th><th>Year</th><th>Course</th><th style="text-align:right">Students</th><th style="text-align:right">Total Load (h)</th><th style="text-align:right">Hours</th></tr></thead>
+          <thead><tr><th>Non-timetabled assess.</th><th>Year</th><th>Course</th><th style="text-align:right">Students</th><th style="text-align:right">Total Load (h)</th><th style="text-align:right">Multiplier</th><th style="text-align:right">Hours</th><th>Notes</th></tr></thead>
           <tbody>
-          ${rows.map(r=>`<tr><td>${r.assessmentDesc||'—'}</td><td>${r.year||'—'}</td><td>${r.course||'—'}</td><td style="text-align:right">${r.totalStudents||'—'}</td><td style="text-align:right">${r.totalLoad.toFixed(1)}</td><td style="text-align:right">${r.hours.toFixed(1)}</td></tr>`).join('')}
+          ${rows.map(r=>`<tr><td>${r.assessmentDesc||'—'}</td><td>${r.year||'—'}</td><td>${r.course||'—'}</td><td style="text-align:right">${r.totalStudents||'—'}</td><td style="text-align:right">${r.totalLoad.toFixed(1)}</td><td style="text-align:right">${r.multiplier.toFixed(1)}x</td><td style="text-align:right">${r.hours.toFixed(1)}</td><td style="max-width:200px;font-size:0.78rem;color:var(--muted)">${r.notes||''}</td></tr>`).join('')}
           </tbody>
-          <tfoot><tr><td colspan="5"><strong>Total non-timetabled assessment hours</strong></td><td style="text-align:right"><strong>${d.assessmentHours.toFixed(1)}h</strong></td></tr></tfoot>
+          <tfoot><tr><td colspan="5"><strong>Total non-timetabled assessment hours</strong></td><td></td><td style="text-align:right"><strong>${d.assessmentHours.toFixed(1)}h</strong></td><td></td></tr></tfoot>
         </table>
       </div>`;
       }
@@ -1066,7 +1116,7 @@ function generateDetailedReport(canonicals){
     }
 
     // Summary donut-style bar
-    const cats=[['Teaching',d.tlHours,'#0066cc'],['Non-timetabled assess.',d.assessmentHours,'#8a2be2'],['Projects',d.projHours,'#b84c2a'],['Tutorial',d.tutHours,'#1a7a4a'],['MMI',d.mmiHours,'#6b21a8'],['Citizenship',d.citHours,'#c89b2a'],['Research',(d.resHours||0),'#0a7a9a'],['PGR',d.pgrHours,'#d2691e']].filter(([,h])=>h>0);
+    const cats=[['Teaching',d.tlHours,'#0066cc'],['Non-timetabled assess.',d.assessmentHours,'#8a2be2'],['Projects',d.projHours,'#b84c2a'],['Tutorial',d.tutHours,'#1a7a4a'],['MMI',d.mmiHours,'#6b21a8'],['Citizenship',d.citHours,'#c89b2a'],['Research',(d.resHours||0),'#0a7a9a'],['PGR',d.pgrHours,'#d2691e'],['Academic housekeeping',(d.housekeepingHours||0),'#888']].filter(([,h])=>h>0);
     const summaryBars=cats.map(([label,h,col])=>`
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
         <div style="width:110px;font-size:0.82rem;color:#444">${label}</div>
@@ -1076,7 +1126,7 @@ function generateDetailedReport(canonicals){
       </div>`).join('');
 
     const html=`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
-<title>Academic Workload Report – ${canonical} – ${dateStr}</title>
+<title>Academic Workload Report – ${nameDisplay} – ${dateStr}</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -1124,7 +1174,7 @@ function generateDetailedReport(canonicals){
 </head><body>
 <div class="rpt-toolbar">
   <div>
-    <h2>Academic Workload Report — ${canonical}</h2>
+    <h2>Academic Workload Report — ${nameDisplay}</h2>
   </div>
   <div class="rpt-toolbar-btns">
     <button class="rpt-btn" onclick="window.print()">Print / Save PDF</button>
@@ -1134,7 +1184,7 @@ function generateDetailedReport(canonicals){
 <div class="rpt-wrap"><div class="rpt-person">
   <div class="rpt-person-header">
     <div>
-      <div class="rpt-person-name">${canonical}</div>
+      <div class="rpt-person-name">${nameDisplay}</div>
       <div class="rpt-person-sub">Academic Workload Report · ${dateStr}</div>
     </div>
     <div style="display:flex;gap:1rem;flex-shrink:0">
@@ -1167,6 +1217,7 @@ function generateCombinedReport(canonicals){
 
   for(let i=0;i<canonicals.length;i++){
     const canonical=canonicals[i];
+    const nameDisplay=dispName(canonical);
     const d=combData.find(x=>x.canonical===canonical);
     if(!d)continue;
     const tutor=d.tutName?tutAllTutors.find(t=>t.name===d.tutName):null;
@@ -1188,12 +1239,13 @@ function generateCombinedReport(canonicals){
         return(timeToHours(a.start)||0)-(timeToHours(b.start)||0);
       });
       const contactTotal=tlAllWeeks.reduce((sum,w)=>sum+calcHours(staffWeekMap[w],tlRealisticMode),0);
-      const prepTotal=contactTotal*tlPrepRatio;
+      const sessionCount=tlAllWeeks.reduce((sum,w)=>{const arr=staffWeekMap[w]||[];return sum+(arr.length?(tlRealisticMode?deduplicateSessions(arr).length:arr.length):0);},0);
+      const prepTotal=sessionCount*tlPrepRatio;
       teachingHtml=`<div class="rpt-section">
         <h3>Teaching Load</h3>
         <div class="rpt-summary-row">
           <span>Contact hours: <strong>${contactTotal.toFixed(1)}h</strong></span>
-          ${tlPrepRatio>0?`<span>Preparation (${tlPrepRatio}× ratio): <strong>${prepTotal.toFixed(1)}h</strong></span><span>Total incl. prep: <strong>${d.tlHours.toFixed(1)}h</strong></span>`:''}
+          ${tlPrepRatio>0?`<span>Preparation (${tlPrepRatio.toFixed(1)}h/activity): <strong>${prepTotal.toFixed(1)}h</strong></span><span>Total incl. prep: <strong>${d.tlHours.toFixed(1)}h</strong></span>`:''}
         </div>
         <table class="rpt-table">
           <thead><tr><th>Module</th><th>Session / Activity</th><th>Type</th><th>Day</th><th>Time</th><th style="text-align:center">Week</th><th style="text-align:right">hrs/session</th><th style="text-align:right">Total hrs</th></tr></thead>
@@ -1213,7 +1265,7 @@ function generateCombinedReport(canonicals){
           }).join('')}
           </tbody>
           <tfoot><tr><td colspan="7"><strong>Total contact hours</strong></td><td style="text-align:right"><strong>${contactTotal.toFixed(1)}h</strong></td></tr>
-          ${tlPrepRatio>0?`<tr><td colspan="7">Preparation hours (${tlPrepRatio}× contact)</td><td style="text-align:right">${prepTotal.toFixed(1)}h</td></tr>
+          ${tlPrepRatio>0?`<tr><td colspan="7">Preparation hours (${tlPrepRatio.toFixed(1)}h/activity)</td><td style="text-align:right">${prepTotal.toFixed(1)}h</td></tr>
           <tr class="rpt-total-row"><td colspan="7"><strong>Total teaching load (incl. prep)</strong></td><td style="text-align:right"><strong>${d.tlHours.toFixed(1)}h</strong></td></tr>`:''}
           </tfoot>
         </table>
@@ -1325,11 +1377,11 @@ function generateCombinedReport(canonicals){
           <span>Total hours: <strong>${d.assessmentHours.toFixed(1)}h</strong></span>
         </div>
         <table class="rpt-table">
-          <thead><tr><th>Non-timetabled assess.</th><th>Year</th><th>Course</th><th style="text-align:right">Students</th><th style="text-align:right">Total Load (h)</th><th style="text-align:right">Hours</th></tr></thead>
+          <thead><tr><th>Non-timetabled assess.</th><th>Year</th><th>Course</th><th style="text-align:right">Students</th><th style="text-align:right">Total Load (h)</th><th style="text-align:right">Multiplier</th><th style="text-align:right">Hours</th><th>Notes</th></tr></thead>
           <tbody>
-          ${rows.map(r=>`<tr><td>${r.assessmentDesc||'—'}</td><td>${r.year||'—'}</td><td>${r.course||'—'}</td><td style="text-align:right">${r.totalStudents||'—'}</td><td style="text-align:right">${r.totalLoad.toFixed(1)}</td><td style="text-align:right">${r.hours.toFixed(1)}</td></tr>`).join('')}
+          ${rows.map(r=>`<tr><td>${r.assessmentDesc||'—'}</td><td>${r.year||'—'}</td><td>${r.course||'—'}</td><td style="text-align:right">${r.totalStudents||'—'}</td><td style="text-align:right">${r.totalLoad.toFixed(1)}</td><td style="text-align:right">${r.multiplier.toFixed(1)}x</td><td style="text-align:right">${r.hours.toFixed(1)}</td><td style="max-width:200px;font-size:0.78rem;color:var(--muted)">${r.notes||''}</td></tr>`).join('')}
           </tbody>
-          <tfoot><tr><td colspan="5"><strong>Total non-timetabled assessment hours</strong></td><td style="text-align:right"><strong>${d.assessmentHours.toFixed(1)}h</strong></td></tr></tfoot>
+          <tfoot><tr><td colspan="5"><strong>Total non-timetabled assessment hours</strong></td><td></td><td style="text-align:right"><strong>${d.assessmentHours.toFixed(1)}h</strong></td><td></td></tr></tfoot>
         </table>
       </div>`;
       }
@@ -1384,7 +1436,7 @@ function generateCombinedReport(canonicals){
     }
 
     // Summary donut-style bar
-    const cats=[['Teaching',d.tlHours,'#0066cc'],['Non-timetabled assess.',d.assessmentHours,'#8a2be2'],['Projects',d.projHours,'#b84c2a'],['Tutorial',d.tutHours,'#1a7a4a'],['MMI',d.mmiHours,'#6b21a8'],['Citizenship',d.citHours,'#c89b2a'],['Research',(d.resHours||0),'#0a7a9a'],['PGR',d.pgrHours,'#d2691e']].filter(([,h])=>h>0);
+    const cats=[['Teaching',d.tlHours,'#0066cc'],['Non-timetabled assess.',d.assessmentHours,'#8a2be2'],['Projects',d.projHours,'#b84c2a'],['Tutorial',d.tutHours,'#1a7a4a'],['MMI',d.mmiHours,'#6b21a8'],['Citizenship',d.citHours,'#c89b2a'],['Research',(d.resHours||0),'#0a7a9a'],['PGR',d.pgrHours,'#d2691e'],['Academic housekeeping',(d.housekeepingHours||0),'#888']].filter(([,h])=>h>0);
     const summaryBars=cats.map(([label,h,col])=>`
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
         <div style="width:110px;font-size:0.82rem;color:#444">${label}</div>
@@ -1397,7 +1449,7 @@ function generateCombinedReport(canonicals){
     <div class="rpt-person${i>0?' rpt-person-break':''}">
       <div class="rpt-person-header">
         <div>
-          <div class="rpt-person-name">${canonical}</div>
+          <div class="rpt-person-name">${nameDisplay}</div>
           <div class="rpt-person-sub">Academic Workload Report · ${dateStr}</div>
         </div>
         <div style="display:flex;gap:1rem;flex-shrink:0">
@@ -1498,9 +1550,13 @@ document.getElementById('combCombinedBtn').addEventListener('click',()=>{
 
 document.getElementById('combExportBtn').addEventListener('click',()=>{
   const wb2=XLSX.utils.book_new();
-  const rows=[['Academic','Teaching Name','Non-timetabled assess. Name','Project Name','Tutorial Name','MMI Name','Citizenship Name','Research Name','PGR Name','Teaching Hrs','Non-timetabled assess. Hrs','Project Hrs','Tutorial Hrs','MMI Hrs','Citizenship Hrs','Research Hrs','PGR Hrs','Total Hrs','Match Type']];
-  for(const d of combData)rows.push([d.canonical,d.tlName||'',d.assessmentName||'',d.projName||'',d.tutName||'',d.mmiName||'',d.citName||'',d.resName||'',d.pgrName||'',+d.tlHours.toFixed(2),+d.assessmentHours.toFixed(2),+d.projHours.toFixed(2),+d.tutHours.toFixed(2),+d.mmiHours.toFixed(2),+d.citHours.toFixed(2),+(d.resHours||0).toFixed(2),+d.pgrHours.toFixed(2),+d.total.toFixed(2),d.matchType]);
-  rows.push(['Grand Total','','','','','','','','',+combData.reduce((s,d)=>s+d.tlHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.assessmentHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.projHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.tutHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.mmiHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.citHours,0).toFixed(2),+combData.reduce((s,d)=>s+(d.resHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+d.pgrHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.total,0).toFixed(2),'']);
+  const headerLabel=anonymousMode?'Anonymous Name':'Academic';
+  const rows=[[headerLabel,'Teaching Name','Non-timetabled assess. Name','Project Name','Tutorial Name','MMI Name','Citizenship Name','Research Name','PGR Name','Teaching Hrs','Non-timetabled assess. Hrs','Project Hrs','Tutorial Hrs','MMI Hrs','Citizenship Hrs','Research Hrs','PGR Hrs','Housekeeping Hrs','Total Hrs','Match Type']];
+  for(const d of combData){
+    const srcName=(nm)=>anonymousMode?dispName(d.canonical):(nm||'');
+    rows.push([dispName(d.canonical),srcName(d.tlName),srcName(d.assessmentName),srcName(d.projName),srcName(d.tutName),srcName(d.mmiName),srcName(d.citName),srcName(d.resName),srcName(d.pgrName),+d.tlHours.toFixed(2),+d.assessmentHours.toFixed(2),+d.projHours.toFixed(2),+d.tutHours.toFixed(2),+d.mmiHours.toFixed(2),+d.citHours.toFixed(2),+(d.resHours||0).toFixed(2),+d.pgrHours.toFixed(2),+(d.housekeepingHours||0).toFixed(2),+d.total.toFixed(2),d.matchType]);
+  }
+  rows.push(['Grand Total','','','','','','','','',+combData.reduce((s,d)=>s+d.tlHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.assessmentHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.projHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.tutHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.mmiHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.citHours,0).toFixed(2),+combData.reduce((s,d)=>s+(d.resHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+d.pgrHours,0).toFixed(2),+combData.reduce((s,d)=>s+(d.housekeepingHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+d.total,0).toFixed(2),'']);
   XLSX.utils.book_append_sheet(wb2,XLSX.utils.aoa_to_sheet(rows),'Combined Load');
   XLSX.writeFile(wb2,'academic_load_combined.xlsx');
 });
