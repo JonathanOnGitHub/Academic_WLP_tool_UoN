@@ -384,6 +384,8 @@ function formatHour(h){
 
 function closePanel(){document.getElementById('detailPanel').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
 function openPanel(name,sub,bodyHtml){document.getElementById('panelName').textContent=name;document.getElementById('panelSub').textContent=sub;document.getElementById('panelBody').innerHTML=bodyHtml;document.getElementById('detailPanel').classList.add('open');document.getElementById('overlay').classList.add('open');}
+function openHelp(){document.getElementById('helpModal').classList.add('open');document.getElementById('helpOverlay').classList.add('open');}
+function closeHelp(){document.getElementById('helpModal').classList.remove('open');document.getElementById('helpOverlay').classList.remove('open');}
 
 function fh(h){return h>0?h.toFixed(1):'—';}
 function fmt(h){return h.toFixed(1);}
@@ -391,6 +393,26 @@ function fmt(h){return h.toFixed(1);}
 // Main tab switching
 document.querySelectorAll('.main-tab-btn').forEach(btn=>{btn.addEventListener('click',()=>{
   document.querySelectorAll('.main-tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.sub-tabs-bar').forEach(b=>b.style.display='none');
+  document.querySelectorAll('.main-tab-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  const group=btn.dataset.maingroup;
+  const subBar=document.getElementById('subtab-'+group);
+  if(subBar){
+    subBar.style.display='flex';
+    const firstSub=subBar.querySelector('.sub-tab-btn');
+    if(firstSub){
+      document.querySelectorAll('.sub-tab-btn').forEach(b=>b.classList.remove('active'));
+      firstSub.classList.add('active');
+      document.getElementById(firstSub.dataset.panel).classList.add('active');
+    }
+  }else{
+    document.getElementById('panel-'+group).classList.add('active');
+  }
+});});
+// Sub-tab switching
+document.querySelectorAll('.sub-tab-btn').forEach(btn=>{btn.addEventListener('click',()=>{
+  document.querySelectorAll('.sub-tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.main-tab-panel').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById(btn.dataset.panel).classList.add('active');

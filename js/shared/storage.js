@@ -40,7 +40,7 @@ function saveTagState(){
     tag,
     {tlLoad:rule.tlLoad||0,tlPrep:rule.tlPrep||0,proj:rule.proj||0,fte:rule.fte??1,expiry:rule.expiry?rule.expiry.toISOString():null}
   ]);
-  const settings={fteTarget};
+  const settings={fteTarget, anonymousMode, housekeepingRate};
   window.storage.set(STORAGE_KEY_TAGS,JSON.stringify(tagsArr))
     .catch(e=>console.warn('AL: tags save failed',e));
   window.storage.set(STORAGE_KEY_RULES,JSON.stringify(rulesArr))
@@ -89,6 +89,16 @@ async function loadTagState(){
       if(s.fteTarget){
         fteTarget=s.fteTarget;
         document.getElementById('fteTarget').value=fteTarget;
+      }
+      if(typeof s.anonymousMode==='boolean'){
+        anonymousMode=s.anonymousMode;
+        const cb=document.getElementById('combAnonMode');
+        if(cb)cb.checked=anonymousMode;
+      }
+      if(typeof s.housekeepingRate==='number'){
+        housekeepingRate=s.housekeepingRate;
+        const hkEl=document.getElementById('housekeepingRate');
+        if(hkEl)hkEl.value=Math.round(housekeepingRate*100);
       }
       anyLoaded=true;
     }
@@ -175,7 +185,7 @@ function exportModel(){
   const rulesArr=[...tagRules.entries()].map(([tag,rule])=>[
     tag,{tlLoad:rule.tlLoad||0,tlPrep:rule.tlPrep||0,proj:rule.proj||0,fte:rule.fte??1,expiry:rule.expiry?rule.expiry.toISOString():null}
   ]);
-  const payload={version:1,exportedAt:new Date().toISOString(),tags:tagsArr,rules:rulesArr,settings:{fteTarget},mappings:[...manualMappings.entries()].map(([nk,t])=>[nk,t])};
+  const payload={version:1,exportedAt:new Date().toISOString(),tags:tagsArr,rules:rulesArr,settings:{fteTarget,anonymousMode},mappings:[...manualMappings.entries()].map(([nk,t])=>[nk,t])};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -197,6 +207,16 @@ function importModel(file){
       if(payload.settings?.fteTarget){
         fteTarget=payload.settings.fteTarget;
         document.getElementById('fteTarget').value=fteTarget;
+      }
+      if(payload.settings && typeof payload.settings.anonymousMode==='boolean'){
+        anonymousMode=payload.settings.anonymousMode;
+        const cb=document.getElementById('combAnonMode');
+        if(cb)cb.checked=anonymousMode;
+      }
+      if(payload.settings?.housekeepingRate!=null){
+        housekeepingRate=payload.settings.housekeepingRate;
+        const hkEl=document.getElementById('housekeepingRate');
+        if(hkEl)hkEl.value=Math.round(housekeepingRate*100);
       }
       _pendingTagsByNormKey.clear();
       staffTags.clear();

@@ -98,15 +98,17 @@ function tlAggregate(sessions,wFrom,wTo){
   tlAllWeeks=[...ws].sort((a,b)=>a-b);
 }
 
-function buildGrid(dataMap,entities,weeks,sortConfig,realistic,prepRatio){
-  const pr=prepRatio||0;
+function buildGrid(dataMap,entities,weeks,sortConfig,realistic,prepRate){
+  const pr=prepRate||0;
   if(entities.length===0)return{html:'<div style="padding:2rem;color:var(--muted)">No data found.</div>',legendHtml:''};
   const sorted=[...entities];
+  const prepFn=(e,w)=>{const arr=dataMap[e]?.[w]||[];return(arr.length?realistic?deduplicateSessions(arr).length:arr.length:0)*pr;};
+  const totalFn=(e,w)=>calcHours(dataMap[e]?.[w],realistic)+prepFn(e,w);
   if(sortConfig.col==='name')sorted.sort((a,b)=>sortConfig.dir*a.localeCompare(b));
-  else if(sortConfig.col==='total')sorted.sort((a,b)=>sortConfig.dir*(weeks.reduce((s,w)=>s+calcHours(dataMap[a]?.[w],realistic)*(1+pr),0)-weeks.reduce((s,w)=>s+calcHours(dataMap[b]?.[w],realistic)*(1+pr),0)));
-  else sorted.sort((a,b)=>sortConfig.dir*(calcHours(dataMap[a]?.[sortConfig.col],realistic)*(1+pr)-calcHours(dataMap[b]?.[sortConfig.col],realistic)*(1+pr)));
+  else if(sortConfig.col==='total')sorted.sort((a,b)=>sortConfig.dir*(weeks.reduce((s,w)=>s+totalFn(a,w),0)-weeks.reduce((s,w)=>s+totalFn(b,w),0)));
+  else sorted.sort((a,b)=>sortConfig.dir*(totalFn(a,sortConfig.col)-totalFn(b,sortConfig.col)));
   let maxH=0;
-  for(const e of entities)for(const w of weeks){const h=calcHours(dataMap[e]?.[w],realistic)*(1+pr);if(h>maxH)maxH=h;}
+  for(const e of entities)for(const w of weeks){const h=totalFn(e,w);if(h>maxH)maxH=h;}
   const breaks=[0,maxH*0.1,maxH*0.25,maxH*0.45,maxH*0.65,maxH*0.85];
   const heatClass=h=>{if(h<=0)return'';for(let i=breaks.length-1;i>=0;i--)if(h>=breaks[i])return`heat-${i}`;return'heat-0';};
   const totArr=sortConfig.col==='total'?(sortConfig.dir>0?' ↑':' ↓'):'';
@@ -118,15 +120,15 @@ function buildGrid(dataMap,entities,weeks,sortConfig,realistic,prepRatio){
     html+=`<tr><td class="name-cell" data-entity="${encodeURIComponent(entity)}" title="${entity}">${entity}</td>`;
     let rowTotal=0;
     for(const w of weeks){
-      const contact=calcHours(dataMap[entity]?.[w],realistic);const h=contact*(1+pr);rowTotal+=h;
-      if(h>0){const tip=pr>0?`title="${contact.toFixed(1)}h contact + ${(contact*pr).toFixed(1)}h prep"`:'' ;html+=`<td class="data-cell ${heatClass(h)}" data-entity="${encodeURIComponent(entity)}" data-week="${w}" ${tip}><span>${h.toFixed(1)}</span><small>${pr>0?'incl. prep':'hrs'}</small></td>`;}
+      const contact=calcHours(dataMap[entity]?.[w],realistic);const rawArr=dataMap[entity]?.[w]||[];const sess=rawArr.length?(realistic?deduplicateSessions(rawArr).length:rawArr.length):0;const prep=sess*pr;const h=contact+prep;rowTotal+=h;
+      if(h>0){const tip=pr>0?`title="${contact.toFixed(1)}h contact + ${sess}×${pr.toFixed(1)}h prep = ${prep.toFixed(1)}h"`:'' ;html+=`<td class="data-cell ${heatClass(h)}" data-entity="${encodeURIComponent(entity)}" data-week="${w}" ${tip}><span>${h.toFixed(1)}</span><small>${pr>0?'incl. prep':'hrs'}</small></td>`;}
       else html+=`<td class="data-cell empty" data-entity="${encodeURIComponent(entity)}" data-week="${w}">–</td>`;
     }
     html+=`<td class="data-cell heat-3" data-entity="${encodeURIComponent(entity)}" data-week="total"><span>${rowTotal.toFixed(1)}</span><small>${pr>0?'incl. prep':'hrs'}</small></td></tr>`;
   }
   html+='<tr class="totals-row"><td class="name-cell" data-week="total" data-entity="all">Grand Total</td>';
   let gt=0;
-  for(const w of weeks){const wt=entities.reduce((s,e)=>s+calcHours(dataMap[e]?.[w],realistic)*(1+pr),0);gt+=wt;html+=`<td class="data-cell" data-week="${w}" data-entity="all"><span>${wt.toFixed(1)}</span><small>hrs</small></td>`;}
+  for(const w of weeks){const wt=entities.reduce((s,e)=>{const c=calcHours(dataMap[e]?.[w],realistic);const arr=dataMap[e]?.[w]||[];const sc=arr.length?(realistic?deduplicateSessions(arr).length:arr.length):0;return s+c+sc*pr;},0);gt+=wt;html+=`<td class="data-cell" data-week="${w}" data-entity="all"><span>${wt.toFixed(1)}</span><small>hrs</small></td>`;}
   html+=`<td class="data-cell" data-week="total" data-entity="all"><span>${gt.toFixed(1)}</span><small>hrs</small></td></tr></tbody></table>`;
   const legendHtml=`<span>Colour scale:</span>${breaks.map((b,i)=>`<span class="legend-item"><span class="legend-swatch heat-${i}"></span>${b.toFixed(0)}${i<breaks.length-1?'–'+breaks[i+1].toFixed(0):'+'}</span>`).join('')}`;
   return{html,legendHtml};
@@ -139,7 +141,7 @@ function tlRenderGrid(id,dataMap,allEntities,weeks,sortCfg,realistic,legendId,pr
   tlAttachGridEvents(wrap,dataMap,id.includes('Staff')?'staff':id.includes('Mod')?'module':'type');
 }
 
-function tlRenderStaffGrid(){tlRenderGrid('tlStaffGridWrap',tlStaffData,tlAllStaff,tlAllWeeks,tlStaffSort,tlRealisticMode,'tlStaffLegend',tlPrepRatio);document.getElementById('tlStaffSortInfo').textContent=`Sorted by: ${tlStaffSort.col==='name'?'Name':tlStaffSort.col==='total'?'Total':'Week '+tlStaffSort.col} (${tlStaffSort.dir>0?'asc':'desc'})${tlPrepRatio>0?' · incl. '+tlPrepRatio+'× prep':''}`;}
+function tlRenderStaffGrid(){tlRenderGrid('tlStaffGridWrap',tlStaffData,tlAllStaff,tlAllWeeks,tlStaffSort,tlRealisticMode,'tlStaffLegend',tlPrepRatio);document.getElementById('tlStaffSortInfo').textContent=`Sorted by: ${tlStaffSort.col==='name'?'Name':tlStaffSort.col==='total'?'Total':'Week '+tlStaffSort.col} (${tlStaffSort.dir>0?'asc':'desc'})${tlPrepRatio>0?' · '+tlPrepRatio.toFixed(1)+'h flat prep per activity':''}`;}
 function tlRenderModGrid(){tlRenderGrid('tlModGridWrap',tlModuleData,modTagFilteredModules(),tlAllWeeks,tlModSort,tlRealisticMode,'tlModLegend',tlPrepRatio);renderModuleTagChips();}
 function tlRenderTypeGrid(){tlRenderGrid('tlTypeGridWrap',tlTypeData,tlAllTypes,tlAllWeeks,tlTypeSort,tlRealisticMode,'tlTypeLegend',tlPrepRatio);}
 
@@ -185,10 +187,11 @@ function tlAttachGridEvents(wrap,dataMap,type){
 
 function tlUpdateStatsBar(){
   const staffH=tlAllStaff.reduce((sum,staff)=>sum+tlAllWeeks.reduce((wSum,week)=>wSum+calcHours(tlStaffData[staff]?.[week],tlRealisticMode),0),0);
-  const prepH=staffH*tlPrepRatio;
+  const totalSessions=tlAllStaff.reduce((sum,staff)=>sum+tlAllWeeks.reduce((s,week)=>{const arr=tlStaffData[staff]?.[week]||[];return s+(arr.length?(tlRealisticMode?deduplicateSessions(arr).length:arr.length):0);},0),0);
+  const prepH=totalSessions*tlPrepRatio;
   const totalH=staffH+prepH;
   const cards=[['Sessions',tlParsedSessions.length],['Staff',tlAllStaff.length],['Modules',tlAllModules.length],['Weeks',tlAllWeeks.length],['Staff hrs',staffH.toFixed(0)]];
-  if(tlPrepRatio>0){cards.push(['Prep hrs ('+tlPrepRatio+'×)',prepH.toFixed(0)]);cards.push(['Total hrs',totalH.toFixed(0)]);}
+  if(tlPrepRatio>0){cards.push(['Prep hrs ('+tlPrepRatio.toFixed(1)+'h/activity)',prepH.toFixed(0)]);cards.push(['Total hrs',totalH.toFixed(0)]);}
   document.getElementById('tlStatsBar').innerHTML=cards.map(([l,v])=>`<div class="stat-card"><div class="sc-v">${v}</div><div class="sc-l">${l}</div></div>`).join('');
 }
 
@@ -220,14 +223,26 @@ document.getElementById('modTagFilterClear').addEventListener('click',()=>{modul
 
 document.getElementById('tlBtnExport').addEventListener('click',()=>{
   const wb=XLSX.utils.book_new();const pr=tlPrepRatio;
-  const headers=pr>0?['Staff',...tlAllWeeks.map(w=>`Week ${w} Contact`),...tlAllWeeks.map(w=>`Week ${w} Prep`),'Total Contact','Total Prep','Total (incl. prep)']:['Staff',...tlAllWeeks.map(w=>`Week ${w}`),'Total'];
+  const headers=pr>0?['Staff',...tlAllWeeks.map(w=>`Week ${w} Contact`),...tlAllWeeks.map(w=>`Week ${w} Sessions`),...tlAllWeeks.map(w=>`Week ${w} Prep`),'Total Contact','Total Sessions','Total Prep','Total (incl. prep)']:['Staff',...tlAllWeeks.map(w=>`Week ${w}`),'Total'];
   const rows=[headers];
   for(const name of tlAllStaff){
-    if(pr>0){const contacts=tlAllWeeks.map(w=>calcHours(tlStaffData[name]?.[w],tlRealisticMode));const totC=contacts.reduce((a,b)=>a+b,0);const totP=totC*pr;rows.push([name,...contacts,...contacts.map(c=>+(c*pr).toFixed(2)),+totC.toFixed(2),+totP.toFixed(2),+(totC+totP).toFixed(2)]);}
-    else{const row=[name];let tot=0;for(const w of tlAllWeeks){const h=calcHours(tlStaffData[name]?.[w],tlRealisticMode);row.push(h||'');tot+=h;}row.push(+tot.toFixed(2));rows.push(row);}
+    if(pr>0){
+      const contacts=tlAllWeeks.map(w=>calcHours(tlStaffData[name]?.[w],tlRealisticMode));
+      const sessions=tlAllWeeks.map(w=>{const arr=tlStaffData[name]?.[w]||[];return arr.length?(tlRealisticMode?deduplicateSessions(arr).length:arr.length):0;});
+      const totC=contacts.reduce((a,b)=>a+b,0);
+      const totS=sessions.reduce((a,b)=>a+b,0);
+      const totP=totS*pr;
+      rows.push([name,...contacts,...sessions,...sessions.map(s=>+(s*pr).toFixed(2)),+totC.toFixed(2),totS,+totP.toFixed(2),+(totC+totP).toFixed(2)]);
+    }else{const row=[name];let tot=0;for(const w of tlAllWeeks){const h=calcHours(tlStaffData[name]?.[w],tlRealisticMode);row.push(h||'');tot+=h;}row.push(+tot.toFixed(2));rows.push(row);}
   }
-  if(pr>0){const contacts=tlAllWeeks.map(w=>tlAllStaff.reduce((s,e)=>s+calcHours(tlStaffData[e]?.[w],tlRealisticMode),0));const gtC=contacts.reduce((a,b)=>a+b,0);const gtP=gtC*pr;rows.push(['Grand Total',...contacts,...contacts.map(c=>+(c*pr).toFixed(2)),+gtC.toFixed(2),+gtP.toFixed(2),+(gtC+gtP).toFixed(2)]);}
-  else{const gr=['Grand Total'];let gt=0;for(const w of tlAllWeeks){const wt=tlAllStaff.reduce((s,e)=>s+calcHours(tlStaffData[e]?.[w],tlRealisticMode),0);gr.push(+wt.toFixed(2));gt+=wt;}gr.push(+gt.toFixed(2));rows.push(gr);}
+  if(pr>0){
+    const contacts=tlAllWeeks.map(w=>tlAllStaff.reduce((s,e)=>s+calcHours(tlStaffData[e]?.[w],tlRealisticMode),0));
+    const sessions=tlAllWeeks.map(w=>tlAllStaff.reduce((s,e)=>{const arr=tlStaffData[e]?.[w]||[];return s+(arr.length?(tlRealisticMode?deduplicateSessions(arr).length:arr.length):0);},0));
+    const gtC=contacts.reduce((a,b)=>a+b,0);
+    const gtS=sessions.reduce((a,b)=>a+b,0);
+    const gtP=gtS*pr;
+    rows.push(['Grand Total',...contacts,...sessions,...sessions.map(s=>+(s*pr).toFixed(2)),+gtC.toFixed(2),gtS,+gtP.toFixed(2),+(gtC+gtP).toFixed(2)]);
+  }else{const gr=['Grand Total'];let gt=0;for(const w of tlAllWeeks){const wt=tlAllStaff.reduce((s,e)=>s+calcHours(tlStaffData[e]?.[w],tlRealisticMode),0);gr.push(+wt.toFixed(2));gt+=wt;}gr.push(+gt.toFixed(2));rows.push(gr);}
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Staff Load');
   XLSX.writeFile(wb,'teaching_load.xlsx');
 });

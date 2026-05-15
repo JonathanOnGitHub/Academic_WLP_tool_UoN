@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════
 // TAB 3 — PROJECT SUPERVISION
 // ═══════════════════════════════════════════════════════
-let projRawProjects=[],projAllResults=[],projSettings={supervision:12,cosupervision:6,diss_feedback:3,diss_marking:2,poster_feedback:0.5,poster_marking:1/3},projSortKey='total-desc';
+let projRawProjects=[],projAllResults=[],projSettings={supervision:12,cosupervision:0,diss_feedback:3,diss_marking:2,poster_feedback:0.5,poster_marking:1/3},projSortKey='total-desc';
 const projDropZone=document.getElementById('projDropZone'),projFileInput=document.getElementById('projFileInput'),projAnalyseBtn=document.getElementById('projAnalyseBtn');
 
 projDropZone.addEventListener('dragover',e=>{e.preventDefault();projDropZone.classList.add('drag-over');});

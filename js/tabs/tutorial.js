@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════
 // TAB 2 — TUTORIAL WORKLOAD
 // ═══════════════════════════════════════════════════════
-let tutAllTutors=[],tutMaxHours=0,tutSortCol='hours',tutSortDir='desc';
+let tutAllTutors=[],tutMaxHours=0,tutSortCol='hours',tutSortDir='desc',tutRawMap=null;
 const tutDropZone=document.getElementById('tutDropZone'),tutFileInput=document.getElementById('tutFileInput');
 
 tutDropZone.addEventListener('dragover',e=>{e.preventDefault();tutDropZone.classList.add('drag-over');});
@@ -35,6 +35,7 @@ function tutProcessFile(file){
         const entry={name:studentName,year:String(row[iYear]||'').trim(),course,email:studentEmail};
         if(isY1)tutorMap[tutorName].year1.push(entry);else tutorMap[tutorName].other.push(entry);
       });
+      tutRawMap=tutorMap;
       tutAllTutors=Object.values(tutorMap).map(t=>{
         const extraHours=t.year1.filter(s=>courseCodes.includes(s.course.toUpperCase())).length*extra + t.other.filter(s=>courseCodes.includes(s.course.toUpperCase())).length*extra;
         return {...t,totalTutees:t.year1.length+t.other.length,hours:t.year1.length*y1h+t.other.length*oh+extraHours,extraHours};
@@ -71,9 +72,30 @@ function tutRenderTable(){
   });
 }
 
+function tutRecalculate(){
+  if(!tutRawMap){tutShowError('No tutorial data loaded.');return;}
+  const y1h=+document.getElementById('as_tutY1').value||16,oh=+document.getElementById('as_tutOther').value||8,extra=+document.getElementById('as_tutExtra').value||0;
+  const courseCodes=document.getElementById('as_tutCourses').value.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean),courseSet=new Set(courseCodes);
+  tutAllTutors=Object.values(tutRawMap).map(t=>{
+    const extraHours=t.year1.filter(s=>courseSet.has(s.course.toUpperCase())).length*extra + t.other.filter(s=>courseSet.has(s.course.toUpperCase())).length*extra;
+    return {...t,totalTutees:t.year1.length+t.other.length,hours:t.year1.length*y1h+t.other.length*oh+extraHours,extraHours};
+  });
+  tutMaxHours=Math.max(...tutAllTutors.map(t=>t.hours));
+  document.getElementById('tutMeta').textContent=`${tutAllTutors.length} tutors · ${tutAllTutors.reduce((s,t)=>s+t.totalTutees,0)} tutees`;
+  tutRenderSummary();tutRenderTable();updateCombStatus();
+}
+
 document.getElementById('tutSearch').addEventListener('input',tutRenderTable);
 document.getElementById('tutSort').addEventListener('change',e=>{const[c,d]=e.target.value.split('-');tutSortCol=c;tutSortDir=d;tutRenderTable();});
 document.getElementById('tutBtnBack').addEventListener('click',()=>{document.getElementById('tut-landing').style.display='';document.getElementById('tut-content').style.display='none';});
+document.getElementById('tutBtnSettings').addEventListener('click',()=>{
+  document.getElementById('as_tutY1').value=document.getElementById('tutY1Hours').value;
+  document.getElementById('as_tutOther').value=document.getElementById('tutOtherHours').value;
+  document.getElementById('as_tutExtra').value=document.getElementById('tutExtraAllowance').value;
+  document.getElementById('as_tutCourses').value=document.getElementById('tutSelectedCourses').value;
+  document.getElementById('tutInlineSettings').classList.toggle('open');
+});
+document.getElementById('tutRecalcBtn').addEventListener('click',tutRecalculate);
 document.getElementById('tutTable').querySelector('thead').addEventListener('click',e=>{
   const th=e.target.closest('th[data-tutsort]');if(!th)return;const col=th.dataset.tutsort;
   if(tutSortCol===col)tutSortDir=tutSortDir==='asc'?'desc':'asc';else{tutSortCol=col;tutSortDir=(col==='hours'||col==='total'||col==='year1'||col==='other')?'desc':'asc';}tutRenderTable();
