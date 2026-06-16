@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Academic Load — Combined View</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='5' width='26' height='23' rx='4' fill='%231e3a5f'/%3E%3Crect x='3' y='5' width='26' height='7' rx='4' fill='%233a85d9'/%3E%3Crect x='7' y='15' width='18' height='2' rx='1' fill='rgba(255,255,255,0.45)'/%3E%3Crect x='7' y='20' width='11' height='2' rx='1' fill='rgba(255,255,255,0.45)'/%3E%3Crect x='7' y='25' width='7' height='2' rx='1' fill='rgba(255,255,255,0.45)'/%3E%3Cline x1='8' y1='2' x2='8' y2='6' stroke='%23333' stroke-width='1.8' stroke-linecap='round'/%3E%3Cline x1='24' y1='2' x2='24' y2='6' stroke='%23333' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -26,6 +27,7 @@
     <button class="main-tab-btn active" data-maingroup="teaching">📚 Teaching</button>
     <button class="main-tab-btn" data-maingroup="citizenship">🏛 Citizenship</button>
     <button class="main-tab-btn" data-maingroup="research">🔬 Research</button>
+    <button class="main-tab-btn" data-maingroup="aob">📋 AoB <span class="tab-badge" id="badge-aob">—</span></button>
     <button class="main-tab-btn" data-maingroup="combined">⚡ Combined Totals <span class="tab-badge" id="badge-combined">—</span></button>
   </div>
 
@@ -509,6 +511,64 @@
     </div>
   </div>
 
+  <!-- ═══ TAB: AOB (Any other Business) ═══ -->
+  <div class="main-tab-panel" id="panel-aob">
+    <div id="aob-landing">
+      <div class="landing-grid">
+        <div class="landing-hero" style="background:linear-gradient(135deg,#004d33,#009966)">
+          <div class="hero-eyebrow">📋 Any other Business</div>
+          <h1 class="hero-h1">AoB Activity Import</h1>
+          <p class="hero-desc">Upload an XLSX spreadsheet of any other business activities. Hours are split equally among staff members listed in the same row, and feed into the Combined Totals view.</p>
+          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">Activity description · Staff member(s) · Hours per activity · Start date (optional) · End date (optional) · Notes (optional)</strong></div>
+        </div>
+        <div class="landing-panel">
+          <h2 class="panel-h2">Upload AoB Spreadsheet</h2>
+          <p class="panel-sub">XLSX or XLS file. Headers expected on row 1.</p>
+          <div class="drop-zone" id="aobDropZone" style="border-color:#009966;background:#e0f8ee">
+            <input type="file" id="aobFileInput" accept=".xlsx,.xls">
+            <div class="drop-icon">📋</div>
+            <h3>Drop XLSX file here</h3>
+            <p>or click to browse</p>
+          </div>
+          <div class="error-msg" id="aobError"></div>
+        </div>
+      </div>
+    </div>
+    <div id="aob-content" style="display:none">
+      <div class="analyser-header">
+        <div class="analyser-title-block"><h2>AoB Activities</h2><div class="analyser-meta" id="aobMeta"></div></div>
+        <div class="analyser-actions">
+          <button class="btn-action" id="aobBtnBack">← Back</button>
+          <button class="btn-action" id="aobBtnExport">⬇ Export XLSX</button>
+        </div>
+      </div>
+      <div class="stats-bar" id="aobStatsBar"></div>
+      <div class="search-row">
+        <input type="text" id="aobSearch" placeholder="Filter by name or activity…">
+        <select id="aobSortSel">
+          <option value="hours-desc">Total hours ↓</option>
+          <option value="hours-asc">Total hours ↑</option>
+          <option value="name-asc">Name A–Z</option>
+          <option value="name-desc">Name Z–A</option>
+          <option value="activities-desc">Activities ↓</option>
+          <option value="activities-asc">Activities ↑</option>
+        </select>
+      </div>
+      <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
+        <table class="pgr-table">
+          <thead><tr>
+            <th data-aobsort="name" style="cursor:pointer;user-select:none">Staff Member ↕</th>
+            <th data-aobsort="activities" style="cursor:pointer;user-select:none;text-align:right">Activities ↕</th>
+            <th data-aobsort="hours" style="cursor:pointer;user-select:none;text-align:right">Total hours ↕</th>
+            <th style="min-width:120px">Profile</th>
+          </tr></thead>
+          <tbody id="aobTbody"></tbody>
+          <tfoot id="aobFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══ TAB 9 (was 8): COMBINED TOTALS ═══ -->
   <div class="main-tab-panel" id="panel-combined">
     <div class="combined-upload-bar">
@@ -523,6 +583,7 @@
         <span class="status-pill" id="comb-status-cit">Citizenship</span>
         <span class="status-pill" id="comb-status-res">Research Hours</span>
         <span class="status-pill" id="comb-status-pgr">PGR Supervision</span>
+        <span class="status-pill" id="comb-status-aob">AoB</span>
       </div>
       <div class="anon-toggle" style="margin:6px 0;display:flex;align-items:center;gap:8px;font-size:0.82rem">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none">
@@ -574,6 +635,7 @@
           <option value="citizenship-desc">Citizenship ↓</option>
           <option value="research-desc">Research ↓</option>
           <option value="pgr-desc">PGR ↓</option>
+          <option value="aob-desc">AoB ↓</option>
           <option value="housekeeping-desc">🧹 Housekeeping ↓</option>
           <option value="name-asc">Name A–Z</option>
         </select>
@@ -628,6 +690,7 @@
             <th data-combsort="citizenship" style="cursor:pointer;user-select:none;text-align:right">Citizenship ↕</th>
             <th data-combsort="research" style="cursor:pointer;user-select:none;text-align:right">Research ↕</th>
             <th data-combsort="pgr" style="cursor:pointer;user-select:none;text-align:right">PGR ↕</th>
+            <th data-combsort="aob" style="cursor:pointer;user-select:none;text-align:right">AoB ↕</th>
             <th data-combsort="housekeeping" style="cursor:pointer;user-select:none;text-align:right">🧹 Housekeeping ↕</th>
             <th data-combsort="total" style="cursor:pointer;user-select:none;text-align:right">Total ↕</th>
             <th data-combsort="fte" style="cursor:pointer;user-select:none;min-width:170px">FTE % ↕</th>
@@ -803,6 +866,7 @@
   <script src="js/tabs/pgr.js"></script>
   <script src="js/tabs/assessment.js"></script>
   <script src="js/tabs/citizenship.js"></script>
+  <script src="js/tabs/aob.js"></script>
   <script src="js/tabs/combined.js"></script>
   <script src="js/tabs/staffing.js"></script>
 </body>
