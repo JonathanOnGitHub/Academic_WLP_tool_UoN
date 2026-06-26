@@ -285,6 +285,10 @@ td.tutor-name{font-weight:500;font-family:'Source Serif 4',serif;font-size:0.88r
 .btn-recalc:hover{background:#004fa3;}
 
 /* COMBINED */
+.filter-row{display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;}
+.text-muted{color:var(--muted);font-size:0.85rem;}
+.pgr-student-link:hover{color:var(--teal);text-decoration:underline;text-underline-offset:2px;}
+.pgr-student-link::after{content:' 🔍';font-size:0.7rem;opacity:0.5;}
 .search-row{display:flex;gap:1rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;}
 .search-row input[type=text]{padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;width:220px;}
 .search-row select{padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem;}
@@ -299,6 +303,18 @@ td.tutor-name{font-weight:500;font-family:'Source Serif 4',serif;font-size:0.88r
 .status-pill:not(.loaded)::before{content:'○ ';}
 
 .comb-table-wrap{overflow-x:auto;}
+
+/* Column group toggle bar */
+.col-group-toggle-bar{display:flex;gap:6px;margin-bottom:8px;padding:0 2px;flex-wrap:wrap;}
+.col-group-toggle{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:16px;font-size:0.75rem;font-weight:500;cursor:pointer;user-select:none;transition:all 0.2s;border:1px solid var(--border);background:var(--bg);color:var(--muted);}
+.col-group-toggle.active{background:var(--light-blue);border-color:var(--mid-blue);color:var(--navy);font-weight:600;}
+.col-group-toggle.active:hover{background:#d4e8fb;}
+.col-group-toggle:not(.active){opacity:0.6;}
+.col-group-toggle:not(.active):hover{opacity:0.9;background:#eee;}
+
+/* Hidden column group */
+.col-group-hidden{display:none !important;}
+@media print{.col-group-hidden{display:table-cell !important;}.col-group-toggle-bar{display:none !important;}}
 .comb-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
 .comb-table th{background:var(--navy);color:white;padding:9px 14px;font-weight:500;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;}
 .comb-table th:hover{background:#0a2a5a;}

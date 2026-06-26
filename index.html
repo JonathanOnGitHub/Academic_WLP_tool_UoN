@@ -35,6 +35,8 @@
     <button class="sub-tab-btn active" data-panel="panel-teaching">📅 Timetabled teaching load <span class="tab-badge" id="badge-teaching">—</span></button>
     <button class="sub-tab-btn" data-panel="panel-assessment">📝 Non-timetabled assessment <span class="tab-badge" id="badge-assessment">—</span></button>
     <button class="sub-tab-btn" data-panel="panel-project">🎓 Research Projects <span class="tab-badge" id="badge-project">—</span></button>
+    <button class="sub-tab-btn" data-panel="panel-simulation">🧪 Simulations <span class="tab-badge" id="badge-simulation">—</span></button>
+    <button class="sub-tab-btn" data-panel="panel-welcomeweek">🎉 Welcome Week <span class="tab-badge" id="badge-welcomeweek">—</span></button>
     <button class="sub-tab-btn" data-panel="panel-staffing">👥 Staffing &amp; Concurrency <span class="tab-badge" id="badge-staffing">—</span></button>
   </div>
 
@@ -226,9 +228,9 @@
               <div class="ps-row"><label>Supervision <span class="hint">Per student supervised</span></label><input type="number" id="ps_sup" value="12" min="0" step="0.5"></div>
               <div class="ps-row"><label>Co-supervision <span class="hint">Per student co-supervised</span></label><input type="number" id="ps_cosup" value="0" min="0" step="0.5"></div>
               <div class="ps-row"><label>Dissertation feedback <span class="hint">Supervisor's students only</span></label><input type="number" id="ps_diss_fb" value="3" min="0" step="0.5"></div>
-              <div class="ps-row"><label>Dissertation marking <span class="hint">Assessor_1 / Assessor_2</span></label><input type="number" id="ps_diss_mk" value="2" min="0" step="0.5"></div>
+              <div class="ps-row"><label>Dissertation marking <span class="hint">Dissertation assessment</span></label><input type="number" id="ps_diss_mk" value="2" min="0" step="0.5"></div>
               <div class="ps-row"><label>Poster feedback <span class="hint">Supervisor's students only</span></label><input type="number" id="ps_post_fb" value="0.5" min="0" step="0.25"></div>
-              <div class="ps-row"><label>Poster marking <span class="hint">Poster_1 / Poster_2 (≈20 min)</span></label><input type="number" id="ps_post_mk" value="0.333" min="0" step="0.083"></div>
+              <div class="ps-row"><label>Poster marking <span class="hint">Poster assessment</span></label><input type="number" id="ps_post_mk" value="0.5" min="0" step="0.083"></div>
             </div>
           </div>
           <button class="btn-primary" id="projAnalyseBtn" disabled>🎓 Calculate Project Workload</button>
@@ -248,7 +250,7 @@
           <div class="is-group"><label>Diss. feedback</label><input type="number" id="as_diss_fb" min="0" step="0.5"><span class="hint">own students only</span></div>
           <div class="is-group"><label>Diss. marking</label><input type="number" id="as_diss_mk" min="0" step="0.5"><span class="hint">Assessor_1/2</span></div>
           <div class="is-group"><label>Poster feedback</label><input type="number" id="as_post_fb" min="0" step="0.25"><span class="hint">own students only</span></div>
-          <div class="is-group"><label>Poster marking</label><input type="number" id="as_post_mk" min="0" step="0.083"><span class="hint">0.333 ≈ 20 min</span></div>
+          <div class="is-group"><label>Poster marking</label><input type="number" id="as_post_mk" min="0" step="0.083"><span class="hint">0.5 ≈ 30 min</span></div>
         </div>
         <button class="btn-recalc" id="projRecalcBtn">↻ Recalculate</button>
       </div>
@@ -263,7 +265,79 @@
     </div>
   </div>
 
-  <!-- ═══ TAB 4: MMIs ═══ -->
+  <!-- ═══ TAB 4 (inserted): SIMULATIONS ═══ -->
+  <div class="main-tab-panel" id="panel-simulation">
+    <div id="sim-landing">
+      <div class="landing-grid">
+        <div class="landing-hero" style="background:linear-gradient(135deg,#0d47a1,#42a5f5)">
+          <div class="hero-eyebrow">📚 Teaching · Simulations</div>
+          <h1 class="hero-h1">Simulation Academic Support</h1>
+          <p class="hero-desc">Upload the Simulation Academic Support spreadsheet. Calculates hours per staff member for simulation sessions (AM = 3 h, PM = 3 h). Two-sheet XLSX (Semester 1 &amp; 2).</p>
+          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected (row 1): <strong style="color:rgba(255,255,255,0.85)">Week · Date · Day · Year Group · Group · 9-12 noon (×3) · 1-4pm (×3)</strong></div>
+        </div>
+        <div class="landing-panel">
+          <h2 class="panel-h2">Upload Simulation Spreadsheet</h2>
+          <p class="panel-sub">Two-sheet XLSX. Headers on row 1.</p>
+          <div class="drop-zone" id="simDropZone" style="border-color:var(--mid-blue);background:var(--light-blue)"><input type="file" id="simFileInput" accept=".xlsx,.xls"><div class="drop-icon">🧪</div><h3>Drop file here</h3><p>XLSX</p></div>
+          <div class="error-msg" id="simError"></div>
+          <button class="btn-primary" id="simAnalyseBtn" disabled>🧪 Calculate Simulation Hours</button>
+        </div>
+      </div>
+    </div>
+    <div id="sim-content" style="display:none">
+      <div class="analyser-header">
+        <div class="analyser-title-block"><h2>Simulation Academic Support</h2><div class="analyser-meta" id="simMeta"></div></div>
+        <div class="analyser-actions"><button class="btn-action" id="simBtnBack">← Back</button><button class="btn-action" id="simBtnExport">⬇ Export XLSX</button></div>
+      </div>
+      <div class="stats-bar" id="simStatsBar"></div>
+      <div class="search-row"><input type="text" id="simSearch" placeholder="Filter by name…"><select id="simSortSel"><option value="hours-desc">Hours ↓</option><option value="hours-asc">Hours ↑</option><option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option></select></div>
+      <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
+        <table class="proj-table">
+          <thead><tr><th data-simsort="name" style="cursor:pointer;user-select:none">Staff Member ↕</th><th data-simsort="sessions" style="cursor:pointer;user-select:none;text-align:right">Sessions ↕</th><th data-simsort="hours" style="cursor:pointer;user-select:none;text-align:right">Total hours ↕</th><th style="min-width:120px">Profile</th></tr></thead>
+          <tbody id="simTbody"></tbody>
+          <tfoot id="simFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 5 (was 4): WELCOME WEEK ═══ -->
+  <div class="main-tab-panel" id="panel-welcomeweek">
+    <div id="ww-landing">
+      <div class="landing-grid">
+        <div class="landing-hero" style="background:linear-gradient(135deg,#1a5c2a,#4caf50)">
+          <div class="hero-eyebrow">📚 Teaching · Welcome Week</div>
+          <h1 class="hero-h1">Welcome Week Activities</h1>
+          <p class="hero-desc">Upload the Welcome Week allocation spreadsheet. Calculates hours per staff member for induction week activities.</p>
+          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected (row 3): <strong style="color:rgba(255,255,255,0.85)">Staff member · Activity · Hours · Notes</strong></div>
+        </div>
+        <div class="landing-panel">
+          <h2 class="panel-h2">Upload Welcome Week Spreadsheet</h2>
+          <p class="panel-sub">XLSX file. Headers on row 3.</p>
+          <div class="drop-zone" id="wwDropZone" style="border-color:var(--teal);background:#e6f7e6"><input type="file" id="wwFileInput" accept=".xlsx,.xls,.csv"><div class="drop-icon">🎉</div><h3>Drop file here</h3><p>XLSX, XLS or CSV</p></div>
+          <div class="error-msg" id="wwError"></div>
+          <button class="btn-primary" id="wwAnalyseBtn" disabled>🎉 Calculate Welcome Week Hours</button>
+        </div>
+      </div>
+    </div>
+    <div id="ww-content" style="display:none">
+      <div class="analyser-header">
+        <div class="analyser-title-block"><h2>Welcome Week Activities</h2><div class="analyser-meta" id="wwMeta"></div></div>
+        <div class="analyser-actions"><button class="btn-action" id="wwBtnBack">← Back</button><button class="btn-action" id="wwBtnExport">⬇ Export XLSX</button></div>
+      </div>
+      <div class="stats-bar" id="wwStatsBar"></div>
+      <div class="search-row"><input type="text" id="wwSearch" placeholder="Filter by name…"><select id="wwSortSel"><option value="hours-desc">Hours ↓</option><option value="hours-asc">Hours ↑</option><option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option></select></div>
+      <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
+        <table class="proj-table">
+          <thead><tr><th data-wwsort="name" style="cursor:pointer;user-select:none">Staff Member ↕</th><th data-wwsort="activities" style="cursor:pointer;user-select:none;text-align:right">Activities ↕</th><th data-wwsort="hours" style="cursor:pointer;user-select:none;text-align:right">Total hours ↕</th><th style="min-width:120px">Profile</th></tr></thead>
+          <tbody id="wwTbody"></tbody>
+          <tfoot id="wwFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 6 (was 5): MMIs ═══ -->
   <div class="main-tab-panel" id="panel-mmi">
     <div id="mmi-landing">
       <div class="landing-grid">
@@ -405,16 +479,16 @@
         <div class="landing-hero" style="background:linear-gradient(135deg,#0a4a3a,#0a9a7a)">
           <div class="hero-eyebrow">🔬 Research · PGR supervision</div>
           <h1 class="hero-h1">PGR Supervision</h1>
-          <p class="hero-desc">Upload the PGR supervision spreadsheet (XLSX). Calculates 100 hours per year per PhD/MRes student, split according to supervision percentages, and feeds into the Combined Totals view.</p>
-          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">First Name · Surname · Start date · ESD · End date · Thesis Submitted Date · Plan/Programme · PI · % PI · 2nd Supervisor · % Supervisor 2 · 3rd Supervisor · % Supervisor 3 · 4th Supervisor · % Supervisor 4 · 5th Supervisor · % Supervisor 5 · Assistant Supervisor · Mode</strong></div>
+          <p class="hero-desc">Upload the PGR supervision CSV export from the supervisor workload system. Each row is one supervisor–student assignment with a supervision percentage. Calculates 100 hours per student split according to those percentages, and feeds into the Combined Totals view.</p>
+          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected headers (row 1): <strong style="color:rgba(255,255,255,0.85)">Supervisor Name · Student ID · Firstname · Lastname · School/Department · Plan Title · Plan Code · Student Status · Supervision Percentage</strong></div>
         </div>
         <div class="landing-panel">
-          <h2 class="panel-h2">Upload PGR Spreadsheet</h2>
-          <p class="panel-sub">XLSX or XLS file. Headers expected on row 1.</p>
+          <h2 class="panel-h2">Upload PGR CSV</h2>
+          <p class="panel-sub">CSV file exported from the supervisor workload system.</p>
           <div class="drop-zone" id="pgrDropZone" style="border-color:#0a9a7a;background:#e0f8f0">
-            <input type="file" id="pgrFileInput" accept=".xlsx,.xls">
+            <input type="file" id="pgrFileInput" accept=".csv">
             <div class="drop-icon">👨‍🎓</div>
-            <h3>Drop XLSX file here</h3>
+            <h3>Drop CSV file here</h3>
             <p>or click to browse</p>
           </div>
           <div class="error-msg" id="pgrError"></div>
@@ -430,13 +504,21 @@
         </div>
       </div>
       <div class="stats-bar" id="pgrStatsBar"></div>
+      <div class="filter-row">
+        <label class="filter-label" style="margin-right:8px;font-size:0.85rem;color:var(--muted)">🏫 School:</label>
+        <select id="pgrSchoolFilter" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:0.85rem">
+          <option value="__all__">All Schools</option>
+        </select>
+      </div>
       <div class="search-row">
         <input type="text" id="pgrSearch" placeholder="Filter by supervisor name…">
         <select id="pgrSortSel">
           <option value="hours-desc">Total hours ↓</option>
           <option value="hours-asc">Total hours ↑</option>
-          <option value="students-desc">Students ↓</option>
-          <option value="students-asc">Students ↑</option>
+          <option value="school-students-desc">School students ↓</option>
+          <option value="school-students-asc">School students ↑</option>
+          <option value="total-students-desc">Total students ↓</option>
+          <option value="total-students-asc">Total students ↑</option>
           <option value="name-asc">Name A–Z</option>
           <option value="name-desc">Name Z–A</option>
         </select>
@@ -445,7 +527,8 @@
         <table class="pgr-table">
           <thead><tr>
             <th data-pgrsort="name" style="cursor:pointer;user-select:none">Supervisor ↕</th>
-            <th data-pgrsort="students" style="cursor:pointer;user-select:none;text-align:right">Students ↕</th>
+            <th data-pgrsort="school-students" style="cursor:pointer;user-select:none;text-align:right">School stud. ↕</th>
+            <th data-pgrsort="total-students" style="cursor:pointer;user-select:none;text-align:right">Total stud. ↕</th>
             <th data-pgrsort="hours" style="cursor:pointer;user-select:none;text-align:right">Total hours ↕</th>
             <th style="min-width:120px">Profile</th>
           </tr></thead>
@@ -584,6 +667,8 @@
         <span class="status-pill" id="comb-status-res">Research Hours</span>
         <span class="status-pill" id="comb-status-pgr">PGR Supervision</span>
         <span class="status-pill" id="comb-status-aob">AoB</span>
+        <span class="status-pill" id="comb-status-sim">Simulations</span>
+        <span class="status-pill" id="comb-status-ww">Welcome Week</span>
       </div>
       <div class="anon-toggle" style="margin:6px 0;display:flex;align-items:center;gap:8px;font-size:0.82rem">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none">
@@ -636,6 +721,8 @@
           <option value="research-desc">Research ↓</option>
           <option value="pgr-desc">PGR ↓</option>
           <option value="aob-desc">AoB ↓</option>
+          <option value="welcomeweek-desc">Welcome Week ↓</option>
+          <option value="simulation-desc">Simulations ↓</option>
           <option value="housekeeping-desc">🧹 Housekeeping ↓</option>
           <option value="name-asc">Name A–Z</option>
         </select>
@@ -677,21 +764,28 @@
         <button class="tag-group-report-btn" id="tagGroupReportBtn">📄 Report for this group</button>
       </div>
       <div class="comb-table-wrap">
+        <div class="col-group-toggle-bar" id="colGroupToggleBar">
+          <span class="col-group-toggle active" data-colgroup="teaching" onclick="toggleColGroup('teaching')">📚 Teaching</span>
+          <span class="col-group-toggle active" data-colgroup="citres" onclick="toggleColGroup('citres')">🏛 Citizenship &amp; Research</span>
+          <span class="col-group-toggle active" data-colgroup="other" onclick="toggleColGroup('other')">📋 Other Duties</span>
+        </div>
         <table class="comb-table">
           <thead><tr>
             <th style="width:36px;text-align:center"><input type="checkbox" id="combSelectAll" title="Select all"></th>
             <th data-combsort="name" style="cursor:pointer;user-select:none">Academic ↕</th>
             <th style="min-width:140px">Tags</th>
-            <th data-combsort="teaching" style="cursor:pointer;user-select:none;text-align:right">Teaching ↕</th>
-            <th data-combsort="assessment" style="cursor:pointer;user-select:none;text-align:right">Non-timetabled assess. ↕</th>
-            <th data-combsort="project" style="cursor:pointer;user-select:none;text-align:right">Project ↕</th>
-            <th data-combsort="tutorial" style="cursor:pointer;user-select:none;text-align:right">Tutorial ↕</th>
-            <th data-combsort="mmi" style="cursor:pointer;user-select:none;text-align:right">MMI ↕</th>
-            <th data-combsort="citizenship" style="cursor:pointer;user-select:none;text-align:right">Citizenship ↕</th>
-            <th data-combsort="research" style="cursor:pointer;user-select:none;text-align:right">Research ↕</th>
-            <th data-combsort="pgr" style="cursor:pointer;user-select:none;text-align:right">PGR ↕</th>
-            <th data-combsort="aob" style="cursor:pointer;user-select:none;text-align:right">AoB ↕</th>
-            <th data-combsort="housekeeping" style="cursor:pointer;user-select:none;text-align:right">🧹 Housekeeping ↕</th>
+            <th data-combsort="teaching" data-col-group="teaching" style="cursor:pointer;user-select:none;text-align:right">Teaching ↕</th>
+            <th data-combsort="assessment" data-col-group="teaching" style="cursor:pointer;user-select:none;text-align:right">Non-timetabled assess. ↕</th>
+            <th data-combsort="project" data-col-group="teaching" style="cursor:pointer;user-select:none;text-align:right">Project ↕</th>
+            <th data-combsort="tutorial" data-col-group="teaching" style="cursor:pointer;user-select:none;text-align:right">Tutorial ↕</th>
+            <th data-combsort="mmi" data-col-group="citres" style="cursor:pointer;user-select:none;text-align:right">MMI ↕</th>
+            <th data-combsort="citizenship" data-col-group="citres" style="cursor:pointer;user-select:none;text-align:right">Citizenship ↕</th>
+            <th data-combsort="research" data-col-group="citres" style="cursor:pointer;user-select:none;text-align:right">Research ↕</th>
+            <th data-combsort="pgr" data-col-group="citres" style="cursor:pointer;user-select:none;text-align:right">PGR ↕</th>
+            <th data-combsort="aob" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">AoB ↕</th>
+            <th data-combsort="welcomeweek" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">Welcome Week ↕</th>
+            <th data-combsort="simulation" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">Simulations ↕</th>
+            <th data-combsort="housekeeping" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">🧹 Housekeeping ↕</th>
             <th data-combsort="total" style="cursor:pointer;user-select:none;text-align:right">Total ↕</th>
             <th data-combsort="fte" style="cursor:pointer;user-select:none;min-width:170px">FTE % ↕</th>
             <th>Sources</th>
@@ -720,7 +814,7 @@
       <h4>📚 Teaching</h4>
       <p><strong>Timetabled teaching load</strong> — Parses exported HTML timetables and calculates weekly contact hours per staff member. Hours are calculated from session start/end times. A flat-rate preparation allowance (default 2 hours per timetabled activity) can be added. The <em>Realistic hours</em> option deduplicates overlapping sessions so you are not counted as being in two places at once.</p>
       <p><strong>Non-timetabled assessment</strong> — Upload the assessment spreadsheet. Total load hours are divided equally among all listed staff, with optional 1.0× or 0.5× extra allowance for staff with unexpired entries.</p>
-      <p><strong>Research Projects</strong> — Upload the project allocation spreadsheet. Calculates supervision (12 hrs/student share), dissertation feedback (3 hrs/student), dissertation marking (2 hrs/assessment), poster feedback (0.5 hr/student), and poster marking (0.333 hr/assessment) for each academic. Co-supervision hours are displayed for information but set to zero.</p>
+      <p><strong>Research Projects</strong> — Upload the project allocation spreadsheet. Calculates supervision (12 hrs/student share), dissertation feedback (3 hrs/student), dissertation marking (2 hrs/assessment), poster feedback (0.5 hr/student), and poster marking (0.5 hr/assessment) for each academic. Co-supervision hours are displayed for information but set to zero.</p>
     </div>
 
     <div class="help-section">
@@ -733,7 +827,7 @@
     <div class="help-section">
       <h4>🔬 Research</h4>
       <p><strong>Staff research hours</strong> — Upload the research hours spreadsheet. Shows FTE, project count, and current/next year hours per staff member. The Combined view uses whichever year you select.</p>
-      <p><strong>PGR supervision</strong> — Upload the PGR supervision spreadsheet. Each PhD/MRes student contributes 100 hours per year, split according to the supervision percentages assigned to each supervisor.</p>
+      <p><strong>PGR supervision</strong> — Upload the PGR supervision CSV export from the supervisor workload system. Each row is one supervisor–student assignment with a supervision percentage. 100 hours are allocated per student, split according to those percentages. Use the school filter to narrow to a specific school (defaults to Pharmacy on first load).</p>
     </div>
 
     <div class="help-section">
@@ -864,6 +958,8 @@
   <script src="js/tabs/teaching.js"></script>
   <script src="js/tabs/tutorial.js"></script>
   <script src="js/tabs/project.js"></script>
+  <script src="js/tabs/simulation.js"></script>
+  <script src="js/tabs/welcomeweek.js"></script>
   <script src="js/tabs/mmi.js"></script>
   <script src="js/tabs/research.js"></script>
   <script src="js/tabs/pgr.js"></script>
