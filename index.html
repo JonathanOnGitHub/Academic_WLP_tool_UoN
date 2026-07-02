@@ -34,7 +34,8 @@
   <div class="sub-tabs-bar" id="subtab-teaching">
     <button class="sub-tab-btn active" data-panel="panel-teaching">📅 Timetabled teaching load <span class="tab-badge" id="badge-teaching">—</span></button>
     <button class="sub-tab-btn" data-panel="panel-assessment">📝 Non-timetabled assessment <span class="tab-badge" id="badge-assessment">—</span></button>
-    <button class="sub-tab-btn" data-panel="panel-project">🎓 Research Projects <span class="tab-badge" id="badge-project">—</span></button>
+    <button class="sub-tab-btn" data-panel="panel-project">🎓 Research Projects UG <span class="tab-badge" id="badge-project">—</span></button>
+    <button class="sub-tab-btn" data-panel="panel-researchpgt">🔬 Research projects PGT <span class="tab-badge" id="badge-researchpgt">—</span></button>
     <button class="sub-tab-btn" data-panel="panel-simulation">🧪 Simulations <span class="tab-badge" id="badge-simulation">—</span></button>
     <button class="sub-tab-btn" data-panel="panel-welcomeweek">🎉 Welcome Week <span class="tab-badge" id="badge-welcomeweek">—</span></button>
     <button class="sub-tab-btn" data-panel="panel-staffing">👥 Staffing &amp; Concurrency <span class="tab-badge" id="badge-staffing">—</span></button>
@@ -212,7 +213,7 @@
     <div id="proj-landing">
       <div class="landing-grid">
         <div class="landing-hero" style="background:linear-gradient(135deg,#3a1f0a,#b84c2a)">
-          <div class="hero-eyebrow">📚 Teaching · Research Projects</div>
+          <div class="hero-eyebrow">📚 Teaching · Research Projects UG</div>
           <h1 class="hero-h1">Project Supervision &amp; Assessment</h1>
           <p class="hero-desc">Upload the project allocation spreadsheet. Calculates supervision, dissertation, and poster hours per academic.</p>
           <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected: <strong style="color:rgba(255,255,255,0.85)">Theme · Supervisor · Co_Supervisors · Poster_1/2_Assessor · Dissertation_1/2_Assessor</strong></div>
@@ -260,6 +261,64 @@
         <table class="proj-table">
           <thead><tr><th data-projsort="name" style="cursor:pointer;user-select:none">Academic ↕</th><th data-projsort="students" style="cursor:pointer;user-select:none;text-align:right">Supervised ↕</th><th style="text-align:right">Sup. hrs</th><th style="text-align:right">Co-sup hrs</th><th style="text-align:right">Diss Feedback</th><th style="text-align:right">Diss Marking</th><th style="text-align:right">Poster Feedback</th><th style="text-align:right">Poster Marking</th><th data-projsort="total" style="cursor:pointer;user-select:none;text-align:right">Total hrs ↕</th><th style="min-width:120px">Profile</th></tr></thead>
           <tbody id="projTbody"></tbody><tfoot id="projFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: RESEARCH PROJECTS PGT ═══ -->
+  <div class="main-tab-panel" id="panel-researchpgt">
+    <div id="pgt-landing">
+      <div class="landing-grid">
+        <div class="landing-hero" style="background:linear-gradient(135deg,#4a148c,#e040fb)">
+          <div class="hero-eyebrow">📚 Teaching · Research Projects PGT</div>
+          <h1 class="hero-h1">PGT Research Project Supervision</h1>
+          <p class="hero-desc">Upload the PGT research project allocation spreadsheet. Calculates supervision, dissertation, and poster hours per academic from student allocations.</p>
+          <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected (row 1): <strong style="color:rgba(255,255,255,0.85)">Long_name · Location · Allocation</strong> — <em style="color:rgba(255,255,255,0.7)">"/" separates multiple staff in Allocation column</em></div>
+        </div>
+        <div class="landing-panel">
+          <h2 class="panel-h2">Upload PGT Spreadsheet</h2>
+          <p class="panel-sub">XLSX file. Headers on row 1.</p>
+          <div class="drop-zone" id="pgtDropZone" style="border-color:#9c27b0;background:#f3e5f5"><input type="file" id="pgtFileInput" accept=".xlsx,.xls"><div class="drop-icon">🔬</div><h3>Drop XLSX file here</h3><p>or click to browse</p></div>
+          <div class="error-msg" id="pgtError"></div>
+          <div class="proj-settings">
+            <div class="proj-settings-hdr" id="pgtSettingsHdr"><h3>⚙️ Hour settings</h3><span class="chev">▾</span></div>
+            <div class="proj-settings-body" id="pgtSettingsBody">
+              <div class="ps-row"><label>Supervision <span class="hint">Per student supervised</span></label><input type="number" id="pgt_sup" value="12" min="0" step="0.5"></div>
+              <div class="ps-row"><label>Dissertation feedback <span class="hint">Per student</span></label><input type="number" id="pgt_diss_fb" value="3" min="0" step="0.5"></div>
+              <div class="ps-row"><label>Poster feedback <span class="hint">Per student</span></label><input type="number" id="pgt_post_fb" value="0.5" min="0" step="0.25"></div>
+              <div class="ps-row"><label>Dissertation marking <span class="hint">Per student</span></label><input type="number" id="pgt_diss_mk" value="2" min="0" step="0.5"></div>
+              <div class="ps-row"><label>Poster marking <span class="hint">Per student</span></label><input type="number" id="pgt_post_mk" value="0.5" min="0" step="0.25"></div>
+              <div class="ps-row"><label>Students for marking <span class="hint">Assume this many students for marking</span></label><input type="number" id="pgt_mark_students" value="2" min="1" max="10" step="1"></div>
+            </div>
+          </div>
+          <button class="btn-primary" id="pgtAnalyseBtn" disabled>🔬 Calculate PGT Research Hours</button>
+        </div>
+      </div>
+    </div>
+    <div id="pgt-content" style="display:none">
+      <div class="analyser-header">
+        <div class="analyser-title-block"><h2>PGT Research Project Supervision</h2><div class="analyser-meta" id="pgtMeta"></div></div>
+        <div class="analyser-actions"><button class="btn-action" id="pgtBtnBack">← Back</button><button class="btn-action" id="pgtBtnSettings">⚙ Settings</button><button class="btn-action" id="pgtBtnExport">⬇ Export XLSX</button></div>
+      </div>
+      <div class="inline-settings" id="pgtInlineSettings">
+        <h3>Hour Rates — adjust and click Recalculate</h3>
+        <div class="is-grid">
+          <div class="is-group"><label>Supervision</label><input type="number" id="as_pgt_sup" min="0" step="0.5"><span class="hint">hrs/student</span></div>
+          <div class="is-group"><label>Diss. feedback</label><input type="number" id="as_pgt_diss_fb" min="0" step="0.5"><span class="hint">hrs/student</span></div>
+          <div class="is-group"><label>Poster feedback</label><input type="number" id="as_pgt_post_fb" min="0" step="0.25"><span class="hint">hrs/student</span></div>
+          <div class="is-group"><label>Diss. marking</label><input type="number" id="as_pgt_diss_mk" min="0" step="0.5"><span class="hint">hrs/student</span></div>
+          <div class="is-group"><label>Poster marking</label><input type="number" id="as_pgt_post_mk" min="0" step="0.25"><span class="hint">hrs/student</span></div>
+          <div class="is-group"><label>Marking students</label><input type="number" id="as_pgt_mark_students" min="1" max="10" step="1"><span class="hint">assumed count</span></div>
+        </div>
+        <button class="btn-recalc" id="pgtRecalcBtn">↻ Recalculate</button>
+      </div>
+      <div class="stats-bar" id="pgtStatsBar"></div>
+      <div class="search-row"><input type="text" id="pgtSearch" placeholder="Filter by name…"><select id="pgtSortSel"><option value="total-desc">Total hours ↓</option><option value="total-asc">Total hours ↑</option><option value="name-asc">Name A–Z</option><option value="students-desc">Students supervised ↓</option></select></div>
+      <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
+        <table class="pgt-table">
+          <thead><tr><th data-pgtsort="name" style="cursor:pointer;user-select:none">Academic ↕</th><th data-pgtsort="students" style="cursor:pointer;user-select:none;text-align:right">Students ↕</th><th style="text-align:right">Sup. hrs</th><th style="text-align:right">Diss Feedback</th><th style="text-align:right">Poster Feedback</th><th style="text-align:right">Diss Marking</th><th style="text-align:right">Poster Marking</th><th data-pgtsort="total" style="cursor:pointer;user-select:none;text-align:right">Total hrs ↕</th><th style="min-width:120px">Profile</th></tr></thead>
+          <tbody id="pgtTbody"></tbody><tfoot id="pgtFoot"></tfoot>
         </table>
       </div>
     </div>
@@ -669,6 +728,7 @@
         <span class="status-pill" id="comb-status-aob">AoB</span>
         <span class="status-pill" id="comb-status-sim">Simulations</span>
         <span class="status-pill" id="comb-status-ww">Welcome Week</span>
+        <span class="status-pill" id="comb-status-pgt">PGT Research</span>
       </div>
       <div class="anon-toggle" style="margin:6px 0;display:flex;align-items:center;gap:8px;font-size:0.82rem">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none">
@@ -723,6 +783,7 @@
           <option value="aob-desc">AoB ↓</option>
           <option value="welcomeweek-desc">Welcome Week ↓</option>
           <option value="simulation-desc">Simulations ↓</option>
+          <option value="researchpgt-desc">PGT Research ↓</option>
           <option value="housekeeping-desc">🧹 Housekeeping ↓</option>
           <option value="name-asc">Name A–Z</option>
         </select>
@@ -785,6 +846,7 @@
             <th data-combsort="aob" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">AoB ↕</th>
             <th data-combsort="welcomeweek" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">Welcome Week ↕</th>
             <th data-combsort="simulation" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">Simulations ↕</th>
+            <th data-combsort="researchpgt" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">PGT Research ↕</th>
             <th data-combsort="housekeeping" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">🧹 Housekeeping ↕</th>
             <th data-combsort="total" style="cursor:pointer;user-select:none;text-align:right">Total ↕</th>
             <th data-combsort="fte" style="cursor:pointer;user-select:none;min-width:170px">FTE % ↕</th>
@@ -815,6 +877,7 @@
       <p><strong>Timetabled teaching load</strong> — Parses exported HTML timetables and calculates weekly contact hours per staff member. Hours are calculated from session start/end times. A flat-rate preparation allowance (default 2 hours per timetabled activity) can be added. The <em>Realistic hours</em> option deduplicates overlapping sessions so you are not counted as being in two places at once.</p>
       <p><strong>Non-timetabled assessment</strong> — Upload the assessment spreadsheet. Total load hours are divided equally among all listed staff, with optional 1.0× or 0.5× extra allowance for staff with unexpired entries.</p>
       <p><strong>Research Projects</strong> — Upload the project allocation spreadsheet. Calculates supervision (12 hrs/student share), dissertation feedback (3 hrs/student), dissertation marking (2 hrs/assessment), poster feedback (0.5 hr/student), and poster marking (0.5 hr/assessment) for each academic. Co-supervision hours are displayed for information but set to zero.</p>
+      <p><strong>Research Projects PGT</strong> — Upload the PGT research project allocation spreadsheet with <em>Long_name</em>, <em>Location</em>, <em>Allocation</em> columns. <code>/</code> separates multiple staff in the Allocation cell. Supervision hours (default 12h/student), dissertation feedback (3h), poster feedback (0.5h), dissertation marking (2h), and poster marking (0.5h) are split equally among staff. Marking hours assume 2 students (configurable).</p>
     </div>
 
     <div class="help-section">
@@ -966,6 +1029,7 @@
   <script src="js/tabs/assessment.js"></script>
   <script src="js/tabs/citizenship.js"></script>
   <script src="js/tabs/aob.js"></script>
+  <script src="js/tabs/research_pgt.js"></script>
   <script src="js/tabs/combined.js"></script>
   <script src="js/tabs/staffing.js"></script>
 </body>
