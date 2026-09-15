@@ -270,6 +270,14 @@ function mergeNameLists(lists){
 
   for(const g of groups){
     if(g._merged)continue;
+    // Prefer the timetabled teaching (tl) source for the canonical name
+    // — its format is Uni-approved and already includes professional
+    // titles. Fall back to the longest-token-name rule for everyone
+    // else (preserves the prior behaviour for non-teaching merges).
+    if(g.sources.tl){
+      g.canonical=g.sources.tl;
+      continue;
+    }
     const allNames=Object.values(g.sources);
     if(allNames.length>1){
       const bestName=allNames.reduce((best,name)=>{
