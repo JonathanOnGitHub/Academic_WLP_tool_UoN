@@ -4,7 +4,7 @@
 let combData=[],combSortKey='total-desc';
 
 // Column group visibility (collapsible groups in combined table)
-const COL_GROUPS={teaching:['teaching','assessment','project','tutorial'],citres:['mmi','citizenship','research','pgr'],other:['aob','welcomeweek','simulation','housekeeping','researchpgt']};
+const COL_GROUPS={teaching:['teaching','assessment','project','tutorial'],citres:['mmi','citizenship','research','pgr'],other:['aob','welcomeweek','simulation','pgr_training','opendays','researchpgt']};
 let groupState={teaching:true,citres:true,other:true};
 try{const saved=JSON.parse(localStorage.getItem('combGroupState'));if(saved)Object.assign(groupState,saved);}catch(e){}
 
@@ -30,7 +30,7 @@ function applyColGroupState(){
   if(table){table.style.tableLayout='';}
 }
 
-const SRC_LABELS={tl:'📅 Teaching',assessment:'📝 Non-timetabled assess.',proj:'🎓 Project',tut:'👥 Tutorial',mmi:'🩺 MMI',cit:'🏛 Citizenship',res:'🔬 Research',pgr:'👨‍🎓 PGR',aob:'📋 AoB',ww:'🎉 Welcome Week',sim:'🧪 Simulations',pgt:'🔬 PGT Research'};
+const SRC_LABELS={tl:'📅 Teaching',assessment:'📝 Non-timetabled assess.',proj:'🎓 Project',tut:'👥 Tutorial',mmi:'🩺 MMI',cit:'🏛 Citizenship',res:'🔬 Research',pgr:'👨‍🎓 PGR',aob:'📋 AoB',ww:'🎉 Welcome Week',sim:'🧪 Simulations',pgt:'🔬 PGT Research',pgr_training:'📚 PGR Training',opendays:'🎯 Open Days'};
 let anonymousMode=false;
 const FLINTSTONES_NAMES=[
   'Fred Flintstone','Wilma Flintstone','Pebbles Flintstone',
@@ -64,36 +64,94 @@ const staffTags=new Map();
 const tagRules=new Map();
 let activeTagFilter=null;
 let moduleTagFilter=null;
+let combTlOnly=false; // filter to only show staff with timetabled teaching
 const moduleTags=new Map();
 const manualMappings = new Map(); // normKey(sourceName) → targetCanonical
 
 let fteTarget=1600;
 let housekeepingRate=0.1;
 const staffFte=new Map();
+const staffPartTime=new Map(); // normKey → per-person part-time fraction override
 
-function getEffectiveFte(canonical){
+/**
+ * Returns the Part Time fraction for a person:
+ *   - manual per-person override (from tag popover) if set, else
+ *   - 1.0 (no part-time adjustment)
+ */
+function getPartTimeFraction(canonical){
+  const nk=normKey(canonical);
+  const manual=staffPartTime.get(nk);
+  if(manual!=null)return manual;
+  return 1.0;
+}
+
+/**
+ * Returns the total tag reduction as a multiplier (1 − sum of tag reductions).
+ * Reductions from multiple tags are summed together (additive from the PT-adjusted base).
+ * (Part Time and housekeeping are handled separately.)
+ *
+ * With two 0.9 FTE tags: returns 1 − 0.1 − 0.1 = 0.80.
+ */
+function getTagFteMultiplier(canonical){
   const nk=normKey(canonical);
   const manual=staffFte.get(nk);
   if(manual!=null)return manual;
   const today=todayDate();
-  let combined=1.0;
-  let anyTagFraction=false;
+  let totalReduction=0;
   activeTagsForPerson(canonical).forEach(tag=>{
     const rule=tagRules.get(tag);
     if(!rule)return;
     if(rule.expiry&&rule.expiry<today)return;
     if(rule.fte!=null&&rule.fte!==1){
-      combined*=rule.fte;
-      anyTagFraction=true;
+      totalReduction+=1-rule.fte;
     }
   });
-  return anyTagFraction?combined:1.0;
+  return Math.max(0.05, 1-totalReduction);
+}
+
+/**
+ * Returns individual reduction tags for a person.
+ * Each entry: {tag: string, reduction: number} for active tags with an fte !== 1.
+ * (Part Time is not included — it's handled separately.)
+ */
+function getWorkloadAllowanceTags(canonical){
+  const today=todayDate();
+  const result=[];
+  activeTagsForPerson(canonical).forEach(tag=>{
+    const rule=tagRules.get(tag);
+    if(!rule)return;
+    if(rule.expiry&&rule.expiry<today)return;
+    if(rule.fte!=null&&rule.fte!==1){
+      result.push({tag, reduction: Math.round((1-rule.fte)*100)});
+    }
+  });
+  return result;
+}
+
+/**
+ * Combined effective FTE = Part Time fraction × (1 − housekeepingRate − sum of tag reductions).
+ * Housekeeping and tag reductions are additive against the PT-adjusted base.
+ * (If a manual override exists it returns that directly, bypassing all reductions.)
+ */
+function getEffectiveFte(canonical){
+  const nk=normKey(canonical);
+  const manual=staffFte.get(nk);
+  if(manual!=null)return manual;
+  const ptFrac=getPartTimeFraction(canonical);
+  const tagReduction=1-getTagFteMultiplier(canonical);
+  const totalReduction=housekeepingRate+tagReduction;
+  return Math.max(0.05, ptFrac*(1-totalReduction));
 }
 function getFte(canonical){return getEffectiveFte(canonical);}
 function setFte(canonical,fraction){
   const nk=normKey(canonical);
   if(fraction===1.0||fraction===null||isNaN(fraction))staffFte.delete(nk);
   else staffFte.set(nk,Math.min(1.0,Math.max(0.05,+fraction)));
+}
+function setPartTime(canonical,fraction){
+  const nk=normKey(canonical);
+  if(fraction===1.0||fraction===null||isNaN(fraction))staffPartTime.delete(nk);
+  else staffPartTime.set(nk,Math.min(1.0,Math.max(0.05,+fraction)));
 }
 function personalTarget(canonical){return fteTarget*getEffectiveFte(canonical);}
 function fteClass(pct){
@@ -113,9 +171,24 @@ function fteBarHtml(canonical,totalHours){
   const markerLeft=(100/130*100).toFixed(2);
   const target=personalTarget(canonical);
   const fte=getEffectiveFte(canonical);
+  const ptFrac=getPartTimeFraction(canonical);
+  const tagFte=getTagFteMultiplier(canonical);
   const isManual=staffFte.get(normKey(canonical))!=null;
-  const fteSource=isManual?'manual override':'tag rules';
-  const tip=`${totalHours.toFixed(1)}h of ${target.toFixed(0)}h target (${fteTarget}h × ${fte.toFixed(2)} FTE via ${fteSource})`;
+  const ptManual=staffPartTime.get(normKey(canonical))!=null;
+  let breakdown=`${fteTarget}×${fte.toFixed(2)} FTE (${Math.round((1-fte)*100)}% total reduction)`;
+  if(ptFrac!==1||tagFte!==1||housekeepingRate>0){
+    const parts=[];
+    if(ptManual)parts.push(`PT: ${Math.round((1-ptFrac)*100)}%`);
+    else if(ptFrac!==1)parts.push(`PT: ${Math.round((1-ptFrac)*100)}%`);
+    if(housekeepingRate>0)parts.push(`HK: ${Math.round(housekeepingRate*100)}%`);
+    if(isManual)parts.push(`override: ${Math.round((1-tagFte)*100)}%`);
+    else if(tagFte!==1){
+      const tags=getWorkloadAllowanceTags(canonical);
+      parts.push(`tags: ${tags.map(t=>t.reduction).join('+')}%`);
+    }
+    if(parts.length)breakdown+=` (${parts.join('; ')})`;
+  }
+  const tip=`${totalHours.toFixed(1)}h of ${target.toFixed(0)}h target (${breakdown})`;
   return`<div class="fte-wrap" title="${tip}">
     <span class="fte-pct ${cls}">${pct}%</span>
     <div class="fte-bar-outer">
@@ -143,6 +216,10 @@ function updateCombStatus(){
   const hasSim=Object.keys(simHours).length>0;
   const pgtHours=typeof window.getResearchPgtHoursTotals==='function'?window.getResearchPgtHoursTotals():{};
   const hasPgt=Object.keys(pgtHours).length>0;
+  const pgrTrainingHours=typeof window.getPgtTrainingHoursTotals==='function'?window.getPgtTrainingHoursTotals():{};
+  const hasPgtTraining=Object.keys(pgrTrainingHours).length>0;
+  const opendaysHours=typeof window.getOpenDaysHoursTotals==='function'?window.getOpenDaysHoursTotals():{};
+  const hasOpendays=Object.keys(opendaysHours).length>0;
   const pill=(id,loaded,loadedText,defaultText)=>{const el=document.getElementById(id);if(!el)return;el.className='status-pill'+(loaded?' loaded':'');el.textContent=loaded?loadedText:defaultText;};
   pill('comb-status-tl',hasTL,`Teaching: ${tlAllStaff.length} staff`,'Teaching Load');
   pill('comb-status-assessment',hasAssessment,`Non-timetabled assess.: ${Object.keys(assessmentHours).length} staff`,'Non-timetabled assess.');
@@ -156,7 +233,9 @@ function updateCombStatus(){
   pill('comb-status-ww',hasWw,`Welcome Week: ${Object.keys(wwHours).length} staff`,'Welcome Week');
   pill('comb-status-sim',hasSim,`Simulations: ${Object.keys(simHours).length} staff`,'Simulations');
   pill('comb-status-pgt',hasPgt,`PGT Research: ${Object.keys(pgtHours).length} staff`,'PGT Research');
-  document.getElementById('combMergeBtn').disabled=!(hasTL||hasTUT||hasProj||hasMmi||hasCit||hasRes||hasPgr||hasAssessment||hasAob||hasWw||hasSim||hasPgt);
+  pill('comb-status-pgr_training',hasPgtTraining,`PGR Training: ${Object.keys(pgrTrainingHours).length} staff`,'PGR Training');
+  pill('comb-status-opendays',hasOpendays,`Open Days: ${Object.keys(opendaysHours).length} staff`,'Open Days');
+  document.getElementById('combMergeBtn').disabled=!(hasTL||hasTUT||hasProj||hasMmi||hasCit||hasRes||hasPgr||hasAssessment||hasAob||hasWw||hasSim||hasPgt||hasPgtTraining||hasOpendays);
 }
 
 function recomputeCombData(){
@@ -168,6 +247,8 @@ function recomputeCombData(){
   const wwHoursTotals=typeof window.getWelcomeWeekHoursTotals==='function'?window.getWelcomeWeekHoursTotals():{};
   const simHoursTotals=typeof window.getSimHoursTotals==='function'?window.getSimHoursTotals():{};
   const pgtHoursTotals=typeof window.getResearchPgtHoursTotals==='function'?window.getResearchPgtHoursTotals():{};
+  const pgrTrainingHoursTotals=typeof window.getPgtTrainingHoursTotals==='function'?window.getPgtTrainingHoursTotals():{};
+  const opendaysHoursTotals=typeof window.getOpenDaysHoursTotals==='function'?window.getOpenDaysHoursTotals():{};
   combData.forEach(d=>{
     const contactH=d.tlName?tlAllWeeks.reduce((s,w)=>s+calcHours(tlStaffData[d.tlName]?.[w],tlRealisticMode),0):0;
     const sessionCnt=d.tlName?tlAllWeeks.reduce((s,w)=>{const arr=tlStaffData[d.tlName]?.[w]||[];return s+(arr.length?(tlRealisticMode?deduplicateSessions(arr).length:arr.length):0);},0):0;
@@ -182,9 +263,11 @@ function recomputeCombData(){
     d.wwHours=d.wwName?(wwHoursTotals[d.wwName]||0):0;
     d.simHours=d.simName?(simHoursTotals[d.simName]||0):0;
     d.pgtHours=d.pgtName?(pgtHoursTotals[d.pgtName]||0):0;
-    const otherTotal=d.tlHours+d.assessmentHours+d.projHours+d.tutHours+d.mmiHours+d.citHours+d.resHours+d.pgrHours+d.aobHours+d.wwHours+d.simHours+d.pgtHours;
-    d.housekeepingHours=personalTarget(d.canonical)*housekeepingRate;
-    d.total=otherTotal+d.housekeepingHours;
+    d.pgrTrainingHours=d.pgrTrainingName?(pgrTrainingHoursTotals[d.pgrTrainingName]||0):0;
+    d.opendaysHours=d.opendaysName?(opendaysHoursTotals[d.opendaysName]||0):0;
+    const otherTotal=d.tlHours+d.assessmentHours+d.projHours+d.tutHours+d.mmiHours+d.citHours+d.resHours+d.pgrHours+d.aobHours+d.wwHours+d.simHours+d.pgtHours+d.pgrTrainingHours+d.opendaysHours;
+    d.housekeepingHours=fteTarget*getPartTimeFraction(d.canonical)*housekeepingRate;
+    d.total=otherTotal;
     d._bonuses=computeBonuses(d.canonical);
   });
 }
@@ -220,6 +303,12 @@ function doMerge(){
   const pgtHoursTotals=typeof window.getResearchPgtHoursTotals==='function'?window.getResearchPgtHoursTotals():{};
   const pgtNames=Object.keys(pgtHoursTotals);
   if(pgtNames.length>0)rawLists.push({source:'pgt',names:pgtNames});
+  const pgrTrainingHoursTotals=typeof window.getPgtTrainingHoursTotals==='function'?window.getPgtTrainingHoursTotals():{};
+  const pgrTrainingNames=Object.keys(pgrTrainingHoursTotals);
+  if(pgrTrainingNames.length>0)rawLists.push({source:'pgr_training',names:pgrTrainingNames});
+  const opendaysHoursTotals=typeof window.getOpenDaysHoursTotals==='function'?window.getOpenDaysHoursTotals():{};
+  const opendaysNames=Object.keys(opendaysHoursTotals);
+  if(opendaysNames.length>0)rawLists.push({source:'opendays',names:opendaysNames});
 
   // Merge names, then post-process manual mappings (post-merge avoids data loss
   // from source-specific lookups using a rewritten name)
@@ -244,8 +333,8 @@ function doMerge(){
   }
 
   combData=groups.filter(g=>!g._merged).map(g=>{
-    const tlName=g.sources['tl']||null,assessmentName=g.sources['assessment']||null,projName=g.sources['proj']||null,tutName=g.sources['tut']||null,mmiName=g.sources['mmi']||null,citName=g.sources['cit']||null,resName=g.sources['res']||null,pgrName=g.sources['pgr']||null,aobName=g.sources['aob']||null,wwName=g.sources['ww']||null,simName=g.sources['sim']||null,pgtName=g.sources['pgt']||null;
-    const tlExtra=g._extraSources?.tl||[],assessmentExtra=g._extraSources?.assessment||[],projExtra=g._extraSources?.proj||[],tutExtra=g._extraSources?.tut||[],mmiExtra=g._extraSources?.mmi||[],citExtra=g._extraSources?.cit||[],resExtra=g._extraSources?.res||[],pgrExtra=g._extraSources?.pgr||[],aobExtra=g._extraSources?.aob||[],wwExtra=g._extraSources?.ww||[],simExtra=g._extraSources?.sim||[],pgtExtra=g._extraSources?.pgt||[];
+    const tlName=g.sources['tl']||null,assessmentName=g.sources['assessment']||null,projName=g.sources['proj']||null,tutName=g.sources['tut']||null,mmiName=g.sources['mmi']||null,citName=g.sources['cit']||null,resName=g.sources['res']||null,pgrName=g.sources['pgr']||null,aobName=g.sources['aob']||null,wwName=g.sources['ww']||null,simName=g.sources['sim']||null,pgtName=g.sources['pgt']||null,pgrTrainingName=g.sources['pgr_training']||null,opendaysName=g.sources['opendays']||null;
+    const tlExtra=g._extraSources?.tl||[],assessmentExtra=g._extraSources?.assessment||[],projExtra=g._extraSources?.proj||[],tutExtra=g._extraSources?.tut||[],mmiExtra=g._extraSources?.mmi||[],citExtra=g._extraSources?.cit||[],resExtra=g._extraSources?.res||[],pgrExtra=g._extraSources?.pgr||[],aobExtra=g._extraSources?.aob||[],wwExtra=g._extraSources?.ww||[],simExtra=g._extraSources?.sim||[],pgtExtra=g._extraSources?.pgt||[],pgrTrainingExtra=g._extraSources?.pgr_training||[],opendaysExtra=g._extraSources?.opendays||[];
     const contactH=tlName||tlExtra.length?tlAllWeeks.reduce((s,w)=>{
       let h=0;
       if(tlName)h+=calcHours(tlStaffData[tlName]?.[w],tlRealisticMode);
@@ -273,16 +362,18 @@ function doMerge(){
     const wwHours=(wwName?wwHoursTotals[wwName]||0:0)+wwExtra.reduce((s,en)=>s+(wwHoursTotals[en]||0),0);
     const simHours=(simName?simHoursTotals[simName]||0:0)+simExtra.reduce((s,en)=>s+(simHoursTotals[en]||0),0);
     const pgtHours=(pgtName?pgtHoursTotals[pgtName]||0:0)+pgtExtra.reduce((s,en)=>s+(pgtHoursTotals[en]||0),0);
-    const total=tlHours+assessmentHours+projHours+tutHours+mmiHours+citHours+resHours+pgrHours+aobHours+wwHours+simHours+pgtHours;
+    const pgrTrainingHours=(pgrTrainingName?pgrTrainingHoursTotals[pgrTrainingName]||0:0)+pgrTrainingExtra.reduce((s,en)=>s+(pgrTrainingHoursTotals[en]||0),0);
+    const opendaysHours=(opendaysName?opendaysHoursTotals[opendaysName]||0:0)+opendaysExtra.reduce((s,en)=>s+(opendaysHoursTotals[en]||0),0);
+    const total=tlHours+assessmentHours+projHours+tutHours+mmiHours+citHours+resHours+pgrHours+aobHours+wwHours+simHours+pgtHours+pgrTrainingHours+opendaysHours;
     const matchType=Object.keys(g.sources).length>1||g._extraSources?(g.matchType||'exact'):'only';
     const _bonuses=computeBonuses(g.canonical);
-    return{canonical:g.canonical,tlName,assessmentName,projName,tutName,mmiName,citName,resName,pgrName,aobName,wwName,simName,pgtName,tlHours,assessmentHours,projHours,tutHours,mmiHours,citHours,resHours,pgrHours,aobHours,wwHours,simHours,pgtHours,total,matchType,score:g.score,sources:g.sources,_bonuses};
+    return{canonical:g.canonical,tlName,assessmentName,projName,tutName,mmiName,citName,resName,pgrName,aobName,wwName,simName,pgtName,pgrTrainingName,opendaysName,tlHours,assessmentHours,projHours,tutHours,mmiHours,citHours,resHours,pgrHours,aobHours,wwHours,simHours,pgtHours,pgrTrainingHours,opendaysHours,total,matchType,score:g.score,sources:g.sources,_bonuses};
   });
   const maxTotal=Math.max(...combData.map(d=>d.total),1);
   const fuzzy=combData.filter(d=>d.matchType==='fuzzy').length;
   const firstname=combData.filter(d=>d.matchType==='firstname').length;
   const nMappings=manualMappings.size;
-  document.getElementById('combMeta').textContent=`${combData.length} academics · ${combData.filter(d=>Object.keys(d.sources).length>1).length} matched across sources · ${fuzzy} fuzzy · ${firstname} first-name matches${nMappings?` · ${nMappings} manual mapping${nMappings>1?'s':''}`:''}`;
+  document.getElementById('combMeta').textContent=`${combData.length} academics · ${combData.filter(d=>Object.keys(d.sources).length>1).length} matched across sources · ${combData.filter(d=>d.tlName).length} with teaching · ${fuzzy} fuzzy · ${firstname} first-name matches${nMappings?` · ${nMappings} manual mapping${nMappings>1?'s':''}`:''}`;
   // Show active mappings inline
   let mapInfo=document.getElementById('combMapInfo');
   if(!mapInfo){
@@ -339,12 +430,13 @@ function combGetSorted(){
   const q=document.getElementById('combSearch').value.toLowerCase();
   let data=combData.filter(d=>d.canonical.toLowerCase().includes(q));
   if(activeTagFilter!==null) data=data.filter(d=>activeTagsForPerson(d.canonical).includes(activeTagFilter));
+  if(combTlOnly) data=data.filter(d=>d.tlName);
   const[col,dir]=combSortKey.split('-');
   data.sort((a,b)=>{
     if(col==='name')return dir==='asc'?a.canonical.localeCompare(b.canonical):b.canonical.localeCompare(a.canonical);
     if(col==='fte'){const ap=ftePct(a.canonical,a.total),bp=ftePct(b.canonical,b.total);return dir==='asc'?ap-bp:bp-ap;}
-    const av=col==='teaching'?a.tlHours:col==='assessment'?a.assessmentHours:col==='project'?a.projHours:col==='tutorial'?a.tutHours:col==='mmi'?a.mmiHours:col==='citizenship'?a.citHours:col==='research'?(a.resHours||0):col==='pgr'?a.pgrHours:col==='aob'?(a.aobHours||0):col==='welcomeweek'?(a.wwHours||0):col==='simulation'?(a.simHours||0):col==='researchpgt'?(a.pgtHours||0):col==='housekeeping'?(a.housekeepingHours||0):a.total;
-    const bv=col==='teaching'?b.tlHours:col==='assessment'?b.assessmentHours:col==='project'?b.projHours:col==='tutorial'?b.tutHours:col==='mmi'?b.mmiHours:col==='citizenship'?b.citHours:col==='research'?(b.resHours||0):col==='pgr'?b.pgrHours:col==='aob'?(b.aobHours||0):col==='welcomeweek'?(b.wwHours||0):col==='simulation'?(b.simHours||0):col==='researchpgt'?(b.pgtHours||0):col==='housekeeping'?(b.housekeepingHours||0):b.total;
+    const av=col==='teaching'?a.tlHours:col==='assessment'?a.assessmentHours:col==='project'?a.projHours:col==='tutorial'?a.tutHours:col==='mmi'?a.mmiHours:col==='citizenship'?a.citHours:col==='research'?(a.resHours||0):col==='pgr'?a.pgrHours:col==='aob'?(a.aobHours||0):col==='welcomeweek'?(a.wwHours||0):col==='simulation'?(a.simHours||0):col==='researchpgt'?(a.pgtHours||0):col==='pgr_training'?(a.pgrTrainingHours||0):col==='opendays'?(a.opendaysHours||0):a.total;
+    const bv=col==='teaching'?b.tlHours:col==='assessment'?b.assessmentHours:col==='project'?b.projHours:col==='tutorial'?b.tutHours:col==='mmi'?b.mmiHours:col==='citizenship'?b.citHours:col==='research'?(b.resHours||0):col==='pgr'?b.pgrHours:col==='aob'?(b.aobHours||0):col==='welcomeweek'?(b.wwHours||0):col==='simulation'?(b.simHours||0):col==='researchpgt'?(b.pgtHours||0):col==='pgr_training'?(b.pgrTrainingHours||0):col==='opendays'?(b.opendaysHours||0):b.total;
     return dir==='asc'?av-bv:bv-av;
   });
   return data;
@@ -575,6 +667,7 @@ document.addEventListener('click',e=>{
 function renderRulesEditor(){
   const today=todayDate();
   const tbody=document.getElementById('rulesTbody');
+
   if(tagRules.size===0){
     tbody.innerHTML=`<tr><td colspan="7" style="color:var(--muted);font-style:italic;padding:0.8rem">No rules defined yet — add one below.</td></tr>`;
   }else{
@@ -588,38 +681,42 @@ function renderRulesEditor(){
         <td><input type="number" class="rule-tl" data-tag="${enc}" value="${rule.tlLoad||0}" min="0" step="0.1" style="width:62px"></td>
         <td><input type="number" class="rule-tp" data-tag="${enc}" value="${rule.tlPrep||0}" min="0" step="0.1" style="width:62px"></td>
         <td><input type="number" class="rule-proj" data-tag="${enc}" value="${rule.proj||0}" min="0" step="0.1" style="width:62px"></td>
-        <td><input type="number" class="rule-fte" data-tag="${enc}" value="${rule.fte??1}" min="0.1" max="1" step="0.05" style="width:62px" title="FTE fraction: multiplies into personal target. 0.75 = 75% of base target."></td>
+        <td><input type="number" class="rule-fte" data-tag="${enc}" value="${((1-(rule.fte??1))*100).toFixed(0)}" min="0" max="90" step="5" style="width:70px" title="Reduction: subtracts from personal target. 25 = 25% reduction."> %</td>
         <td><input type="date" class="rule-expiry" data-tag="${enc}" value="${expiryStr}"></td>
         <td><button class="rule-del" data-tag="${enc}" title="Delete rule">🗑</button></td>
       </tr>`;
     }).join('');
-    tbody.querySelectorAll('.rule-tl,.rule-tp,.rule-proj,.rule-fte').forEach(inp=>{
-      inp.addEventListener('change',()=>{
-        const tag=decodeURIComponent(inp.dataset.tag);
-        const row=tbody.querySelector(`tr[data-rule-tag="${inp.dataset.tag}"]`);
-        const r=tagRules.get(tag);if(!r)return;
-        r.tlLoad=+row.querySelector('.rule-tl').value||0;
-        r.tlPrep=+row.querySelector('.rule-tp').value||0;
-        r.proj=+row.querySelector('.rule-proj').value||0;
-        r.fte=+row.querySelector('.rule-fte').value||1;
-        recomputeCombData();saveTagState();combRender();
-      });
-    });
-    tbody.querySelectorAll('.rule-expiry').forEach(inp=>{
-      inp.addEventListener('change',()=>{
-        const tag=decodeURIComponent(inp.dataset.tag);
-        const r=tagRules.get(tag);if(!r)return;
-        r.expiry=inp.value?new Date(inp.value):null;
-        renderRulesEditor();recomputeCombData();saveTagState();combRender();
-      });
-    });
-    tbody.querySelectorAll('.rule-del').forEach(btn=>{
-      btn.addEventListener('click',()=>{
-        tagRules.delete(decodeURIComponent(btn.dataset.tag));
-        renderRulesEditor();renderTagFilterBar();recomputeCombData();saveTagState();combRender();
-      });
-    });
   }
+
+  // Wire rule field changes
+  tbody.querySelectorAll('.rule-tl,.rule-tp,.rule-proj,.rule-fte').forEach(inp=>{
+    inp.addEventListener('change',()=>{
+      const tag=decodeURIComponent(inp.dataset.tag);
+      const row=tbody.querySelector(`tr[data-rule-tag="${inp.dataset.tag}"]`);
+      const r=tagRules.get(tag);if(!r)return;
+      r.tlLoad=+row.querySelector('.rule-tl').value||0;
+      r.tlPrep=+row.querySelector('.rule-tp').value||0;
+      r.proj=+row.querySelector('.rule-proj').value||0;
+      r.fte=1-(+row.querySelector('.rule-fte').value||0)/100;
+      recomputeCombData();saveTagState();combRender();
+    });
+  });
+  tbody.querySelectorAll('.rule-expiry').forEach(inp=>{
+    inp.addEventListener('change',()=>{
+      const tag=decodeURIComponent(inp.dataset.tag);
+      const r=tagRules.get(tag);if(!r)return;
+      r.expiry=inp.value?new Date(inp.value):null;
+      renderRulesEditor();recomputeCombData();saveTagState();combRender();
+    });
+  });
+  tbody.querySelectorAll('.rule-del').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const tag=decodeURIComponent(btn.dataset.tag);
+      tagRules.delete(tag);
+      renderRulesEditor();renderTagFilterBar();recomputeCombData();saveTagState();combRender();
+    });
+  });
+
   const activeRules=[...tagRules.values()].filter(r=>!r.expiry||r.expiry>=today).length;
   document.getElementById('rulesActiveCount').textContent=tagRules.size>0?`(${activeRules} active, ${tagRules.size} total)`:'';
   document.getElementById('ruleTagSuggestions').innerHTML=allTagsSorted().map(t=>`<option value="${t}">`).join('');
@@ -636,7 +733,7 @@ document.getElementById('ruleAddBtn').addEventListener('click',()=>{
   const tlLoad=+document.getElementById('ruleNewTL').value||0;
   const tlPrep=+document.getElementById('ruleNewTP').value||0;
   const proj=+document.getElementById('ruleNewProj').value||0;
-  const fte=+document.getElementById('ruleNewFte').value||1;
+  const fte=1-(+document.getElementById('ruleNewFte').value||0)/100;
   const expiryVal=document.getElementById('ruleNewExpiry').value;
   const expiry=expiryVal?new Date(expiryVal):null;
   tagRules.set(tag,{tlLoad,tlPrep,proj,fte,expiry});
@@ -644,7 +741,7 @@ document.getElementById('ruleAddBtn').addEventListener('click',()=>{
   document.getElementById('ruleNewTL').value='0';
   document.getElementById('ruleNewTP').value='0';
   document.getElementById('ruleNewProj').value='0';
-  document.getElementById('ruleNewFte').value='1';
+  document.getElementById('ruleNewFte').value='0';
   document.getElementById('ruleNewExpiry').value='';
   renderRulesEditor();renderTagFilterBar();recomputeCombData();saveTagState();combRender();
 });
@@ -683,6 +780,8 @@ function openTagPopover(canonical,anchorEl){
   document.getElementById('tagPopoverInput').value='';
   const manualFte=staffFte.get(normKey(canonical));
   document.getElementById('tagPopoverFte').value=manualFte!=null?manualFte.toFixed(2):'';
+  const manualPt=staffPartTime.get(normKey(canonical));
+  document.getElementById('tagPopoverPartTime').value=manualPt!=null?manualPt.toFixed(2):'';
   renderTagPopoverContent();
   const rect=anchorEl.getBoundingClientRect();
   pop.style.display='block';
@@ -740,6 +839,12 @@ document.getElementById('tagPopoverFte').addEventListener('change',e=>{
   if(!tagPopoverCanonical)return;
   const val=e.target.value.trim();
   setFte(tagPopoverCanonical,val===''?null:+val);
+  saveTagState();combRender();
+});
+document.getElementById('tagPopoverPartTime').addEventListener('change',e=>{
+  if(!tagPopoverCanonical)return;
+  const val=e.target.value.trim();
+  setPartTime(tagPopoverCanonical,val===''?null:+val);
   saveTagState();combRender();
 });
 document.getElementById('tagPopoverAdd').addEventListener('click',()=>{
@@ -871,7 +976,7 @@ function combRender(maxTotal){
     const enc=encodeURIComponent(d.canonical);
     const chk=combSelected.has(d.canonical)?'checked':'';
     const myTagMap=tagsForPerson(d.canonical);
-    const tagHtml=[...myTagMap.entries()].map(([t,info])=>{
+    const tagHtml=[...myTagMap.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([t,info])=>{
       const today=todayDate();
       const expired=info.expiry&&info.expiry<today;
       if(expired)return'';
@@ -897,16 +1002,17 @@ function combRender(maxTotal){
     <td class="num" data-col-group="other">${(d.wwHours||0)>0?(d.wwHours).toFixed(1):'—'}</td>
     <td class="num" data-col-group="other">${(d.simHours||0)>0?(d.simHours).toFixed(1):'—'}</td>
     <td class="num" data-col-group="other">${(d.pgtHours||0)>0?(d.pgtHours).toFixed(1):'—'}</td>
-    <td class="num" data-col-group="other">${(d.housekeepingHours||0)>0?d.housekeepingHours.toFixed(1):'—'}</td>
+    <td class="num" data-col-group="other">${(d.pgrTrainingHours||0)>0?(d.pgrTrainingHours).toFixed(1):'—'}</td>
+    <td class="num" data-col-group="other">${(d.opendaysHours||0)>0?(d.opendaysHours).toFixed(1):'—'}</td>
     <td class="tot">${d.total.toFixed(1)}</td>
     <td>${fteBarHtml(d.canonical,d.total)}</td>
     <td>${matchBadge(d,enc)}</td>
   </tr>`;}).join('');
-  const totTL=data.reduce((s,d)=>s+d.tlHours,0),totAssessment=data.reduce((s,d)=>s+d.assessmentHours,0),totProj=data.reduce((s,d)=>s+d.projHours,0),totTut=data.reduce((s,d)=>s+d.tutHours,0),totMmi=data.reduce((s,d)=>s+d.mmiHours,0),totCit=data.reduce((s,d)=>s+d.citHours,0),totRes=data.reduce((s,d)=>s+(d.resHours||0),0),totPgr=data.reduce((s,d)=>s+d.pgrHours,0),totAob=data.reduce((s,d)=>s+(d.aobHours||0),0),totWw=data.reduce((s,d)=>s+(d.wwHours||0),0),totSim=data.reduce((s,d)=>s+(d.simHours||0),0),totPgt=data.reduce((s,d)=>s+(d.pgtHours||0),0),totHousekeeping=data.reduce((s,d)=>s+(d.housekeepingHours||0),0),totAll=data.reduce((s,d)=>s+d.total,0);
+  const totTL=data.reduce((s,d)=>s+d.tlHours,0),totAssessment=data.reduce((s,d)=>s+d.assessmentHours,0),totProj=data.reduce((s,d)=>s+d.projHours,0),totTut=data.reduce((s,d)=>s+d.tutHours,0),totMmi=data.reduce((s,d)=>s+d.mmiHours,0),totCit=data.reduce((s,d)=>s+d.citHours,0),totRes=data.reduce((s,d)=>s+(d.resHours||0),0),totPgr=data.reduce((s,d)=>s+d.pgrHours,0),totAob=data.reduce((s,d)=>s+(d.aobHours||0),0),totWw=data.reduce((s,d)=>s+(d.wwHours||0),0),totSim=data.reduce((s,d)=>s+(d.simHours||0),0),totPgt=data.reduce((s,d)=>s+(d.pgtHours||0),0),totPgtTraining=data.reduce((s,d)=>s+(d.pgrTrainingHours||0),0),totOpendays=data.reduce((s,d)=>s+(d.opendaysHours||0),0),totAll=data.reduce((s,d)=>s+d.total,0);
   const avgFte=data.length>0?Math.round(data.reduce((s,d)=>s+ftePct(d.canonical,d.total),0)/data.length):0;
   const avgCls=fteClass(avgFte);
-  const filterNote=activeTagFilter?` <span style="font-size:0.72rem;font-weight:400;color:var(--gold);margin-left:6px">tag: ${activeTagFilter} (${data.length})</span>`:'';
-  document.getElementById('combFoot').innerHTML=`<tr><td></td><td class="cn">Total${filterNote}</td><td></td><td class="num" data-col-group="teaching">${totTL.toFixed(1)}</td><td class="num" data-col-group="teaching">${totAssessment.toFixed(1)}</td><td class="num" data-col-group="teaching">${totProj.toFixed(1)}</td><td class="num" data-col-group="teaching">${totTut.toFixed(1)}</td><td class="num" data-col-group="citres">${totMmi.toFixed(1)}</td><td class="num" data-col-group="citres">${totCit.toFixed(1)}</td><td class="num" data-col-group="citres">${totRes.toFixed(1)}</td><td class="num" data-col-group="citres">${totPgr.toFixed(1)}</td><td class="num" data-col-group="other">${totAob.toFixed(1)}</td><td class="num" data-col-group="other">${totWw.toFixed(1)}</td><td class="num" data-col-group="other">${totSim.toFixed(1)}</td><td class="num" data-col-group="other">${totPgt.toFixed(1)}</td><td class="num" data-col-group="other">${totHousekeeping.toFixed(1)}</td><td class="tot">${totAll.toFixed(1)}</td><td><span style="font-size:0.78rem;font-weight:600" class="fte-pct ${avgCls}">avg ${avgFte}%</span></td><td></td></tr>`;
+  const filterNote=(activeTagFilter?` <span style="font-size:0.72rem;font-weight:400;color:var(--gold);margin-left:6px">tag: ${activeTagFilter} (${data.length})</span>`:'')+(combTlOnly?` <span style="font-size:0.72rem;font-weight:400;color:var(--teal);margin-left:6px">teaching staff only (${data.length})</span>`:'');
+  document.getElementById('combFoot').innerHTML=`<tr><td></td><td class="cn">Total${filterNote}</td><td></td><td class="num" data-col-group="teaching">${totTL.toFixed(1)}</td><td class="num" data-col-group="teaching">${totAssessment.toFixed(1)}</td><td class="num" data-col-group="teaching">${totProj.toFixed(1)}</td><td class="num" data-col-group="teaching">${totTut.toFixed(1)}</td><td class="num" data-col-group="citres">${totMmi.toFixed(1)}</td><td class="num" data-col-group="citres">${totCit.toFixed(1)}</td><td class="num" data-col-group="citres">${totRes.toFixed(1)}</td><td class="num" data-col-group="citres">${totPgr.toFixed(1)}</td><td class="num" data-col-group="other">${totAob.toFixed(1)}</td><td class="num" data-col-group="other">${totWw.toFixed(1)}</td><td class="num" data-col-group="other">${totSim.toFixed(1)}</td><td class="num" data-col-group="other">${totPgt.toFixed(1)}</td><td class="num" data-col-group="other">${totPgtTraining.toFixed(1)}</td><td class="num" data-col-group="other">${totOpendays.toFixed(1)}</td><td class="tot">${totAll.toFixed(1)}</td><td><span style="font-size:0.78rem;font-weight:600" class="fte-pct ${avgCls}">avg ${avgFte}%</span></td><td></td></tr>`;
   document.querySelectorAll('#combTbody .tag-x').forEach(x=>{
     x.addEventListener('click',e=>{e.stopPropagation();const c=decodeURIComponent(x.dataset.canonical),t=decodeURIComponent(x.dataset.tag);removeTag(c,t);recomputeCombData();renderTagFilterBar();renderRulesEditor();saveTagState();combRender();});
   });
@@ -932,9 +1038,14 @@ function combRender(maxTotal){
       ${(d.wwHours||0)>0?`<div class="panel-row"><span class="k">🎉 Welcome Week</span><span class="v">${d.wwHours.toFixed(1)}h</span></div>`:''}
       ${(d.simHours||0)>0?`<div class="panel-row"><span class="k">🧪 Simulations</span><span class="v">${d.simHours.toFixed(1)}h</span></div>`:''}
       ${(d.pgtHours||0)>0?`<div class="panel-row"><span class="k">🔬 PGT Research</span><span class="v">${d.pgtHours.toFixed(1)}h</span></div>`:''}
-      ${(d.housekeepingHours||0)>0?`<div class="panel-row"><span class="k">🧹 Academic housekeeping</span><span class="v">${d.housekeepingHours.toFixed(1)}h</span></div>`:''}
-      <div class="panel-row"><span class="k"><strong>Total</strong></span><span class="v big">${d.total.toFixed(1)}h</span></div>
-      <div class="panel-row"><span class="k">FTE target</span><span class="v">${personalTarget(d.canonical).toFixed(0)}h (${(getFte(d.canonical)*100).toFixed(0)}% FTE)</span></div>
+      ${(d.pgrTrainingHours||0)>0?`<div class="panel-row"><span class="k">📚 PGR Training</span><span class="v">${d.pgrTrainingHours.toFixed(1)}h</span></div>`:''}
+      ${(d.opendaysHours||0)>0?`<div class="panel-row"><span class="k">🎯 Open Days</span><span class="v">${d.opendaysHours.toFixed(1)}h</span></div>`:''}
+      ${(getPartTimeFraction(d.canonical)!==1 || getWorkloadAllowanceTags(d.canonical).length>0 || (d.housekeepingHours||0)>0)?`<div class="panel-row" style="border-top:1px solid var(--border);padding-top:8px;margin-top:6px"><span class="k">Base target</span><span class="v">${fteTarget}h</span></div>
+      ${(getPartTimeFraction(d.canonical)!==1)?`<div class="panel-row"><span class="k">🕑 Part Time (${Math.round((1-getPartTimeFraction(d.canonical))*100)}%)</span><span class="v" style="color:#c0392b">−${Math.round(fteTarget*(1-getPartTimeFraction(d.canonical)))}h</span></div>`:''}
+      ${(d.housekeepingHours||0)>0?`<div class="panel-row"><span class="k">🧹 Academic housekeeping (${Math.round(housekeepingRate*100)}% of PT base)</span><span class="v" style="color:#c0392b">−${Math.round(d.housekeepingHours)}h</span></div>`:''}
+      ${getWorkloadAllowanceTags(d.canonical).map(({tag,reduction})=>`<div class="panel-row"><span class="k">🏷 ${tag} (${reduction}% of PT base)</span><span class="v" style="color:#c0392b">−${Math.round(fteTarget*getPartTimeFraction(d.canonical)*reduction/100)}h</span></div>`).join('')}
+      <div class="panel-row" style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px"><span class="k">Personal target</span><span class="v">${personalTarget(d.canonical).toFixed(0)}h (${(getFte(d.canonical)*100).toFixed(0)}% FTE)</span></div>`:''}
+      <div class="panel-row" style="border-top:1px solid var(--border);padding-top:8px;margin-top:6px"><span class="k"><strong>Total activities</strong></span><span class="v big">${d.total.toFixed(1)}h</span></div>
       <div class="panel-row"><span class="k">FTE %</span><span class="v ${fteClass(ftePct(d.canonical,d.total))}">${ftePct(d.canonical,d.total)}%</span></div>
     </div>`;
     if(Object.keys(d.sources).length>1){html+=`<div class="panel-section"><h4>Source Names</h4>${Object.entries(d.sources).map(([src,nm])=>`<div class="panel-row"><span class="k">${SRC_LABELS[src]||src}</span><span class="v" style="font-family:inherit;font-size:0.82rem">${anonymousMode?dispName(d.canonical):nm}</span></div>`).join('')}</div>`;}
@@ -953,6 +1064,7 @@ document.getElementById('combSearch').addEventListener('input',()=>combRender())
 document.getElementById('combSort').addEventListener('change',e=>{combSortKey=e.target.value;combRender();});
 document.querySelector('#comb-result table.comb-table thead').addEventListener('click',e=>{const th=e.target.closest('th[data-combsort]');if(!th)return;const col=th.dataset.combsort;const[curCol,curDir]=combSortKey.split('-');if(curCol===col)combSortKey=col+'-'+(curDir==='desc'?'asc':'desc');else combSortKey=col+'-'+(col==='name'?'asc':'desc');combRender();});
 document.getElementById('combSelectAll').addEventListener('change',e=>{const checked=e.target.checked;document.querySelectorAll('.comb-chk').forEach(chk=>{chk.checked=checked;const c=decodeURIComponent(chk.dataset.canonical);if(checked)combSelected.add(c);else combSelected.delete(c);});combUpdateDetailBtn();});
+document.getElementById('combTlOnly').addEventListener('change',e=>{combTlOnly=e.target.checked;combRender();});
 
 // FTE settings
 document.getElementById('combFteBtn').addEventListener('click',()=>document.getElementById('fteSettings').classList.toggle('open'));
@@ -981,6 +1093,8 @@ function generateDetailedReport(canonicals){
     const wwRows=d.wwName?wwAllData.filter(r=>r.name===d.wwName):[];
     const simRows=d.simName?simAllData.filter(r=>r.name===d.simName):[];
     const pgtRow=d.pgtName?pgtAllResults.find(r=>r.name===d.pgtName):null;
+    const pgrTrainingRows=d.pgrTrainingName?pgrTrainingAllData.filter(r=>r.name===d.pgrTrainingName):[];
+    const odRows=d.opendaysName?odAllData.filter(r=>r.name===d.opendaysName):[];
 
     // Teaching detail
     let teachingHtml='<div class="rpt-section"><h3>Teaching Load</h3><p class="rpt-empty">No teaching sessions recorded.</p></div>';
@@ -1249,7 +1363,46 @@ function generateDetailedReport(canonicals){
       </div>`;
     }
 
+    // Open Days detail
+    let odHtml='<div class="rpt-section"><h3>Open Days</h3><p class="rpt-empty">No Open Day activities recorded.</p></div>';
+    if(odRows.length>0){
+      odHtml=`<div class="rpt-section">
+        <h3>Open Days</h3>
+        <div class="rpt-summary-row">
+          <span>Sessions: <strong>${odRows.length}</strong></span>
+          <span>Total hours: <strong>${d.opendaysHours.toFixed(1)}h</strong></span>
+        </div>
+        <table class="rpt-table">
+          <thead><tr><th>Date</th><th>Time</th><th style="text-align:right">Hours</th></tr></thead>
+          <tbody>
+          ${odRows.map(r=>`<tr><td>${r.date||'—'}</td><td>${r.time||'—'}</td><td style="text-align:right">${r.hours.toFixed(1)}</td></tr>`).join('')}
+          </tbody>
+          <tfoot><tr><td colspan="2"><strong>Total</strong></td><td style="text-align:right"><strong>${d.opendaysHours.toFixed(1)}h</strong></td></tr></tfoot>
+        </table>
+      </div>`;
+    }
+
+    // PGR Training detail
+    let pgrTrainingHtml='<div class="rpt-section"><h3>PGR Training</h3><p class="rpt-empty">No PGT training recorded.</p></div>';
+    if(pgrTrainingRows.length>0){
+      pgrTrainingHtml=`<div class="rpt-section">
+        <h3>PGR Training</h3>
+        <div class="rpt-summary-row">
+          <span>Sessions: <strong>${pgrTrainingRows.length}</strong></span>
+          <span>Total hours: <strong>${d.pgrTrainingHours.toFixed(1)}h</strong></span>
+        </div>
+        <table class="rpt-table">
+          <thead><tr><th>Course</th><th>Date</th><th>Time</th><th style="text-align:right">Hours</th><th>Notes</th></tr></thead>
+          <tbody>
+          ${pgrTrainingRows.map(r=>`<tr><td>${r.courseName||'—'}</td><td>${r.date||'—'}</td><td>${r.time||'—'}</td><td style="text-align:right">${r.hours.toFixed(1)}</td><td style="max-width:200px;font-size:0.78rem;color:var(--muted)">${r.furtherInfo||''}</td></tr>`).join('')}
+          </tbody>
+          <tfoot><tr><td colspan="4"><strong>Total</strong></td><td style="text-align:right"><strong>${d.pgrTrainingHours.toFixed(1)}h</strong></td></tr></tfoot>
+        </table>
+      </div>`;
+    }
+
     // PGT Research Projects detail
+        // PGT Research Projects detail
     let pgtHtml='<div class="rpt-section"><h3>PGT Research Projects</h3><p class="rpt-empty">No PGT research data recorded.</p></div>';
     if(pgtRow){
       pgtHtml=`<div class="rpt-section">
@@ -1268,7 +1421,7 @@ function generateDetailedReport(canonicals){
     }
 
     // Summary donut-style bar
-    const cats=[['Teaching',d.tlHours,'#0066cc'],['Non-timetabled assess.',d.assessmentHours,'#8a2be2'],['Projects',d.projHours,'#b84c2a'],['Tutorial',d.tutHours,'#1a7a4a'],['MMI',d.mmiHours,'#6b21a8'],['Citizenship',d.citHours,'#c89b2a'],['Research',(d.resHours||0),'#0a7a9a'],['PGR',d.pgrHours,'#d2691e'],['AoB',(d.aobHours||0),'#009966'],['Welcome Week',(d.wwHours||0),'#4caf50'],['Simulations',(d.simHours||0),'#42a5f5'],['PGT Research',(d.pgtHours||0),'#9c27b0'],['Academic housekeeping',(d.housekeepingHours||0),'#888']];
+    const cats=[['Teaching',d.tlHours,'#0066cc'],['Non-timetabled assess.',d.assessmentHours,'#8a2be2'],['Projects',d.projHours,'#b84c2a'],['Tutorial',d.tutHours,'#1a7a4a'],['MMI',d.mmiHours,'#6b21a8'],['Citizenship',d.citHours,'#c89b2a'],['Research',(d.resHours||0),'#0a7a9a'],['PGR',d.pgrHours,'#d2691e'],['AoB',(d.aobHours||0),'#009966'],['Welcome Week',(d.wwHours||0),'#4caf50'],['Simulations',(d.simHours||0),'#42a5f5'],['PGT Research',(d.pgtHours||0),'#9c27b0'],['PGR Training',(d.pgrTrainingHours||0),'#e67e22'],['Open Days',(d.opendaysHours||0),'#d4713b']];
     const summaryBars=cats.map(([label,h,col])=>`
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
         <div style="width:110px;font-size:0.82rem;color:#444">${label}</div>
@@ -1349,12 +1502,21 @@ function generateDetailedReport(canonicals){
     <div class="rpt-overview-left">
       <h3 style="margin:0 0 0.8rem;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.06em;color:#666;padding-left:10px;border-left:2px solid #0066cc;line-height:1.2;">Load Summary</h3>
       ${summaryBars}
+      ${(getPartTimeFraction(d.canonical)!==1 || getWorkloadAllowanceTags(d.canonical).length>0 || (d.housekeepingHours||0)>0)?`
+          <div style="margin-top:10px;padding:8px 10px;background:#f0f4ff;border-radius:6px;font-size:0.82rem">
+            <div style="font-weight:600;color:#041e42;margin-bottom:4px;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.04em;">Allowances</div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #d0d7e3;margin-bottom:3px"><span>Base target</span><span style="font-weight:600">${fteTarget}h</span></div>
+            ${(getPartTimeFraction(d.canonical)!==1)?(function(){const r=Math.round((1-getPartTimeFraction(d.canonical))*100);return `<div style="display:flex;justify-content:space-between;padding:3px 0"><span>🕑 Part Time <span style="color:#888">(${r}%)</span></span><span style="font-weight:600;color:#c0392b">−${Math.round(fteTarget*(1-getPartTimeFraction(d.canonical)))}h</span></div>`})():''}
+            ${(d.housekeepingHours||0)>0?`<div style="display:flex;justify-content:space-between;padding:3px 0"><span>🧹 Academic housekeeping <span style="color:#888">(${Math.round(housekeepingRate*100)}% of PT-adjusted base)</span></span><span style="font-weight:600;color:#c0392b">−${Math.round(d.housekeepingHours)}h</span></div>`:''}
+            ${getWorkloadAllowanceTags(d.canonical).map(({tag,reduction})=>`<div style="display:flex;justify-content:space-between;padding:3px 0"><span>🏷 ${tag} <span style="color:#888">(${reduction}%)</span></span><span style="font-weight:600;color:#c0392b">−${Math.round(fteTarget*getPartTimeFraction(d.canonical)*reduction/100)}h</span></div>`).join('')}
+            <div style="display:flex;justify-content:space-between;padding:5px 0 0;border-top:1px solid #d0d7e3;margin-top:3px;font-weight:700;color:#041e42"><span>Personal target</span><span>${personalTarget(d.canonical).toFixed(0)}h</span></div>
+          </div>`:''}
       <div style="border-top:2px solid #041e42;margin-top:8px;padding:10px 0 0;display:flex;justify-content:space-between;font-size:0.9rem;">
         <span style="font-weight:700;color:#041e42;">Total</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#0066cc;font-size:1rem;">${d.total.toFixed(1)}h</span>
       </div>
     </div>
   </div>
-  ${teachingHtml}${assessmentHtml}${projectHtml}${tutorialHtml}${mmiHtml}${citHtml}${researchHtml}${pgrHtml}${aobHtml}${wwHtml}${simHtml}${pgtHtml}
+  ${teachingHtml}${assessmentHtml}${projectHtml}${tutorialHtml}${mmiHtml}${citHtml}${researchHtml}${pgrHtml}${aobHtml}${wwHtml}${simHtml}${odHtml}${pgrTrainingHtml}${pgtHtml}
 </div></div>
 </body></html>`;
 
@@ -1381,6 +1543,8 @@ function generateCombinedReport(canonicals){
     const wwRows=d.wwName?wwAllData.filter(r=>r.name===d.wwName):[];
     const simRows=d.simName?simAllData.filter(r=>r.name===d.simName):[];
     const pgtRow=d.pgtName?pgtAllResults.find(r=>r.name===d.pgtName):null;
+    const pgrTrainingRows=d.pgrTrainingName?pgrTrainingAllData.filter(r=>r.name===d.pgrTrainingName):[];
+    const odRows=d.opendaysName?odAllData.filter(r=>r.name===d.opendaysName):[];
 
     // Teaching detail
     let teachingHtml='<div class="rpt-section"><h3>Teaching Load</h3><p class="rpt-empty">No teaching sessions recorded.</p></div>';
@@ -1649,6 +1813,45 @@ function generateCombinedReport(canonicals){
       </div>`;
     }
 
+    // Open Days detail
+    let odHtml='<div class="rpt-section"><h3>Open Days</h3><p class="rpt-empty">No Open Day activities recorded.</p></div>';
+    if(odRows.length>0){
+      odHtml=`<div class="rpt-section">
+        <h3>Open Days</h3>
+        <div class="rpt-summary-row">
+          <span>Sessions: <strong>${odRows.length}</strong></span>
+          <span>Total hours: <strong>${d.opendaysHours.toFixed(1)}h</strong></span>
+        </div>
+        <table class="rpt-table">
+          <thead><tr><th>Date</th><th>Time</th><th style="text-align:right">Hours</th></tr></thead>
+          <tbody>
+          ${odRows.map(r=>`<tr><td>${r.date||'—'}</td><td>${r.time||'—'}</td><td style="text-align:right">${r.hours.toFixed(1)}</td></tr>`).join('')}
+          </tbody>
+          <tfoot><tr><td colspan="2"><strong>Total</strong></td><td style="text-align:right"><strong>${d.opendaysHours.toFixed(1)}h</strong></td></tr></tfoot>
+        </table>
+      </div>`;
+    }
+
+
+    // PGR Training detail
+    let pgrTrainingHtml='<div class="rpt-section"><h3>PGR Training</h3><p class="rpt-empty">No PGT training recorded.</p></div>';
+    if(pgrTrainingRows.length>0){
+      pgrTrainingHtml=`<div class="rpt-section">
+        <h3>PGR Training</h3>
+        <div class="rpt-summary-row">
+          <span>Sessions: <strong>${pgrTrainingRows.length}</strong></span>
+          <span>Total hours: <strong>${d.pgrTrainingHours.toFixed(1)}h</strong></span>
+        </div>
+        <table class="rpt-table">
+          <thead><tr><th>Course</th><th>Date</th><th>Time</th><th style="text-align:right">Hours</th><th>Notes</th></tr></thead>
+          <tbody>
+          ${pgrTrainingRows.map(r=>`<tr><td>${r.courseName||'—'}</td><td>${r.date||'—'}</td><td>${r.time||'—'}</td><td style="text-align:right">${r.hours.toFixed(1)}</td><td style="max-width:200px;font-size:0.78rem;color:var(--muted)">${r.furtherInfo||''}</td></tr>`).join('')}
+          </tbody>
+          <tfoot><tr><td colspan="4"><strong>Total</strong></td><td style="text-align:right"><strong>${d.pgrTrainingHours.toFixed(1)}h</strong></td></tr></tfoot>
+        </table>
+      </div>`;
+    }
+
     // PGT Research Projects detail
     let pgtHtml='<div class="rpt-section"><h3>PGT Research Projects</h3><p class="rpt-empty">No PGT research data recorded.</p></div>';
     if(pgtRow){
@@ -1668,7 +1871,7 @@ function generateCombinedReport(canonicals){
     }
 
     // Summary donut-style bar
-    const cats=[['Teaching',d.tlHours,'#0066cc'],['Non-timetabled assess.',d.assessmentHours,'#8a2be2'],['Projects',d.projHours,'#b84c2a'],['Tutorial',d.tutHours,'#1a7a4a'],['MMI',d.mmiHours,'#6b21a8'],['Citizenship',d.citHours,'#c89b2a'],['Research',(d.resHours||0),'#0a7a9a'],['PGR',d.pgrHours,'#d2691e'],['AoB',(d.aobHours||0),'#009966'],['Welcome Week',(d.wwHours||0),'#4caf50'],['Simulations',(d.simHours||0),'#42a5f5'],['PGT Research',(d.pgtHours||0),'#9c27b0'],['Academic housekeeping',(d.housekeepingHours||0),'#888']];
+    const cats=[['Teaching',d.tlHours,'#0066cc'],['Non-timetabled assess.',d.assessmentHours,'#8a2be2'],['Projects',d.projHours,'#b84c2a'],['Tutorial',d.tutHours,'#1a7a4a'],['MMI',d.mmiHours,'#6b21a8'],['Citizenship',d.citHours,'#c89b2a'],['Research',(d.resHours||0),'#0a7a9a'],['PGR',d.pgrHours,'#d2691e'],['AoB',(d.aobHours||0),'#009966'],['Welcome Week',(d.wwHours||0),'#4caf50'],['Simulations',(d.simHours||0),'#42a5f5'],['PGT Research',(d.pgtHours||0),'#9c27b0'],['PGR Training',(d.pgrTrainingHours||0),'#e67e22'],['Open Days',(d.opendaysHours||0),'#d4713b']];
     const summaryBars=cats.map(([label,h,col])=>`
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px">
         <div style="width:110px;font-size:0.82rem;color:#444">${label}</div>
@@ -1693,12 +1896,21 @@ function generateCombinedReport(canonicals){
         <div class="rpt-overview-left">
           <h3 style="margin:0 0 0.8rem;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.06em;color:#666;padding-left:10px;border-left:2px solid #0066cc;line-height:1.2;">Load Summary</h3>
           ${summaryBars}
+          ${(getPartTimeFraction(d.canonical)!==1 || getWorkloadAllowanceTags(d.canonical).length>0 || (d.housekeepingHours||0)>0)?`
+          <div style="margin-top:10px;padding:8px 10px;background:#f0f4ff;border-radius:6px;font-size:0.82rem">
+            <div style="font-weight:600;color:#041e42;margin-bottom:4px;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.04em;">Allowances</div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #d0d7e3;margin-bottom:3px"><span>Base target</span><span style="font-weight:600">${fteTarget}h</span></div>
+            ${(getPartTimeFraction(d.canonical)!==1)?(function(){const r=Math.round((1-getPartTimeFraction(d.canonical))*100);return `<div style="display:flex;justify-content:space-between;padding:3px 0"><span>🕑 Part Time <span style="color:#888">(${r}%)</span></span><span style="font-weight:600;color:#c0392b">−${Math.round(fteTarget*(1-getPartTimeFraction(d.canonical)))}h</span></div>`})():''}
+            ${(d.housekeepingHours||0)>0?`<div style="display:flex;justify-content:space-between;padding:3px 0"><span>🧹 Academic housekeeping <span style="color:#888">(${Math.round(housekeepingRate*100)}% of PT-adjusted base)</span></span><span style="font-weight:600;color:#c0392b">−${Math.round(d.housekeepingHours)}h</span></div>`:''}
+            ${getWorkloadAllowanceTags(d.canonical).map(({tag,reduction})=>`<div style="display:flex;justify-content:space-between;padding:3px 0"><span>🏷 ${tag} <span style="color:#888">(${reduction}%)</span></span><span style="font-weight:600;color:#c0392b">−${Math.round(fteTarget*getPartTimeFraction(d.canonical)*reduction/100)}h</span></div>`).join('')}
+            <div style="display:flex;justify-content:space-between;padding:5px 0 0;border-top:1px solid #d0d7e3;margin-top:3px;font-weight:700;color:#041e42"><span>Personal target</span><span>${personalTarget(d.canonical).toFixed(0)}h</span></div>
+          </div>`:''}
           <div style="border-top:2px solid #041e42;margin-top:8px;padding:10px 0 0;display:flex;justify-content:space-between;font-size:0.9rem;">
             <span style="font-weight:700;color:#041e42;">Total</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#0066cc;font-size:1rem;">${d.total.toFixed(1)}h</span>
           </div>
         </div>
       </div>
-      ${teachingHtml}${assessmentHtml}${projectHtml}${tutorialHtml}${mmiHtml}${citHtml}${researchHtml}${pgrHtml}${aobHtml}${wwHtml}${simHtml}${pgtHtml}
+      ${teachingHtml}${assessmentHtml}${projectHtml}${tutorialHtml}${mmiHtml}${citHtml}${researchHtml}${pgrHtml}${aobHtml}${wwHtml}${simHtml}${odHtml}${pgrTrainingHtml}${pgtHtml}
     </div>`;
   }
 
@@ -1784,12 +1996,12 @@ document.getElementById('combCombinedBtn').addEventListener('click',()=>{
 document.getElementById('combExportBtn').addEventListener('click',()=>{
   const wb2=XLSX.utils.book_new();
   const headerLabel=anonymousMode?'Anonymous Name':'Academic';
-  const rows=[[headerLabel,'Teaching Name','Non-timetabled assess. Name','Project Name','Tutorial Name','MMI Name','Citizenship Name','Research Name','PGR Name','AoB Name','Welcome Week Name','Simulations Name','Teaching Hrs','Non-timetabled assess. Hrs','Project Hrs','Tutorial Hrs','MMI Hrs','Citizenship Hrs','Research Hrs','PGR Hrs','AoB Hrs','Welcome Week Hrs','Simulations Hrs','Housekeeping Hrs','Total Hrs','Match Type']];
+  const rows=[[headerLabel,'Teaching Name','Non-timetabled assess. Name','Project Name','Tutorial Name','MMI Name','Citizenship Name','Research Name','PGR Name','AoB Name','Welcome Week Name','Simulations Name','PGR Training Name','Teaching Hrs','Non-timetabled assess. Hrs','Project Hrs','Tutorial Hrs','MMI Hrs','Citizenship Hrs','Research Hrs','PGR Hrs','AoB Hrs','Welcome Week Hrs','Simulations Hrs','PGR Training Hrs','Total Hrs','Match Type']];
   for(const d of combData){
     const srcName=(nm)=>anonymousMode?dispName(d.canonical):(nm||'');
-    rows.push([dispName(d.canonical),srcName(d.tlName),srcName(d.assessmentName),srcName(d.projName),srcName(d.tutName),srcName(d.mmiName),srcName(d.citName),srcName(d.resName),srcName(d.pgrName),srcName(d.aobName),srcName(d.wwName),srcName(d.simName),+d.tlHours.toFixed(2),+d.assessmentHours.toFixed(2),+d.projHours.toFixed(2),+d.tutHours.toFixed(2),+d.mmiHours.toFixed(2),+d.citHours.toFixed(2),+(d.resHours||0).toFixed(2),+d.pgrHours.toFixed(2),+(d.aobHours||0).toFixed(2),+(d.wwHours||0).toFixed(2),+(d.simHours||0).toFixed(2),+(d.housekeepingHours||0).toFixed(2),+d.total.toFixed(2),d.matchType]);
+    rows.push([dispName(d.canonical),srcName(d.tlName),srcName(d.assessmentName),srcName(d.projName),srcName(d.tutName),srcName(d.mmiName),srcName(d.citName),srcName(d.resName),srcName(d.pgrName),srcName(d.aobName),srcName(d.wwName),srcName(d.simName),srcName(d.pgrTrainingName),+d.tlHours.toFixed(2),+d.assessmentHours.toFixed(2),+d.projHours.toFixed(2),+d.tutHours.toFixed(2),+d.mmiHours.toFixed(2),+d.citHours.toFixed(2),+(d.resHours||0).toFixed(2),+d.pgrHours.toFixed(2),+(d.aobHours||0).toFixed(2),+(d.wwHours||0).toFixed(2),+(d.simHours||0).toFixed(2),+(d.pgrTrainingHours||0).toFixed(2),+d.total.toFixed(2),d.matchType]);
   }
-  rows.push(['Grand Total','','','','','','','','','','','',+combData.reduce((s,d)=>s+d.tlHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.assessmentHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.projHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.tutHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.mmiHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.citHours,0).toFixed(2),+combData.reduce((s,d)=>s+(d.resHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+d.pgrHours,0).toFixed(2),+combData.reduce((s,d)=>s+(d.aobHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+(d.wwHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+(d.simHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+(d.housekeepingHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+d.total,0).toFixed(2),'']);
+  rows.push(['Grand Total','','','','','','','','','','','','',+combData.reduce((s,d)=>s+d.tlHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.assessmentHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.projHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.tutHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.mmiHours,0).toFixed(2),+combData.reduce((s,d)=>s+d.citHours,0).toFixed(2),+combData.reduce((s,d)=>s+(d.resHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+d.pgrHours,0).toFixed(2),+combData.reduce((s,d)=>s+(d.aobHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+(d.wwHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+(d.simHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+(d.pgrTrainingHours||0),0).toFixed(2),+combData.reduce((s,d)=>s+d.total,0).toFixed(2),'']);
   XLSX.utils.book_append_sheet(wb2,XLSX.utils.aoa_to_sheet(rows),'Combined Load');
   XLSX.writeFile(wb2,'academic_load_combined.xlsx');
 });
