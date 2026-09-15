@@ -101,6 +101,7 @@ function parsePgrCsv(file) {
       populateSchoolFilter(schools);
       applySchoolFilterAndRender();
       document.getElementById('pgrError').style.display = 'none';
+      WLP_SESSION.saveFile('pgr',file.name,new TextEncoder().encode(e.target.result).buffer,'text/csv');
     } catch(err) {
       const el = document.getElementById('pgrError');
       el.textContent = 'Error: ' + err.message;

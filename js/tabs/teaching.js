@@ -197,8 +197,8 @@ function tlUpdateStatsBar(){
 
 tlAnalyseBtn.addEventListener('click',async()=>{
   tlAnalyseBtn.disabled=true;tlAnalyseBtn.textContent='⏳ Processing…';
-  tlParsedSessions=[];
-  for(const file of tlUploadedFiles){const html=await file.text();tlParsedSessions.push(...parseHTMLFile(html));}
+  tlParsedSessions=[];const tlSaveTexts=[];
+  for(const file of tlUploadedFiles){const html=await file.text();tlSaveTexts.push(html);tlParsedSessions.push(...parseHTMLFile(html));}
   const wFrom=+document.getElementById('tlWeekFrom').value||1,wTo=+document.getElementById('tlWeekTo').value||52;
   tlWeekRange=[wFrom,wTo];tlRealisticMode=document.getElementById('tlRealistic').checked;
   document.getElementById('tlRealistic2').checked=tlRealisticMode;
@@ -210,6 +210,7 @@ tlAnalyseBtn.addEventListener('click',async()=>{
   document.getElementById('badge-teaching').textContent=tlAllStaff.length+' staff';
   tlRenderStaffGrid();tlRenderModGrid();tlRenderTypeGrid();renderModuleTagFilterBar();updateCombStatus();
   tlAnalyseBtn.disabled=false;tlAnalyseBtn.textContent='📊 Analyse Timetable';
+  WLP_SESSION.saveTeaching(tlUploadedFiles.map((f,i)=>({fileName:f.name,mime:f.type,text:tlSaveTexts[i]})));
 });
 
 document.getElementById('tlRealistic2').addEventListener('change',e=>{tlRealisticMode=e.target.checked;tlUpdateStatsBar();tlRenderStaffGrid();tlRenderModGrid();tlRenderTypeGrid();});

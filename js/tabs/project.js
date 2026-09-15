@@ -42,6 +42,7 @@ function projLoadFile(file){
       for(let i=headerIdx+1;i<raw.length;i++){const row=raw[i];if(row.every(c=>!String(c).trim()))continue;const get=idx=>idx!==-1?String(row[idx]||'').trim():'';const splitNames=s=>s.split(/[;,\/|&]+/).map(n=>n.trim()).filter(Boolean);projRawProjects.push({theme:get(iTheme),supervisors:splitNames(get(iSup)),cosupervisors:splitNames(get(iCoSup)),poster1:get(iP1),poster2:get(iP2),diss1:get(iD1),diss2:get(iD2)});}
       if(projRawProjects.length===0){projShowError('No project rows found.');return;}
       projAnalyseBtn.disabled=false;projAnalyseBtn.textContent=`🎓 Calculate Project Workload (${projRawProjects.length} projects found) →`;
+      WLP_SESSION.saveFile('project',file.name,e.target.result,file.type);
     }catch(err){projShowError('Error reading file: '+err.message);}
   };
   reader.readAsArrayBuffer(file);

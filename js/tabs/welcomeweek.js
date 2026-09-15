@@ -59,6 +59,7 @@ function parseWwXlsx(file) {
       if (data.length === 0) throw new Error('No valid data rows found.');
       renderWw(data);
       document.getElementById('wwError').classList.remove('show');
+      WLP_SESSION.saveFile('welcomeweek',file.name,e.target.result,file.type);
     } catch (err) {
       const el = document.getElementById('wwError');
       el.textContent = 'Error: ' + err.message;

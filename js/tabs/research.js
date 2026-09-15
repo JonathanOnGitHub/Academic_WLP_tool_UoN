@@ -64,6 +64,7 @@ function parseResearchXlsx(file) {
       if (data.length === 0) throw new Error('No data rows could be parsed.');
       renderResearch(data);
       document.getElementById('resError').style.display = 'none';
+      WLP_SESSION.saveFile('research',file.name,e.target.result,file.type);
     } catch(err) {
       const el = document.getElementById('resError');
       el.textContent = 'Error: ' + err.message;

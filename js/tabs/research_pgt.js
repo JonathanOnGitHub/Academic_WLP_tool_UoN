@@ -2,7 +2,7 @@
 // TAB — RESEARCH PROJECTS PGT
 // ═══════════════════════════════════════════════════════
 let pgtRawData=[],pgtAllResults=[];
-const PGTSETTINGS_DEFAULTS={supervision:12,diss_feedback:3,poster_feedback:0.5,diss_marking:2,poster_marking:0.5,marking_students:2};
+const PGTSETTINGS_DEFAULTS={supervision:20,diss_feedback:4,diss_marking:2,pres_marking:1,marking_students:2};
 let pgtSettings={...PGTSETTINGS_DEFAULTS},pgtSortKey='total-desc';
 
 const pgtDropZone=document.getElementById('pgtDropZone');
@@ -87,6 +87,7 @@ function pgtLoadFile(file){
       if(pgtRawData.length===0){pgtShowError('No student rows found.');return;}
       pgtAnalyseBtn.disabled=false;
       pgtAnalyseBtn.textContent=`🔬 Calculate PGT Research Hours (${pgtRawData.length} students found) →`;
+      WLP_SESSION.saveFile('pgt',file.name,e.target.result,file.type);
     }catch(err){pgtShowError('Error reading file: '+err.message);}
   };
   reader.readAsArrayBuffer(file);
@@ -96,18 +97,16 @@ function pgtGetSettings(){
   return{
     supervision:+document.getElementById('pgt_sup').value||0,
     diss_feedback:+document.getElementById('pgt_diss_fb').value||0,
-    poster_feedback:+document.getElementById('pgt_post_fb').value||0,
     diss_marking:+document.getElementById('pgt_diss_mk').value||0,
-    poster_marking:+document.getElementById('pgt_post_mk').value||0,
+    pres_marking:+document.getElementById('pgt_pres_mk').value||0,
     marking_students:+document.getElementById('pgt_mark_students').value||2
   };
 }
 function pgtSyncInlineSettings(s){
   document.getElementById('as_pgt_sup').value=s.supervision;
   document.getElementById('as_pgt_diss_fb').value=s.diss_feedback;
-  document.getElementById('as_pgt_post_fb').value=s.poster_feedback;
   document.getElementById('as_pgt_diss_mk').value=s.diss_marking;
-  document.getElementById('as_pgt_post_mk').value=s.poster_marking;
+  document.getElementById('as_pgt_pres_mk').value=s.pres_marking;
   document.getElementById('as_pgt_mark_students').value=s.marking_students;
 }
 
@@ -129,12 +128,11 @@ function pgtCalculate(students,s){
     const nSup=a.nShares;
     const h_sup=nSup*s.supervision;
     const h_df=nSup*s.diss_feedback;
-    const h_pf=nSup*s.poster_feedback;
     const h_dm=s.diss_marking*s.marking_students*nSup;
-    const h_pm=s.poster_marking*s.marking_students*nSup;
-    const total=h_sup+h_df+h_pf+h_dm+h_pm;
+    const h_pm=s.pres_marking*s.marking_students*nSup;
+    const total=h_sup+h_df+h_dm+h_pm;
     const studentList=a.students.map(st=>({name:st.studentName,location:st.location,staffMembers:st.staffMembers}));
-    return{...a,name:a.name,nSup,studentList,h_sup,h_df,h_pf,h_dm,h_pm,total};
+    return{...a,name:a.name,nSup,studentList,h_sup,h_df,h_dm,h_pm,total};
   });
 }
 
@@ -159,7 +157,6 @@ function pgtRenderTable(){
       <td class="num">${studCount||'—'}</td>
       <td class="num">${fh(r.h_sup)}</td>
       <td class="num">${fh(r.h_df)}</td>
-      <td class="num">${fh(r.h_pf)}</td>
       <td class="num">${fh(r.h_dm)}</td>
       <td class="num">${fh(r.h_pm)}</td>
       <td class="tot">${fmt(r.total)}</td>
@@ -168,7 +165,7 @@ function pgtRenderTable(){
   }).join('');
   const sumFn=key=>pgtAllResults.reduce((s,r)=>s+r[key],0);
   const totalStudents=pgtAllResults.reduce((s,r)=>s+r.studentList.length,0);
-  document.getElementById('pgtFoot').innerHTML=`<tr style="font-weight:600;background:var(--light-blue)"><td>Grand Total</td><td class="num">${totalStudents}</td><td class="num">${fmt(sumFn('h_sup'))}</td><td class="num">${fmt(sumFn('h_df'))}</td><td class="num">${fmt(sumFn('h_pf'))}</td><td class="num">${fmt(sumFn('h_dm'))}</td><td class="num">${fmt(sumFn('h_pm'))}</td><td class="tot" style="color:var(--mid-blue)">${fmt(sumFn('total'))}</td><td></td></tr>`;
+  document.getElementById('pgtFoot').innerHTML=`<tr style="font-weight:600;background:var(--light-blue)"><td>Grand Total</td><td class="num">${totalStudents}</td><td class="num">${fmt(sumFn('h_sup'))}</td><td class="num">${fmt(sumFn('h_df'))}</td><td class="num">${fmt(sumFn('h_dm'))}</td><td class="num">${fmt(sumFn('h_pm'))}</td><td class="tot" style="color:var(--mid-blue)">${fmt(sumFn('total'))}</td><td></td></tr>`;
   document.querySelectorAll('#pgtTbody tr').forEach(row=>{row.addEventListener('click',()=>pgtOpenDetail(decodeURIComponent(row.dataset.name)));});
 }
 
@@ -176,10 +173,9 @@ function pgtOpenDetail(name){
   const r=pgtAllResults.find(x=>x.name===name);if(!r)return;
   let html=`<div class="panel-section"><h4>Hours Breakdown</h4>
     ${r.h_sup>0?`<div class="panel-row"><span class="k">Supervision (${r.studentList.length} student${r.studentList.length!==1?'s':''})</span><span class="v">${fmt(r.h_sup)}h</span></div>`:''}
-    ${r.h_df>0?`<div class="panel-row"><span class="k">Dissertation feedback</span><span class="v">${fmt(r.h_df)}h</span></div>`:''}
-    ${r.h_pf>0?`<div class="panel-row"><span class="k">Poster feedback</span><span class="v">${fmt(r.h_pf)}h</span></div>`:''}
-    ${r.h_dm>0?`<div class="panel-row"><span class="k">Dissertation marking (${pgtSettings.marking_students} students)</span><span class="v">${fmt(r.h_dm)}h</span></div>`:''}
-    ${r.h_pm>0?`<div class="panel-row"><span class="k">Poster marking (${pgtSettings.marking_students} students)</span><span class="v">${fmt(r.h_pm)}h</span></div>`:''}
+    ${r.h_df>0?`<div class="panel-row"><span class="k">Dissertation &amp; presentation feedback (${r.studentList.length} student${r.studentList.length!==1?'s':''})</span><span class="v">${fmt(r.h_df)}h</span></div>`:''}
+    ${r.h_dm>0?`<div class="panel-row"><span class="k">Dissertation marking (${pgtSettings.marking_students} markers)</span><span class="v">${fmt(r.h_dm)}h</span></div>`:''}
+    ${r.h_pm>0?`<div class="panel-row"><span class="k">Presentation marking (${pgtSettings.marking_students} markers)</span><span class="v">${fmt(r.h_pm)}h</span></div>`:''}
     <div class="panel-row" style="margin-top:4px"><span class="k"><strong>Total</strong></span><span class="v big">${fmt(r.total)}h</span></div></div>`;
   if(r.studentList.length>0){
     html+=`<div class="panel-section"><h4>Students (${r.studentList.length})</h4>`;
@@ -209,9 +205,8 @@ document.getElementById('pgtRecalcBtn').addEventListener('click',()=>{
   pgtSettings={
     supervision:+document.getElementById('as_pgt_sup').value||0,
     diss_feedback:+document.getElementById('as_pgt_diss_fb').value||0,
-    poster_feedback:+document.getElementById('as_pgt_post_fb').value||0,
     diss_marking:+document.getElementById('as_pgt_diss_mk').value||0,
-    poster_marking:+document.getElementById('as_pgt_post_mk').value||0,
+    pres_marking:+document.getElementById('as_pgt_pres_mk').value||0,
     marking_students:+document.getElementById('as_pgt_mark_students').value||2
   };
   pgtAllResults=pgtCalculate(pgtRawData,pgtSettings);
@@ -230,10 +225,10 @@ document.querySelector('#pgt-content table.pgt-table thead').addEventListener('c
 
 document.getElementById('pgtBtnExport').addEventListener('click',()=>{
   const wb=XLSX.utils.book_new();
-  const rows=[['Academic','Students','Sup.hrs','Diss.Feedback','Poster Feedback','Diss.Marking','Poster Marking','Total']];
-  for(const r of pgtAllResults)rows.push([r.name,r.studentList.length,+r.h_sup.toFixed(2),+r.h_df.toFixed(2),+r.h_pf.toFixed(2),+r.h_dm.toFixed(2),+r.h_pm.toFixed(2),+r.total.toFixed(2)]);
+  const rows=[['Academic','Students','Sup.hrs','Diss & Pres Feedback','Diss.Marking','Pres.Marking','Total']];
+  for(const r of pgtAllResults)rows.push([r.name,r.studentList.length,+r.h_sup.toFixed(2),+r.h_df.toFixed(2),+r.h_dm.toFixed(2),+r.h_pm.toFixed(2),+r.total.toFixed(2)]);
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'PGT Research');
-  const sRows=[['Setting','Value'],['Supervision',pgtSettings.supervision],['Diss. feedback',pgtSettings.diss_feedback],['Poster feedback',pgtSettings.poster_feedback],['Diss. marking',pgtSettings.diss_marking],['Poster marking',pgtSettings.poster_marking],['Marking students',pgtSettings.marking_students]];
+  const sRows=[['Setting','Value'],['Supervision',pgtSettings.supervision],['Diss & Pres feedback',pgtSettings.diss_feedback],['Diss. marking',pgtSettings.diss_marking],['Pres. marking',pgtSettings.pres_marking],['Marking students',pgtSettings.marking_students]];
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sRows),'Settings');
   XLSX.writeFile(wb,'research_projects_pgt.xlsx');
 });

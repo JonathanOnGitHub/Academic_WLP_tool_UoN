@@ -83,6 +83,7 @@ function parseAssessmentXlsx(file) {
       if (data.length === 0) throw new Error('No valid assessment rows found.');
       renderAssessment(data);
       document.getElementById('assessmentError').style.display = 'none';
+      WLP_SESSION.saveFile('assessment',file.name,e.target.result,file.type);
     } catch(err) {
       const el = document.getElementById('assessmentError');
       el.textContent = 'Error: ' + err.message;

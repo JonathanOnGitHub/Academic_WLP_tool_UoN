@@ -79,6 +79,7 @@ function mmiLoadFile(file){
       </div>`).join('');
       mmiAnalyseBtn.disabled=false;
       mmiAnalyseBtn.textContent=`🩺 Calculate MMI Workload (${parsed.length} session${parsed.length>1?'s':''}) →`;
+      WLP_SESSION.saveFile('mmi',file.name,e.target.result,file.type);
     }catch(err){mmiShowError('Error reading file: '+err.message);}
   };
   reader.readAsArrayBuffer(file);

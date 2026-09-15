@@ -22,6 +22,15 @@
   <button class="header-help-btn" id="helpBtn" onclick="openHelp()" title="Help &amp; methodology">?</button>
 </header>
 
+<!-- ═══ SESSION RESTORE BANNER ═══ -->
+<div id="sessionBanner" class="session-banner" style="display:none">
+  <span id="sessionBannerText"></span>
+  <span class="session-banner-actions">
+    <a href="#" id="sessionRestore" class="session-btn session-btn-restore">↻ Restore</a>
+    <a href="#" id="sessionClear" class="session-btn session-btn-clear">✕ Clear</a>
+  </span>
+</div>
+
 <main>
   <div class="main-tabs">
     <button class="main-tab-btn active" data-maingroup="teaching">📚 Teaching</button>
@@ -45,6 +54,8 @@
     <button class="sub-tab-btn active" data-panel="panel-tutorial">👥 Tutorials <span class="tab-badge" id="badge-tutorial">—</span></button>
     <button class="sub-tab-btn" data-panel="panel-mmi">🩺 MMIs <span class="tab-badge" id="badge-mmi">—</span></button>
     <button class="sub-tab-btn" data-panel="panel-citizenship">🏛 School Citizenship <span class="tab-badge" id="badge-citizenship">—</span></button>
+    <button class="sub-tab-btn" data-panel="panel-opendays">🎯 Open Days <span class="tab-badge" id="badge-opendays">—</span></button>
+    <button class="sub-tab-btn" data-panel="panel-pgr_training">📚 PGR Training <span class="tab-badge" id="badge-pgr_training">—</span></button>
   </div>
 
   <div class="sub-tabs-bar" id="subtab-research" style="display:none">
@@ -273,7 +284,7 @@
         <div class="landing-hero" style="background:linear-gradient(135deg,#4a148c,#e040fb)">
           <div class="hero-eyebrow">📚 Teaching · Research Projects PGT</div>
           <h1 class="hero-h1">PGT Research Project Supervision</h1>
-          <p class="hero-desc">Upload the PGT research project allocation spreadsheet. Calculates supervision, dissertation, and poster hours per academic from student allocations.</p>
+          <p class="hero-desc">Upload the PGT research project allocation spreadsheet. Calculates supervision, dissertation &amp; presentation feedback, and marking hours per academic from student allocations.</p>
           <div style="margin-top:1.2rem;font-size:0.78rem;color:rgba(255,255,255,0.6)">Expected (row 1): <strong style="color:rgba(255,255,255,0.85)">Long_name · Location · Allocation</strong> — <em style="color:rgba(255,255,255,0.7)">"/" separates multiple staff in Allocation column</em></div>
         </div>
         <div class="landing-panel">
@@ -284,12 +295,11 @@
           <div class="proj-settings">
             <div class="proj-settings-hdr" id="pgtSettingsHdr"><h3>⚙️ Hour settings</h3><span class="chev">▾</span></div>
             <div class="proj-settings-body" id="pgtSettingsBody">
-              <div class="ps-row"><label>Supervision <span class="hint">Per student supervised</span></label><input type="number" id="pgt_sup" value="12" min="0" step="0.5"></div>
-              <div class="ps-row"><label>Dissertation feedback <span class="hint">Per student</span></label><input type="number" id="pgt_diss_fb" value="3" min="0" step="0.5"></div>
-              <div class="ps-row"><label>Poster feedback <span class="hint">Per student</span></label><input type="number" id="pgt_post_fb" value="0.5" min="0" step="0.25"></div>
-              <div class="ps-row"><label>Dissertation marking <span class="hint">Per student</span></label><input type="number" id="pgt_diss_mk" value="2" min="0" step="0.5"></div>
-              <div class="ps-row"><label>Poster marking <span class="hint">Per student</span></label><input type="number" id="pgt_post_mk" value="0.5" min="0" step="0.25"></div>
-              <div class="ps-row"><label>Students for marking <span class="hint">Assume this many students for marking</span></label><input type="number" id="pgt_mark_students" value="2" min="1" max="10" step="1"></div>
+              <div class="ps-row"><label>Supervision <span class="hint">Per student supervised</span></label><input type="number" id="pgt_sup" value="20" min="0" step="0.5"></div>
+              <div class="ps-row"><label>Dissertation &amp; presentation feedback <span class="hint">Per student</span></label><input type="number" id="pgt_diss_fb" value="4" min="0" step="0.5"></div>
+              <div class="ps-row"><label>Dissertation marking <span class="hint">Per assessment, ×2 double-marked</span></label><input type="number" id="pgt_diss_mk" value="2" min="0" step="0.5"></div>
+              <div class="ps-row"><label>Presentation marking <span class="hint">Per assessment, ×2 double-marked</span></label><input type="number" id="pgt_pres_mk" value="1" min="0" step="0.25"></div>
+              <div class="ps-row"><label>Number of markers <span class="hint">Multiplier for marking items</span></label><input type="number" id="pgt_mark_students" value="2" min="1" max="10" step="1"></div>
             </div>
           </div>
           <button class="btn-primary" id="pgtAnalyseBtn" disabled>🔬 Calculate PGT Research Hours</button>
@@ -305,10 +315,9 @@
         <h3>Hour Rates — adjust and click Recalculate</h3>
         <div class="is-grid">
           <div class="is-group"><label>Supervision</label><input type="number" id="as_pgt_sup" min="0" step="0.5"><span class="hint">hrs/student</span></div>
-          <div class="is-group"><label>Diss. feedback</label><input type="number" id="as_pgt_diss_fb" min="0" step="0.5"><span class="hint">hrs/student</span></div>
-          <div class="is-group"><label>Poster feedback</label><input type="number" id="as_pgt_post_fb" min="0" step="0.25"><span class="hint">hrs/student</span></div>
-          <div class="is-group"><label>Diss. marking</label><input type="number" id="as_pgt_diss_mk" min="0" step="0.5"><span class="hint">hrs/student</span></div>
-          <div class="is-group"><label>Poster marking</label><input type="number" id="as_pgt_post_mk" min="0" step="0.25"><span class="hint">hrs/student</span></div>
+          <div class="is-group"><label>Diss &amp; Pres feedback</label><input type="number" id="as_pgt_diss_fb" min="0" step="0.5"><span class="hint">hrs/student</span></div>
+          <div class="is-group"><label>Diss. marking</label><input type="number" id="as_pgt_diss_mk" min="0" step="0.5"><span class="hint">hrs × markers</span></div>
+          <div class="is-group"><label>Pres. marking</label><input type="number" id="as_pgt_pres_mk" min="0" step="0.25"><span class="hint">hrs × markers</span></div>
           <div class="is-group"><label>Marking students</label><input type="number" id="as_pgt_mark_students" min="1" max="10" step="1"><span class="hint">assumed count</span></div>
         </div>
         <button class="btn-recalc" id="pgtRecalcBtn">↻ Recalculate</button>
@@ -317,7 +326,7 @@
       <div class="search-row"><input type="text" id="pgtSearch" placeholder="Filter by name…"><select id="pgtSortSel"><option value="total-desc">Total hours ↓</option><option value="total-asc">Total hours ↑</option><option value="name-asc">Name A–Z</option><option value="students-desc">Students supervised ↓</option></select></div>
       <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
         <table class="pgt-table">
-          <thead><tr><th data-pgtsort="name" style="cursor:pointer;user-select:none">Academic ↕</th><th data-pgtsort="students" style="cursor:pointer;user-select:none;text-align:right">Students ↕</th><th style="text-align:right">Sup. hrs</th><th style="text-align:right">Diss Feedback</th><th style="text-align:right">Poster Feedback</th><th style="text-align:right">Diss Marking</th><th style="text-align:right">Poster Marking</th><th data-pgtsort="total" style="cursor:pointer;user-select:none;text-align:right">Total hrs ↕</th><th style="min-width:120px">Profile</th></tr></thead>
+          <thead><tr><th data-pgtsort="name" style="cursor:pointer;user-select:none">Academic ↕</th><th data-pgtsort="students" style="cursor:pointer;user-select:none;text-align:right">Students ↕</th><th style="text-align:right">Sup. hrs</th><th style="text-align:right">Diss &amp; Pres Feedback</th><th style="text-align:right">Diss Marking</th><th style="text-align:right">Pres Marking</th><th data-pgtsort="total" style="cursor:pointer;user-select:none;text-align:right">Total hrs ↕</th><th style="min-width:120px">Profile</th></tr></thead>
           <tbody id="pgtTbody"></tbody><tfoot id="pgtFoot"></tfoot>
         </table>
       </div>
@@ -729,6 +738,8 @@
         <span class="status-pill" id="comb-status-sim">Simulations</span>
         <span class="status-pill" id="comb-status-ww">Welcome Week</span>
         <span class="status-pill" id="comb-status-pgt">PGT Research</span>
+        <span class="status-pill" id="comb-status-pgr_training">PGR Training</span>
+        <span class="status-pill" id="comb-status-opendays">Open Days</span>
       </div>
       <div class="anon-toggle" style="margin:6px 0;display:flex;align-items:center;gap:8px;font-size:0.82rem">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none">
@@ -755,15 +766,15 @@
         <div class="fte-set-group">
           <label>Annual target (hrs)</label>
           <input type="number" id="fteTarget" value="1600" min="100" max="3000" step="10">
-          <span class="hint">full year target; use FTE fractions for research-active staff</span>
+          <span class="hint">full year target; use workload allowances for research-active staff</span>
         </div>
         <div class="fte-set-group" style="align-self:flex-end">
-          <span class="hint" style="font-size:0.72rem;color:var(--muted)">Per-person FTE fractions set via tag rules below, or manually in each row's tag popover</span>
+          <span class="hint" style="font-size:0.72rem;color:var(--muted)">Per-person reductions set via tag rules below, or manually in each row's tag popover. The <strong>Part Time override</strong> in the tag popover reduces the base target before housekeeping and other reductions.</span>
         </div>
         <div class="fte-set-group">
           <label>Academic housekeeping rate</label>
           <input type="number" id="housekeepingRate" value="10" min="0" max="50" step="0.5" style="width:70px"> %
-          <span class="hint">Flat-rate overhead (compulsory training, general emails, etc.) applied to each academic's total</span>
+          <span class="hint">Flat-rate overhead added to actual workload hours: <code>(total activity hours) × rate</code></span>
         </div>
       </div>
       <div class="merge-info" id="combMergeInfo"></div>
@@ -784,9 +795,14 @@
           <option value="welcomeweek-desc">Welcome Week ↓</option>
           <option value="simulation-desc">Simulations ↓</option>
           <option value="researchpgt-desc">PGT Research ↓</option>
-          <option value="housekeeping-desc">🧹 Housekeeping ↓</option>
+          <option value="pgr_training-desc">📚 PGR Training ↓</option>
+          <option value="opendays-desc">🎯 Open Days ↓</option>
           <option value="name-asc">Name A–Z</option>
         </select>
+        <label style="display:inline-flex;align-items:center;gap:5px;font-size:0.82rem;cursor:pointer;user-select:none;white-space:nowrap;margin-left:8px" title="Only show staff who appear in the Timetabled teaching data">
+          <input type="checkbox" id="combTlOnly" style="cursor:pointer">
+          🧑‍🏫 Teaching staff only
+        </label>
       </div>
       <div class="rules-panel" id="rulesPanel">
         <div class="rules-panel-hdr" id="rulesPanelHdr">
@@ -794,14 +810,14 @@
           <span class="chev">▾</span>
         </div>
         <div class="rules-panel-body" id="rulesPanelBody">
-          <p style="font-size:0.78rem;color:var(--muted);margin-bottom:0.8rem">Define additive bonuses applied on top of global settings for staff carrying a given tag. A bonus of <strong>1.0</strong> doubles the hours for that activity. Multiple active rules on one person stack additively.</p>
+          <p style="font-size:0.78rem;color:var(--muted);margin-bottom:0.8rem">Define additive bonuses applied on top of global settings for staff carrying a given tag. A bonus of <strong>1.0</strong> doubles the hours for that activity. Multiple active rules on one person stack additively. The <strong>Part Time override</strong> (set per person in the tag popover) reduces the base target before housekeeping is calculated and before other reductions apply.</p>
           <table class="rules-table">
             <thead><tr>
               <th>Tag</th>
               <th title="Added to teaching contact hours multiplier">Teaching load bonus</th>
               <th title="Added to global prep ratio">Teaching prep bonus</th>
               <th title="Added to project hours multiplier">Project bonus</th>
-              <th title="Multiplied into personal FTE target (e.g. 0.75 = 75% of base target). Multiple tag fractions multiply together.">FTE fraction</th>
+              <th title="Percentage reduction applied to target (e.g. 25 = 25% reduction). Multiple reductions multiply together.">Reduction</th>
               <th>Rule expires</th>
               <th></th>
             </tr></thead>
@@ -812,7 +828,7 @@
             <div class="rules-add-group"><label>Teaching load</label><input type="number" id="ruleNewTL" value="0" min="0" step="0.1" placeholder="0"></div>
             <div class="rules-add-group"><label>Teaching prep</label><input type="number" id="ruleNewTP" value="0" min="0" step="0.1" placeholder="0"></div>
             <div class="rules-add-group"><label>Project</label><input type="number" id="ruleNewProj" value="0" min="0" step="0.1" placeholder="0"></div>
-            <div class="rules-add-group"><label>FTE fraction</label><input type="number" id="ruleNewFte" value="1" min="0.1" max="1" step="0.05" placeholder="1"><span class="hint">e.g. 0.75</span></div>
+            <div class="rules-add-group"><label>Reduction</label><input type="number" id="ruleNewFte" value="0" min="0" max="90" step="5" placeholder="0" style="width:70px"> %<span class="hint">e.g. 25 = 25% reduction</span></div>
             <div class="rules-add-group"><label>Rule expires (optional)</label><input type="date" id="ruleNewExpiry"></div>
             <button class="btn-rules-add" id="ruleAddBtn">+ Add rule</button>
           </div>
@@ -847,7 +863,8 @@
             <th data-combsort="welcomeweek" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">Welcome Week ↕</th>
             <th data-combsort="simulation" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">Simulations ↕</th>
             <th data-combsort="researchpgt" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">PGT Research ↕</th>
-            <th data-combsort="housekeeping" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">🧹 Housekeeping ↕</th>
+            <th data-combsort="pgr_training" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">📚 PGR Training ↕</th>
+            <th data-combsort="opendays" data-col-group="other" style="cursor:pointer;user-select:none;text-align:right">🎯 Open Days ↕</th>
             <th data-combsort="total" style="cursor:pointer;user-select:none;text-align:right">Total ↕</th>
             <th data-combsort="fte" style="cursor:pointer;user-select:none;min-width:170px">FTE % ↕</th>
             <th>Sources</th>
@@ -877,7 +894,7 @@
       <p><strong>Timetabled teaching load</strong> — Parses exported HTML timetables and calculates weekly contact hours per staff member. Hours are calculated from session start/end times. A flat-rate preparation allowance (default 2 hours per timetabled activity) can be added. The <em>Realistic hours</em> option deduplicates overlapping sessions so you are not counted as being in two places at once.</p>
       <p><strong>Non-timetabled assessment</strong> — Upload the assessment spreadsheet. Total load hours are divided equally among all listed staff, with optional 1.0× or 0.5× extra allowance for staff with unexpired entries.</p>
       <p><strong>Research Projects</strong> — Upload the project allocation spreadsheet. Calculates supervision (12 hrs/student share), dissertation feedback (3 hrs/student), dissertation marking (2 hrs/assessment), poster feedback (0.5 hr/student), and poster marking (0.5 hr/assessment) for each academic. Co-supervision hours are displayed for information but set to zero.</p>
-      <p><strong>Research Projects PGT</strong> — Upload the PGT research project allocation spreadsheet with <em>Long_name</em>, <em>Location</em>, <em>Allocation</em> columns. <code>/</code> separates multiple staff in the Allocation cell. Supervision hours (default 12h/student), dissertation feedback (3h), poster feedback (0.5h), dissertation marking (2h), and poster marking (0.5h) are split equally among staff. Marking hours assume 2 students (configurable).</p>
+      <p><strong>Research Projects PGT</strong> — Upload the PGT research project allocation spreadsheet with <em>Long_name</em>, <em>Location</em>, <em>Allocation</em> columns. <code>/</code> separates multiple staff in the Allocation cell. Supervision (default 20h/student), dissertation &amp; presentation feedback (4h/student), dissertation marking (2h/assessment, double-marked), and presentation marking (1h/assessment, double-marked) are split equally among staff. The number of markers (default 2) multiplies marking hours.</p>
     </div>
 
     <div class="help-section">
@@ -905,26 +922,27 @@
         <div><span class="help-cat" style="background:#c89b2a10;border-left:3px solid #c89b2a">Citizenship</span> Sum of role hours</div>
         <div><span class="help-cat" style="background:#0a7a9a10;border-left:3px solid #0a7a9a">Research</span> Current/next year hours from spreadsheet</div>
         <div><span class="help-cat" style="background:#d2691e10;border-left:3px solid #d2691e">PGR</span> Sum of (100 hrs × supervision share) per student</div>
-        <div><span class="help-cat" style="background:#88888810;border-left:3px solid #888">Academic housekeeping</span> Flat % of FTE target (default 10%)</div>
+        <div><span class="help-cat" style="background:#88888810;border-left:3px solid #888">Academic housekeeping</span> Flat % of total activity hours (default 10%)</div>
       </div>
+      <p style="margin-top:0.6rem;font-size:0.78rem;color:var(--muted)">Housekeeping is calculated as a percentage of each academic's total activity hours (the sum of all teaching, citizenship, research, and other duties). It automatically scales with part-time working since part-time staff naturally have fewer activity hours.</p>
     </div>
 
     <div class="help-section">
       <h4>🎯 FTE &amp; Protected Time</h4>
-      <p>The annual FTE target defaults to <strong>1,600 hours</strong> (full-time). Each academic's personal target is <code>1,600 × effective FTE</code>.</p>
-      <p>FTE fractions can be set per person via <strong>tag rules</strong> or a manual override. Common conventions include:</p>
+      <p>The annual FTE target defaults to <strong>1,600 hours</strong> (full-time). Each academic's personal target is <code>1,600 × Part Time fraction × workload allowance multiplier</code>.</p>
+      <p>Workload allowances can be set per person via <strong>tag rules</strong> or a manual override. Common conventions include:</p>
       <ul>
         <li><strong>0.75 FTE</strong> — Research &amp; Teaching (R&amp;T) staff with 0.25 FTE protected research time. Teaching load target = 1,600 × 0.75 = 1,200 hours.</li>
         <li><strong>0.90 FTE</strong> — Teaching-only staff with 0.10 FTE scholarship allocation.</li>
         <li><strong>1.00 FTE</strong> — Full-time Education &amp; Research or Teaching-only staff with no protected time adjustment.</li>
       </ul>
-      <p>When multiple tag rules with FTE fractions apply to the same person, the fractions <strong>multiply</strong> (e.g. 0.75 × 0.5 = 0.375 effective FTE). You can also set a manual FTE override per person via the tag popover, which bypasses all tag-based fractions.</p>
+      <p>When multiple tag rules with reductions apply to the same person, the percentages <strong>add up</strong> (e.g. 25% reduction + 10% reduction = 35% total reduction, so 65% effective FTE). The <strong>Part Time override</strong> reduction also adds to this total. You can also set a manual workload override per person via the tag popover, which bypasses all tag-based reductions.</p>
       <p>The FTE bar in the Combined view compares each academic's total hours against their personal target, colour-coded for under/on/over.</p>
     </div>
 
     <div class="help-section">
       <h4>🧹 Academic Housekeeping</h4>
-      <p>A flat-rate overhead (default <strong>10%</strong> of the personal FTE target) added to each academic's total. This covers compulsory training, general emails, staff meetings, and other non-specific activities not captured by the main categories. The rate is configurable in the FTE Settings panel (0–50%).</p>
+      <p>A flat-rate overhead (default <strong>10%</strong> of the total activity hours: <code>(Teaching + Citizenship + Research + Other duties) × rate</code>) added to each academic's total. This covers compulsory training, general emails, staff meetings, and other non-specific activities not captured by the main categories. The rate is configurable in the Combined view settings (0–50%). Because it's a percentage of actual hours rather than a fixed target, it naturally scales with part-time working.</p>
     </div>
 
     <div class="help-section">
@@ -945,8 +963,12 @@
   <button class="tag-popover-close" id="tagPopoverClose">✕</button>
   <h4 id="tagPopoverTitle">Tags</h4>
   <div class="fte-fraction-row">
-    <label>FTE manual override <span style="font-weight:400;color:var(--muted)">(overrides tag fractions; blank = use tags)</span></label>
+    <label>Workload allowance override <span style="font-weight:400;color:var(--muted)">(overrides tag reductions; blank = use tags)</span></label>
     <input type="number" id="tagPopoverFte" value="" min="0.05" max="1.0" step="0.05" placeholder="auto">
+  </div>
+  <div class="fte-fraction-row" style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
+    <label>🕑 Part Time override <span style="font-weight:400;color:var(--muted)">(overrides Part Time tag rule; blank = use rule)</span></label>
+    <input type="number" id="tagPopoverPartTime" value="" min="0.05" max="1.0" step="0.05" placeholder="auto">
   </div>
   <div class="tag-existing" id="tagPopoverExisting"></div>
   <div class="tag-popover-input-row">
@@ -1016,6 +1038,114 @@
 </div>
 </div>
 
+<!-- ═══ TAB: OPEN DAYS ═══ -->
+<div class="main-tab-panel" id="panel-opendays">
+<div id="opendays-landing" style="padding:20px;max-width:1200px;margin:auto">
+
+<h2>Open Days</h2>
+<p>Upload the Open Days XLSX spreadsheet. The data should be in columns D–G: row 1 has times, row 2 has dates, subsequent rows have staff names. Content in brackets (and anything after) is stripped from staff names. All staff named in a column receive the full session hours.</p>
+
+<div class="drop-zone" id="odDropZone" style="border-color:#d4713b;background:#fdf0e7">
+  <input type="file" id="odFileInput" accept=".xlsx,.xls">
+  <div class="drop-icon">🎯</div>
+  <h3>Drop Open Days XLSX here</h3>
+  <p>or click to browse</p>
+</div>
+<div class="error-msg" id="odError"></div>
+
+</div>
+
+<div id="opendays-content" style="display:none">
+  <div class="analyser-header">
+    <div class="analyser-title-block"><h2>Open Days</h2><div class="analyser-meta" id="odMeta"></div></div>
+    <div class="analyser-actions">
+      <button class="btn-action" id="odBtnBack">← Back</button>
+      <button class="btn-action" id="odBtnExport">⬇ Export XLSX</button>
+    </div>
+  </div>
+  <div class="stats-bar" id="odStatsBar"></div>
+  <div class="search-row">
+    <input type="text" id="odSearch" placeholder="Filter by name…">
+    <select id="odSortSel">
+      <option value="hours-desc">Total hours ↓</option>
+      <option value="hours-asc">Total hours ↑</option>
+      <option value="name-asc">Name A–Z</option>
+      <option value="name-desc">Name Z–A</option>
+      <option value="sessions-desc">Sessions ↓</option>
+      <option value="sessions-asc">Sessions ↑</option>
+    </select>
+  </div>
+  <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
+    <table class="pgr-table">
+      <thead><tr>
+        <th data-odsort="name" style="cursor:pointer;user-select:none">Staff Member ↕</th>
+        <th data-odsort="sessions" style="cursor:pointer;user-select:none;text-align:right">Sessions ↕</th>
+        <th data-odsort="hours" style="cursor:pointer;user-select:none;text-align:right">Total hours ↕</th>
+        <th style="min-width:120px">Profile</th>
+      </tr></thead>
+      <tbody id="odTbody"></tbody>
+      <tfoot id="odFoot"></tfoot>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ═══ TAB: PGT TRAINING ═══ -->
+<div class="main-tab-panel" id="panel-pgr_training">
+<div id="pgr-training-landing" style="padding:20px;max-width:1200px;margin:auto">
+
+<h2>PGR Training</h2>
+<p>Paste PGR Training tables below. Each table should have headers: <strong>Course name, Date, Time, Course provider, Further Information</strong> (tab or comma separated).</p>
+
+<h3>Table 1</h3>
+<textarea id="pgrtr-t1" style="width:100%;height:120px" placeholder="Course name	Date	Time	Course provider	Further Information"></textarea>
+
+<h3>Table 2</h3>
+<textarea id="pgrtr-t2" style="width:100%;height:120px" placeholder="Course name	Date	Time	Course provider	Further Information"></textarea>
+
+<h3>Table 3</h3>
+<textarea id="pgrtr-t3" style="width:100%;height:120px" placeholder="Course name	Date	Time	Course provider	Further Information"></textarea>
+
+<button id="pgrtrAnalyseBtn" style="margin-top:10px;padding:8px 16px">Analyse PGR Training</button>
+<div class="error-msg" id="pgrtrError"></div>
+
+</div>
+
+<div id="pgr-training-content" style="display:none">
+  <div class="analyser-header">
+    <div class="analyser-title-block"><h2>PGR Training</h2><div class="analyser-meta" id="pgrtrMeta"></div></div>
+    <div class="analyser-actions">
+      <button class="btn-action" id="pgrtrBtnBack">← Back</button>
+      <button class="btn-action" id="pgrtrBtnExport">⬇ Export XLSX</button>
+    </div>
+  </div>
+  <div class="stats-bar" id="pgrtrStatsBar"></div>
+  <div class="search-row">
+    <input type="text" id="pgrtrSearch" placeholder="Filter by name or course…">
+    <select id="pgrtrSortSel">
+      <option value="hours-desc">Total hours ↓</option>
+      <option value="hours-asc">Total hours ↑</option>
+      <option value="name-asc">Name A–Z</option>
+      <option value="name-desc">Name Z–A</option>
+      <option value="sessions-desc">Sessions ↓</option>
+      <option value="sessions-asc">Sessions ↑</option>
+    </select>
+  </div>
+  <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
+    <table class="pgr-table">
+      <thead><tr>
+        <th data-pgrsort="name" style="cursor:pointer;user-select:none">Staff Member ↕</th>
+        <th data-pgrsort="sessions" style="cursor:pointer;user-select:none;text-align:right">Sessions ↕</th>
+        <th data-pgrsort="hours" style="cursor:pointer;user-select:none;text-align:right">Total hours ↕</th>
+        <th style="min-width:120px">Profile</th>
+      </tr></thead>
+      <tbody id="pgrtrTbody"></tbody>
+      <tfoot id="pgrtrFoot"></tfoot>
+    </table>
+  </div>
+</div>
+</div>
+
   <script src="js/shared/utils.js"></script>
   <script src="js/shared/storage.js"></script>
   <script src="js/tabs/teaching.js"></script>
@@ -1030,8 +1160,11 @@
   <script src="js/tabs/citizenship.js"></script>
   <script src="js/tabs/aob.js"></script>
   <script src="js/tabs/research_pgt.js"></script>
+  <script src="js/tabs/pgr_training.js"></script>
+  <script src="js/tabs/opendays.js"></script>
   <script src="js/tabs/combined.js"></script>
   <script src="js/tabs/staffing.js"></script>
+  <script src="js/shared/session.js"></script>
 </body>
 
 

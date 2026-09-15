@@ -46,6 +46,7 @@ function tutProcessFile(file){
       document.getElementById('badge-tutorial').textContent=tutAllTutors.length+' tutors';
       document.getElementById('tutMeta').textContent=`${tutAllTutors.length} tutors · ${tutAllTutors.reduce((s,t)=>s+t.totalTutees,0)} tutees`;
       tutRenderSummary();tutRenderTable();updateCombStatus();
+      WLP_SESSION.saveFile('tutorial',file.name,e.target.result,file.type);
     }catch(err){tutShowError('Error reading file: '+err.message);}
   };
   reader.readAsArrayBuffer(file);

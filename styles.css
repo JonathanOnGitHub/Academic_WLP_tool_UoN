@@ -29,6 +29,16 @@
 body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
 
 header{background:var(--navy);color:white;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(4,30,66,0.4);}
+
+/* ═══ Session restore banner ═══ */
+.session-banner{background:var(--gold-light);border-bottom:2px solid var(--gold);padding:8px 2rem;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:0.82rem;flex-wrap:wrap;}
+.session-banner-actions{display:flex;gap:8px;flex-shrink:0;}
+.session-btn{text-decoration:none;padding:4px 12px;border-radius:4px;font-size:0.78rem;font-weight:500;transition:background .15s;}
+.session-btn-restore{background:var(--gold);color:white;}
+.session-btn-restore:hover{background:#b08a20;}
+.session-btn-clear{background:transparent;color:var(--danger);border:1px solid var(--danger);}
+.session-btn-clear:hover{background:#fce4e4;}
+.session-btn:disabled{cursor:default;opacity:.7;}
 .header-logo{display:flex;align-items:center;gap:12px;}
 .logo-mark{width:36px;height:36px;background:var(--mid-blue);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-weight:700;font-size:16px;color:white;}
 .header-title{font-family:'Source Serif 4',serif;font-weight:600;font-size:1.1rem;}
@@ -379,6 +389,9 @@ td.tutor-name{font-weight:500;font-family:'Source Serif 4',serif;font-size:0.88r
 .rules-table .rule-tag-name{font-weight:600;color:var(--navy);font-size:0.82rem;}
 .rules-table .rule-del{background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.9rem;padding:2px 5px;border-radius:4px;}
 .rules-table .rule-del:hover{background:#fde8e8;}
+.rules-table .rule-pt-row td{background:#f3e8ff;border-bottom:2px solid #d4b8f0;}
+.rules-table .rule-pt-row input[disabled]{background:transparent;border-color:transparent;}
+.rules-table .rule-pt-fte{background:white!important;border-color:var(--border)!important;}
 .rules-add-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:0.5rem;padding-top:0.8rem;border-top:1px solid var(--border);}
 .rules-add-row input[type=text]{padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem;width:140px;}
 .rules-add-row input[type=number]{width:62px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem;font-family:'IBM Plex Mono',monospace;text-align:right;}

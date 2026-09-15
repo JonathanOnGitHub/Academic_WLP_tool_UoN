@@ -81,6 +81,7 @@ function parseAobXlsx(file) {
       if (!parsedData) throw new Error('No valid data rows found. Ensure the file has a sheet with columns: Activity description, Staff member(s), Hours per activity.');
       renderAob(parsedData);
       document.getElementById('aobError').style.display = 'none';
+      WLP_SESSION.saveFile('aob',file.name,e.target.result,file.type);
     } catch(err) {
       const el = document.getElementById('aobError');
       el.textContent = 'Error: ' + err.message;

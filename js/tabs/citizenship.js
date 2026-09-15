@@ -90,6 +90,7 @@ function parseCitizenshipXlsx(file){
       });
 
       renderCitizenship(deduped);
+      WLP_SESSION.saveFile('citizenship_file',file.name,e.target.result,file.type);
     } catch(err){
       alert('Error reading spreadsheet: '+err.message);
     }
@@ -274,6 +275,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
 
   renderCitizenship(results);
+  WLP_SESSION.saveCitizenshipPaste(teaching, research, school);
  };
 
  document.getElementById("citTable").querySelector("thead").addEventListener("click",e=>{

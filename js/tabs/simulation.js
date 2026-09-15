@@ -110,6 +110,7 @@ function parseSimXlsx(file) {
       if (data.length === 0) throw new Error('No valid data rows found. Ensure the file has sheets with columns: Week, Date, Day, Year Group, Group, 9-12 noon (×3), 1-4pm (×3).');
       renderSim(data);
       document.getElementById('simError').classList.remove('show');
+      WLP_SESSION.saveFile('simulation',file.name,e.target.result,file.type);
     } catch (err) {
       const el = document.getElementById('simError');
       el.textContent = 'Error: ' + err.message;
