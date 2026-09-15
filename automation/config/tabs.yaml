@@ -1,0 +1,191 @@
+app:
+  url: https://jonathanongithub.github.io/Academic_WLP_tool_UoN/
+  # Visible browser window — do NOT set headless: true. Chromium opens in a real
+  # window so you can watch progress and intervene if needed.
+  headless: false
+  # Slow down each Playwright action by this many ms. Helps you see what's
+  # happening. Set to 0 for maximum speed once you trust the script.
+  slow_mo_ms: 200
+  # How long to wait for each tab's result indicator to populate, in seconds.
+  result_timeout_s: 30
+  # Where to write per-tab screenshots after a successful upload. Leave blank
+  # to skip screenshots.
+  screenshot_dir: screenshots
+
+# Base directory containing all your data files. Each tab's `files` are
+# resolved relative to this.
+data_dir: /home/burley/Documents/Nottingham/Teaching/Timetable/Demo/Example data
+
+# Each entry is one tab to drive through. Fields:
+#   main_tab:    data-maingroup value of the top-level tab button to click
+#   sub_tab:     data-panel value of the sub-tab button (omit for tabs
+#                without sub-tabs, e.g. AoB)
+#   file_input:  CSS selector for the <input type="file">. Playwright's
+#                set_input_files() fires the native change event so the
+#                page's own JS does the parsing.
+#   action:      CSS selector for the Calculate/Analyse button. Omit or set
+#                to "" for tabs that render results automatically on file
+#                selection (Assessment, AoB).
+#   wait_for:    CSS selector whose content indicates the result is ready
+#                (e.g. the stats bar). The script waits until this element
+#                has visible non-empty text before moving on.
+#   files:       One or more filenames (resolved against data_dir). The
+#                Teaching tab accepts multiple HTML files.
+#   enabled:     Set to false to skip this tab without deleting the entry.
+tabs:
+  - key: teaching_timetable
+    enabled: true
+    main_tab: teaching
+    sub_tab: panel-teaching
+    file_input: '#tlFileInput'
+    action: '#tlAnalyseBtn'
+    wait_for: '#tlStatsBar'
+    files:
+      - MPharm_Autumn_semester_as_of_010626.html
+      - MPharm_Spring_semester_as_of_010626.html
+    notes: >
+      Teaching tab accepts multiple HTML timetable exports. Drop a couple
+      in here and they will all be analysed together.
+
+  - key: teaching_assessment
+    enabled: true
+    main_tab: teaching
+    sub_tab: panel-assessment
+    file_input: '#assessmentFileInput'
+    action: ''
+    wait_for: '#assessmentStatsBar'
+    files:
+      - Assessment_Load_Tracker.xlsx
+
+  - key: teaching_projects_ug
+    enabled: true
+    main_tab: teaching
+    sub_tab: panel-project
+    file_input: '#projFileInput'
+    action: '#projAnalyseBtn'
+    wait_for: '#projStatsBar'
+    files:
+      - project_supervision_list.xlsx
+
+  - key: teaching_projects_pgt
+    enabled: false   # no PGT sample file in the data folder — flip when you have one
+    main_tab: teaching
+    sub_tab: panel-researchpgt
+    file_input: '#pgtFileInput'
+    action: '#pgtAnalyseBtn'
+    wait_for: '#pgtStatsBar'
+    files:
+      - REPLACE_WITH_PGT_PROJECTS.xlsx
+
+  - key: teaching_simulations
+    enabled: true
+    main_tab: teaching
+    sub_tab: panel-simulation
+    file_input: '#simFileInput'
+    action: ''
+    wait_for: '#simStatsBar'
+    files:
+      - Simulation Academic Support 25.26.xlsx
+    notes: >
+      Two-sheet XLSX (Semester 1 & 2). Auto-renders on file selection.
+      The on-screen 'Calculate' button is never enabled by the app; it
+      only re-runs the parser if you click it manually. Hours default:
+      AM = 3h, PM = 3h.
+
+  - key: teaching_welcome_week
+    enabled: true
+    main_tab: teaching
+    sub_tab: panel-welcomeweek
+    file_input: '#wwFileInput'
+    action: ''
+    wait_for: '#wwStatsBar'
+    files:
+      - Welcome Week - WLP Information.xlsx
+    notes: >
+      Auto-renders on file selection. Headers expected on row 3
+      (Staff member · Activity · Hours · Notes). The on-screen
+      'Calculate' button is never enabled by the app — same UX quirk
+      as Simulations.
+
+  - key: citizenship_tutorials
+    enabled: true
+    main_tab: citizenship
+    sub_tab: panel-tutorial
+    file_input: '#tutFileInput'
+    action: ''
+    wait_for: '#tutMeta'
+    files:
+      - Master Tutor List for 2025-26.xlsx
+    notes: >
+      Auto-renders on file selection (no Analyse button). Result is read
+      from the meta line above the tutor table.
+
+  - key: citizenship_mmi
+    enabled: true
+    main_tab: citizenship
+    sub_tab: panel-mmi
+    file_input: '#mmiFileInput'
+    action: '#mmiAnalyseBtn'
+    wait_for: '#mmiStatsBar'
+    files:
+      - MMI booking 25-26_220526.xlsx
+    notes: >
+      Multi-sheet XLSX. Each tab is one MMI session. After upload the
+      app shows a preview of detected sessions; the Analyse button
+      then needs to be clicked.
+
+  - key: citizenship_school_roles
+    kind: citizenship_paste
+    enabled: true
+    main_tab: citizenship
+    sub_tab: panel-citizenship
+    action: '#citAnalyseBtn'
+    # paste: each entry's XLSX gets converted to TSV and dropped into the
+    # matching SharePoint-paste textarea; one Analyse click then merges
+    # all three categories (with dedup across them).
+    paste:
+      teaching: Teaching_roles.xlsx
+      research: Research_roles.xlsx
+      school: School_and_Citizenship_roles.xlsx
+    notes: >
+      The XLSX upload path on this tab overwrites on each upload, so we
+      use the textarea-paste path to combine all three categories in one
+      go. Filename 'teach' / 'research' keywords from SharePoint are
+      ignored — we route explicitly by YAML key. The textareas live
+      under the 'School Citizenship' sub-tab.
+
+  - key: research_staff_hours
+    enabled: true
+    main_tab: research
+    sub_tab: panel-research
+    file_input: '#resFileInput'
+    action: ''
+    wait_for: '#resStatsBar'
+    files:
+      - 01 Staff Research Hours.xlsx
+    notes: >
+      Auto-renders on file selection. Headers expected on row 1
+      (the app scans the first 5 rows for a 'Name' column).
+
+  - key: research_pgr
+    enabled: true
+    main_tab: research
+    sub_tab: panel-pgr
+    file_input: '#pgrFileInput'
+    action: ''
+    wait_for: '#pgrStatsBar'
+    files:
+      - Supervisor load WS_data.csv
+    notes: >
+      CSV export from the supervisor workload system. Auto-renders on
+      file selection. 100 hours per student split by supervision %.
+
+  - key: aob
+    enabled: true
+    main_tab: aob
+    sub_tab: ''
+    file_input: '#aobFileInput'
+    action: ''
+    wait_for: '#aobStatsBar'
+    files:
+      - WLP_AoB_draft_1.xlsx
