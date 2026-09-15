@@ -90,6 +90,26 @@ matching `#cit-teaching` / `#cit-research` / `#cit-school` textarea, then
 clicks the single Analyse button — which combines all three with
 cross-category dedup.
 
+### Special kind: `pgr_training_paste`
+
+The PGR Training tab has three textareas (`#pgrtr-t1`, `#pgrtr-t2`,
+`#pgrtr-t3`) that expect pasted tables. For that, set `kind:
+pgr_training_paste` and provide a single XLSX with one sheet per
+textarea:
+
+```yaml
+- key: citizenship_pgr_training
+  kind: pgr_training_paste
+  main_tab: citizenship
+  sub_tab: panel-pgr_training
+  action: '#pgrtrAnalyseBtn'
+  files:
+    - PGR_training_2025_26.xlsx    # sheets become t1, t2, t3 in order
+```
+
+Cells with non-breaking spaces, tabs, or newlines are stripped before
+pasting so the app's parser can find the column headers cleanly.
+
 ### To swap in your own data
 
 1. Edit `data_dir:` at the top, **or**
@@ -117,10 +137,9 @@ once analysis finishes.
 
 ## What's intentionally not in V1
 
-Per the original brief:
+Per the original brief and current data availability:
 
-* Other Citizenship tabs (Open Days, PGR Training)
-* Combined Totals merge
+* **Combined Totals** merge — same V1 brief as before.
 
-These can be added later — the per-tab structure makes them a copy-paste
+This can be added later — the per-tab structure makes it a copy-paste
 addition to `tabs.yaml`.

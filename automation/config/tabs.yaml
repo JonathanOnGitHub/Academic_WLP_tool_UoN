@@ -68,14 +68,21 @@ tabs:
       - project_supervision_list.xlsx
 
   - key: teaching_projects_pgt
-    enabled: false   # no PGT sample file in the data folder — flip when you have one
+    enabled: true
     main_tab: teaching
     sub_tab: panel-researchpgt
     file_input: '#pgtFileInput'
     action: '#pgtAnalyseBtn'
     wait_for: '#pgtStatsBar'
     files:
-      - REPLACE_WITH_PGT_PROJECTS.xlsx
+      - PGT_projects_2025_26.xlsx
+    notes: >
+      Three columns expected on row 1 (Long_Name, Location, Allocation).
+      '/' separates multiple supervisors in the Allocation cell. Hours
+      split equally among them, then run through pgtCalculate() with
+      the on-screen defaults: 20 supervision + 4 diss/pres feedback
+      per student share, and 2x double-marking of 2h diss + 1h pres
+      per marker per share.
 
   - key: teaching_simulations
     enabled: true
@@ -154,6 +161,36 @@ tabs:
       ignored — we route explicitly by YAML key. The textareas live
       under the 'School Citizenship' sub-tab.
 
+  - key: citizenship_open_days
+    enabled: true
+    main_tab: citizenship
+    sub_tab: panel-opendays
+    file_input: '#odFileInput'
+    action: ''
+    wait_for: '#odStatsBar'
+    files:
+      - Open days 2026 MPharm and Pharm Sci.xlsx
+    notes: >
+      Auto-renders on file selection. Expected layout: columns D–G,
+      row 1 = times, row 2 = dates, remaining rows = staff names.
+      Bracketed text and anything after is stripped from staff names.
+
+  - key: citizenship_pgr_training
+    kind: pgr_training_paste
+    enabled: true
+    main_tab: citizenship
+    sub_tab: panel-pgr_training
+    action: '#pgrtrAnalyseBtn'
+    files:
+      - PGR_training_2025_26.xlsx
+    notes: >
+      Three-sheet XLSX — each sheet becomes one of the three textareas
+      (#pgrtr-t1, #pgrtr-t2, #pgrtr-t3) in sheet order. Sheets are
+      converted to TSV with NBSP and newlines stripped, then a single
+      click on Analyse merges all three. The app's own parser handles
+      horizontal 5-column layout (Course, Date, Time, Provider, Info)
+      or vertical one-field-per-line headers.
+
   - key: research_staff_hours
     enabled: true
     main_tab: research
@@ -189,3 +226,17 @@ tabs:
     wait_for: '#aobStatsBar'
     files:
       - WLP_AoB_draft_1.xlsx
+
+  - key: combined
+    enabled: true
+    main_tab: combined
+    sub_tab: ''
+    action: '#combMergeBtn'
+    wait_for: '#combTbody'
+    files: []   # no files — just clicks Merge after the source tabs load
+    notes: >
+      Run after all source tabs (Teaching / Citizenship / Research / AoB)
+      have populated their data. The Merge button is enabled by the app
+      once at least one source has hours; clicking it populates the
+      Combined table with merged, fuzzy-matched names. The driver
+      waits for #combTbody to have at least one row.

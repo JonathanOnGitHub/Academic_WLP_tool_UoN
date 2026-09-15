@@ -156,13 +156,27 @@ def switch_sub_tab(page: Page, panel_id: str) -> None:
 
 def wait_for_action_enabled(page: Page, selector: str, timeout_s: int) -> None:
     """Wait until the analyse button is enabled and visible."""
-    LOG.debug("Waiting for %s to be enabled", selector)
-    page.wait_for_function(
-        "sel => { const el = document.querySelector(sel);"
-        " return el && !el.disabled && getComputedStyle(el).display !== 'none'; }",
+    LOG.info("Waiting for %s to be enabled (timeout %ds)", selector, timeout_s)
+    deadline = time.monotonic() + timeout_s
+    n_polls = 0
+    while time.monotonic() < deadline:
+        ok = page.evaluate(
+            "sel => { const el = document.querySelector(sel);"
+            " return !!(el && !el.disabled && getComputedStyle(el).display !== 'none'); }",
+            arg=selector,
+        )
+        n_polls += 1
+        if ok:
+            LOG.info("  enabled after %d polls", n_polls)
+            return
+        page.wait_for_timeout(150)
+    state = page.evaluate(
+        "sel => { const el=document.querySelector(sel);"
+        " return el ? `disabled=${el.disabled} display=${getComputedStyle(el).display}` : 'missing'; }",
         arg=selector,
-        timeout=timeout_s * 1000,
     )
+    LOG.info("  timed out after %d polls; final state: %s", n_polls, state)
+    raise PWTimeoutError(f"{selector} did not become enabled within {timeout_s}s")
 
 
 def wait_for_result(page: Page, selector: str, timeout_s: int) -> str:
@@ -197,9 +211,9 @@ def wait_for_result(page: Page, selector: str, timeout_s: int) -> str:
 def xlsx_to_tsv(path: Path) -> str:
     """Read an XLSX file and return its first sheet as TSV text.
 
-    Cells containing tabs or newlines are collapsed to single spaces so
-    they don't break the row/column structure that the WLP citizenship
-    parser expects.
+    Cells containing tabs, newlines, or non-breaking spaces are
+    collapsed so they don't break the row/column structure that the
+    WLP citizenship / PGR-training parsers expect.
     """
     wb = load_workbook(path, data_only=True, read_only=True)
     try:
@@ -213,7 +227,14 @@ def xlsx_to_tsv(path: Path) -> str:
                 if c is None:
                     cells.append("")
                 else:
-                    s = str(c).replace("\t", " ").replace("\n", " ").replace("\r", " ")
+                    s = (
+                        str(c)
+                        .replace("\xa0", " ")
+                        .replace("\t", " ")
+                        .replace("\n", " ")
+                        .replace("\r", " ")
+                    )
+                    s = " ".join(s.split())  # collapse runs of whitespace
                     cells.append(s)
             # Drop trailing empty cells so they don't look like extra columns
             while cells and cells[-1] == "":
@@ -222,6 +243,42 @@ def xlsx_to_tsv(path: Path) -> str:
             if line.strip():
                 out_lines.append(line)
         return "\n".join(out_lines)
+    finally:
+        wb.close()
+
+
+def xlsx_sheets_to_tsvs(path: Path) -> list[str]:
+    """Like xlsx_to_tsv() but returns one TSV per sheet (in workbook order)."""
+    wb = load_workbook(path, data_only=True, read_only=True)
+    try:
+        results: list[str] = []
+        for sname in wb.sheetnames:
+            ws = wb[sname]
+            out_lines: list[str] = []
+            for row in ws.iter_rows(values_only=True):
+                if row is None:
+                    continue
+                cells = []
+                for c in row:
+                    if c is None:
+                        cells.append("")
+                    else:
+                        s = (
+                            str(c)
+                            .replace("\xa0", " ")
+                            .replace("\t", " ")
+                            .replace("\n", " ")
+                            .replace("\r", " ")
+                        )
+                        s = " ".join(s.split())
+                        cells.append(s)
+                while cells and cells[-1] == "":
+                    cells.pop()
+                line = "\t".join(cells)
+                if line.strip():
+                    out_lines.append(line)
+            results.append("\n".join(out_lines))
+        return results
     finally:
         wb.close()
 
@@ -237,6 +294,70 @@ def wait_for_citizenship_rows(page: Page, timeout_s: int) -> int:
             return n
         page.wait_for_timeout(150)
     return 0
+
+
+def wait_for_pgr_training_rows(page: Page, timeout_s: int) -> int:
+    """Poll the PGR training tbody until it has at least one row."""
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        n = page.evaluate(
+            "() => document.querySelectorAll('#pgrtrTbody tr').length"
+        )
+        if n and n > 0:
+            return n
+        page.wait_for_timeout(150)
+    return 0
+
+
+def process_pgr_training_paste_tab(page: Page, tab: TabSpec, cfg: AppConfig) -> tuple[bool, str]:
+    """Drive the PGR Training tab by converting each XLSX sheet into TSV
+    and pasting it into the matching #pgrtr-tN textarea. A single click on
+    #pgrtrAnalyseBtn then merges all sheets.
+    """
+    if not tab.files:
+        return False, "No XLSX configured for PGR training paste"
+    xlsx = tab.files[0]
+    if not xlsx.exists():
+        return False, f"Missing XLSX: {xlsx}"
+
+    LOG.info("  (pgr training paste: %s)", xlsx.name)
+    switch_main_tab(page, tab.main_tab)
+    if tab.sub_tab:
+        switch_sub_tab(page, tab.sub_tab)
+
+    sheets = xlsx_sheets_to_tsvs(xlsx)
+    textareas = ["#pgrtr-t1", "#pgrtr-t2", "#pgrtr-t3"]
+    parts: list[str] = []
+    for i, ta in enumerate(textareas):
+        page.locator(ta).fill("")
+        if i < len(sheets):
+            tsv = sheets[i]
+            row_count = tsv.count("\n") + 1 if tsv else 0
+            if row_count > 0:
+                LOG.info("  → pasting %d-row TSV into %s", row_count, ta)
+                page.locator(ta).fill(tsv)
+                parts.append(f"t{i+1}={row_count}r")
+            else:
+                LOG.info("  → sheet %d empty, leaving %s blank", i + 1, ta)
+
+    if not parts:
+        return False, "All three sheets were empty"
+
+    LOG.info("  → clicking %s", tab.action)
+    page.locator(tab.action).click()
+
+    n_rows = wait_for_pgr_training_rows(page, cfg.result_timeout_s)
+    if n_rows == 0:
+        return False, "PGR training table did not populate"
+    summary = f"{n_rows} rows ({', '.join(parts)})"
+
+    if cfg.screenshot_dir:
+        out = Path(cfg.screenshot_dir).expanduser().resolve()
+        out.mkdir(parents=True, exist_ok=True)
+        shot = out / f"{tab.key}.png"
+        page.screenshot(path=str(shot), full_page=True)
+        LOG.info("  📸 %s", shot)
+    return True, summary
 
 
 def process_citizenship_paste_tab(page: Page, tab: TabSpec, cfg: AppConfig) -> tuple[bool, str]:
@@ -303,6 +424,8 @@ def process_tab(page: Page, tab: TabSpec, cfg: AppConfig) -> tuple[bool, str]:
     # Branch on kind.
     if tab.kind == "citizenship_paste":
         ok, summary = process_citizenship_paste_tab(page, tab, cfg)
+    elif tab.kind == "pgr_training_paste":
+        ok, summary = process_pgr_training_paste_tab(page, tab, cfg)
     else:
         ok, summary = process_upload_tab(page, tab, cfg)
 
@@ -312,7 +435,11 @@ def process_tab(page: Page, tab: TabSpec, cfg: AppConfig) -> tuple[bool, str]:
 
 
 def process_upload_tab(page: Page, tab: TabSpec, cfg: AppConfig) -> tuple[bool, str]:
-    """Default upload path: pick files, click action, wait for wait_for."""
+    """Default upload path: pick files, click action, wait for wait_for.
+
+    If `tab.file_input` is empty, the upload step is skipped (useful for
+    tabs like Combined that just trigger an action on already-loaded data).
+    """
     # 1. Switch to the tab.
     switch_main_tab(page, tab.main_tab)
     if tab.sub_tab:
@@ -326,19 +453,40 @@ def process_upload_tab(page: Page, tab: TabSpec, cfg: AppConfig) -> tuple[bool, 
         return False, msg
 
     # 3. Upload via Playwright's native mechanism. This fires the page's
-    #    'change' event exactly like a human picking a file.
-    file_strs = [str(f) for f in tab.files]
-    LOG.info("  → uploading %d file(s) into %s", len(file_strs), tab.file_input)
-    page.locator(tab.file_input).set_input_files(file_strs)
+    #    'change' event exactly like a human picking a file. Skipped if
+    #    no file_input is configured.
+    if tab.file_input and tab.files:
+        file_strs = [str(f) for f in tab.files]
+        LOG.info("  → uploading %d file(s) into %s", len(file_strs), tab.file_input)
+        page.locator(tab.file_input).set_input_files(file_strs)
+    elif not tab.file_input:
+        LOG.info("  → no file input (action-only tab)")
+    else:
+        LOG.info("  → no files configured for this tab")
 
     # 4. Click the action button if there is one.
     if tab.action:
         try:
             wait_for_action_enabled(page, tab.action, timeout_s=10)
-            LOG.info("  → clicking %s", tab.action)
-            page.locator(tab.action).click()
-        except PWTimeoutError:
+        except PWTimeoutError as e:
             msg = f"Action button {tab.action} never became enabled"
+            LOG.error("  ✗ %s", msg)
+            return False, msg
+        LOG.info("  → clicking %s", tab.action)
+        # Click via JS .click() to avoid Playwright's actionability/idle
+        # waits that can hang on heavy pages (e.g. the 2 kLOC doMerge).
+        try:
+            clicked = page.evaluate(
+                "sel => { const el=document.querySelector(sel);"
+                " if(!el)return false; el.click(); return true; }",
+                arg=tab.action,
+            )
+            if not clicked:
+                msg = f"Could not find {tab.action} to click"
+                LOG.error("  ✗ %s", msg)
+                return False, msg
+        except Exception as e:
+            msg = f"Click on {tab.action} failed: {e}"
             LOG.error("  ✗ %s", msg)
             return False, msg
     else:
@@ -351,6 +499,30 @@ def process_upload_tab(page: Page, tab: TabSpec, cfg: AppConfig) -> tuple[bool, 
         LOG.error("  ✗ %s", msg)
         return False, msg
     one_line = " ".join(summary.split())[:160]
+
+    # 5b. For the Combined tab, also print the first 20 displayed academic
+    # names so the user can verify the name reformatting visually.
+    if tab.key == "combined":
+        debug = page.evaluate("""() => {
+            const rows = document.querySelectorAll('#combTbody tr');
+            const cn = document.querySelectorAll('#combTbody td.cn');
+            const allTds = document.querySelectorAll('#combTbody td');
+            return {
+                row_count: rows.length,
+                cn_count: cn.length,
+                td_count: allTds.length,
+                first_row_html: rows[0] ? rows[0].outerHTML.slice(0, 800) : 'none',
+                names: [...cn].slice(0,20).map(td => td.innerText.trim().split('\\n')[0]),
+            };
+        }""")
+        LOG.info("  Combined debug: rows=%d td.cn=%d td.total=%d",
+                 debug["row_count"], debug["cn_count"], debug["td_count"])
+        if debug["first_row_html"] != "none":
+            LOG.info("  First row HTML: %s", debug["first_row_html"][:600])
+        if debug["names"]:
+            LOG.info("  Combined view — first 20 names:")
+            for n in debug["names"]:
+                LOG.info("    %s", n)
 
     # 6. Optional screenshot.
     if cfg.screenshot_dir:
