@@ -25,6 +25,27 @@ tlDropZone.addEventListener('dragleave',()=>tlDropZone.classList.remove('drag-ov
 tlDropZone.addEventListener('drop',e=>{e.preventDefault();tlDropZone.classList.remove('drag-over');tlUploadedFiles.push(...Array.from(e.dataTransfer.files).filter(f=>f.name.match(/\.html?$/i)));tlUpdateFileList();});
 tlFileList.addEventListener('click',e=>{if(e.target.classList.contains('fi-remove')){tlUploadedFiles.splice(+e.target.dataset.i,1);tlUpdateFileList();}});
 
+function reformatStaffName(raw){
+  // Convert "Surname, Firstname(s) Title" → "Title Firstname(s) Surname".
+  // The timetabling system exports names in "Last, First Dr" form with the
+  // title glued to the end with no separator, e.g. "Burley, Jonathan Dr",
+  // "Aylott, Jonathan  Prof", "Morris, Kate Mrs", "Hill, SJ Prof",
+  // "Woolard, (Isaac) Jeanette Prof". Fall back to the original if the
+  // pattern doesn't match.
+  const s=String(raw||'').trim();
+  // Match "Last, Given Title" where Title is at the very end of the string
+  // and Given is non-empty (may contain spaces, dots, hyphens).
+  const m=s.match(/^([^,]+),\s*([^\s,][^,]*?)\s+(prof\.?|professor|dr|mr|mrs|ms)\s*\.?$/i);
+  if(!m) return s;
+  let surname=m[1].trim(),given=m[2].trim(),title=m[3].trim();
+  // Normalise "Professor" → "Prof"
+  if(/^professor$/i.test(title)) title='Prof';
+  // Collapse runs of whitespace within parts
+  surname=surname.replace(/\s+/g,' ');
+  given=given.replace(/\s+/g,' ');
+  return `${title} ${given} ${surname}`;
+}
+
 function parseHTMLFile(html){
   const doc=new DOMParser().parseFromString(html,'text/html'),sessions=[];
   for(const table of doc.querySelectorAll('table')){
@@ -52,7 +73,7 @@ function parseHTMLFile(html){
       const get=k=>(cols[k]!==undefined&&cells[cols[k]])?cells[cols[k]].innerHTML:'';
       const getText=k=>(cols[k]!==undefined&&cells[cols[k]])?cells[cols[k]].textContent.trim():'';
       const weeks=parseWeeks(getText('weeks'));if(weeks.length===0)continue;
-      const staffNames=get('staff').split(/<br\s*\/?>/gi).map(s=>s.replace(/<[^>]+>/g,'').trim()).filter(Boolean);
+      const staffNames=get('staff').split(/<br\s*\/?>/gi).map(s=>s.replace(/<[^>]+>/g,'').trim()).filter(Boolean).map(reformatStaffName);
       if(staffNames.length===0)continue;
       sessions.push({
         activity:getText('activity'),moduleCode:getText('moduleCode'),moduleTitle:getText('moduleTitle'),
