@@ -39,6 +39,19 @@ tabs:
     sub_tab: panel-teaching
     file_input: '#tlFileInput'
     action: '#tlAnalyseBtn'
+    # preflight runs AFTER the file upload but BEFORE the Analyse click.
+    # Tick 'Realistic hours' so overlapping sessions on the same day get
+    # merged instead of double-counted.
+    preflight:
+      - check: '#tlRealistic'
+    # postflight runs AFTER the Analyse click, once the analyser page is
+    # rendered. Open the inline Settings panel, enable the 'Include
+    # preparation hours' toggle, then click Recalculate so the prep
+    # hours actually take effect.
+    postflight:
+      - click: '#tlBtnSettings'
+      - check: '#tl_prep_enabled'
+      - click: '#tlRecalcBtn'
     wait_for: '#tlStatsBar'
     files:
       - MPharm_Autumn_semester_as_of_010626.html
@@ -228,15 +241,13 @@ tabs:
       - WLP_AoB_draft_1.xlsx
 
   - key: combined
-    enabled: true
+    enabled: false   # combined view is not driven by run.sh
     main_tab: combined
     sub_tab: ''
     action: '#combMergeBtn'
     wait_for: '#combTbody'
-    files: []   # no files — just clicks Merge after the source tabs load
+    files: []
     notes: >
-      Run after all source tabs (Teaching / Citizenship / Research / AoB)
-      have populated their data. The Merge button is enabled by the app
-      once at least one source has hours; clicking it populates the
-      Combined table with merged, fuzzy-matched names. The driver
-      waits for #combTbody to have at least one row.
+      Disabled. The combined view can still be opened and clicked in
+      the browser manually. Flip `enabled: true` to bring back
+      automated Merge + Calculate.
