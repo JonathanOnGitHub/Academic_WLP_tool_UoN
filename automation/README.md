@@ -20,7 +20,9 @@ automation/
 ├── config/
 │   └── tabs.yaml           # Tab → file mapping (edit this)
 ├── wlp_automator.py        # Main driver
-├── run.sh                  # Convenience launcher
+├── run.sh                  # Convenience launcher (macOS / Linux)
+├── run.bat                 # Convenience launcher (Windows CMD)
+├── run.ps1                 # Convenience launcher (Windows PowerShell)
 └── README.md
 ```
 
@@ -28,6 +30,8 @@ automation/
 
 The repo's Python is PEP 668-locked, so we use a venv inside
 `automation/`:
+
+### macOS / Linux
 
 ```bash
 cd automation
@@ -38,7 +42,31 @@ pip install playwright pyyaml
 playwright install chromium
 ```
 
+### Windows (CMD)
+
+```bat
+cd automation
+python -m venv .venv
+.venv\Scripts\activate
+pip install --upgrade pip
+pip install playwright pyyaml
+playwright install chromium
+```
+
+### Windows (PowerShell)
+
+```powershell
+cd automation
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install --upgrade pip
+pip install playwright pyyaml
+playwright install chromium
+```
+
 ## Running
+
+### macOS / Linux
 
 ```bash
 ./run.sh                                # use default config
@@ -46,8 +74,29 @@ playwright install chromium
 ./run.sh --dry-run                      # just print the plan
 ```
 
-The first run downloads the Chromium binary (~170 MB) and stores it
-under `~/.cache/ms-playwright/`.
+### Windows (CMD)
+
+```bat
+run.bat                                 # use default config
+run.bat --config config\tabs.yaml       # explicit
+run.bat --dry-run                       # just print the plan
+```
+
+### Windows (PowerShell)
+
+```powershell
+.\run.ps1                               # use default config
+.\run.ps1 --config config\tabs.yaml     # explicit
+.\run.ps1 --dry-run                     # just print the plan
+```
+
+If PowerShell blocks the script with "running scripts is disabled on this
+system", run once from an elevated PowerShell:
+`Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`.
+
+The first run downloads the Chromium binary (~170 MB). It lands at
+`~/.cache/ms-playwright/` on macOS/Linux and
+`%LOCALAPPDATA%\ms-playwright\` on Windows.
 
 ## Editing the config
 
@@ -139,7 +188,8 @@ once analysis finishes.
 
 Per the original brief and current data availability:
 
-* **Combined Totals** merge — same V1 brief as before.
-
-This can be added later — the per-tab structure makes it a copy-paste
-addition to `tabs.yaml`.
+* Nothing — V1 now also drives the **Combined Totals** tab (Merge &
+  Calculate) and several special `kind`s for tag-rule setup and
+  XLSX-driven tag assignments. See the `combined`, `combined_tag_setup`,
+  `combined_tag_setup_*` and `teaching_staff_tags` entries at the bottom
+  of `config/tabs.yaml`.
