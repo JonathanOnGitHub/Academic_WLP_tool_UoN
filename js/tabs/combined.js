@@ -62,7 +62,7 @@ function dispName(name){
 }
 const staffTags=new Map();
 const tagRules=new Map();
-let activeTagFilter=null;
+let activeTagFilter=new Set();
 let moduleTagFilter=null;
 let combTlOnly=false; // filter to only show staff with timetabled teaching
 const moduleTags=new Map();
@@ -429,7 +429,7 @@ document.getElementById('combMergeBtn').addEventListener('click',doMerge);
 function combGetSorted(){
   const q=document.getElementById('combSearch').value.toLowerCase();
   let data=combData.filter(d=>d.canonical.toLowerCase().includes(q));
-  if(activeTagFilter!==null) data=data.filter(d=>activeTagsForPerson(d.canonical).includes(activeTagFilter));
+  if(activeTagFilter.size>0) data=data.filter(d=>{const tags=activeTagsForPerson(d.canonical);return tags.some(t=>activeTagFilter.has(t));});
   if(combTlOnly) data=data.filter(d=>d.tlName);
   const[col,dir]=combSortKey.split('-');
   data.sort((a,b)=>{
@@ -470,7 +470,7 @@ function purgeExpiredAssignments(){
     });
     if(tagMap.size===0)staffTags.delete(canonical);
   });
-  if(activeTagFilter!==null&&!allTagsSorted().includes(activeTagFilter))activeTagFilter=null;
+  if(activeTagFilter.size>0)for(const t of[...activeTagFilter])if(!allTagsSorted().includes(t))activeTagFilter.delete(t);
 }
 
 function allTagsSorted(){
@@ -508,7 +508,7 @@ function removeTag(canonical,tag){
     const manual=staffFte.get(nk);
     if(manual!=null&&Math.abs(manual-rule.fte)<0.005)staffFte.delete(nk);
   }
-  if(activeTagFilter===tag&&!allTagsSorted().includes(tag))activeTagFilter=null;
+  if(activeTagFilter.has(tag)&&!allTagsSorted().includes(tag))activeTagFilter.delete(tag);
 }
 
 function setTagExpiry(canonical,tag,expiry){
@@ -751,24 +751,40 @@ function renderTagFilterBar(){
   const all=allTagsSorted();
   const pills=document.getElementById('tagFilterPills');
   pills.innerHTML=all.map(t=>{
-    const count=[...combData].filter(d=>activeTagsForPerson(d.canonical).includes(t)).length;
     const rule=tagRules.get(t);
     const hasActiveRule=rule&&(!rule.expiry||rule.expiry>=today);
     const ruleIcon=hasActiveRule?` ⚖️`:'';
-    return`<button class="tag-filter-pill${activeTagFilter===t?' active':''}" data-tag="${encodeURIComponent(t)}">${t}${ruleIcon}<span class="tfc">${count}</span></button>`;
+    // Faceted count:
+    //   ON pill  -> current visible count (=|A|)
+    //   OFF pill -> visible count if THIS tag were added (=|A ∪ {t}|)
+    // This matches Amazon-style faceted search: clicking an off pill
+    // narrows-or-widens to that exact number; clicking the on pill back
+    // off returns to whatever that pill's count becomes.
+    const isOn=activeTagFilter.has(t);
+    const hypothetical=isOn?new Set(activeTagFilter):(()=>{const s=new Set(activeTagFilter);s.add(t);return s;})();
+    const count=hypothetical.size===0
+      ?combData.length
+      :combData.filter(d=>{const tags=activeTagsForPerson(d.canonical);return tags.some(x=>hypothetical.has(x));}).length;
+    return`<button class="tag-filter-pill${isOn?' active':''}" data-tag="${encodeURIComponent(t)}">${t}${ruleIcon}<span class="tfc">${count}</span></button>`;
   }).join('');
   pills.querySelectorAll('.tag-filter-pill').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const t=decodeURIComponent(btn.dataset.tag);
-      activeTagFilter=activeTagFilter===t?null:t;
+      if(activeTagFilter.has(t))activeTagFilter.delete(t);
+      else activeTagFilter.add(t);
       renderTagFilterBar();combRender();
     });
   });
   const clearBtn=document.getElementById('tagFilterClear');
-  clearBtn.style.display=activeTagFilter?'':'none';
+  clearBtn.style.display=activeTagFilter.size>0?'':'none';
   const grpBtn=document.getElementById('tagGroupReportBtn');
-  grpBtn.classList.toggle('visible',activeTagFilter!==null);
-  if(activeTagFilter){grpBtn.textContent=`📄 Report for "${activeTagFilter}"`;}
+  grpBtn.classList.toggle('visible',activeTagFilter.size>0);
+  if(activeTagFilter.size>0){
+    const names=[...activeTagFilter];
+    grpBtn.textContent=names.length===1
+      ?`📄 Report for "${names[0]}"`
+      :`📄 Report for "${names.join(' + ')}"`;
+  }
 }
 
 // ── Tag popover ───────────────────────────────────────────────────────────────
@@ -859,10 +875,10 @@ document.addEventListener('click',e=>{
   const pop=document.getElementById('tagPopover');
   if(pop.style.display!=='none'&&!pop.contains(e.target)&&!e.target.closest('.tag-add-btn'))closeTagPopover();
 });
-document.getElementById('tagFilterClear').addEventListener('click',()=>{activeTagFilter=null;renderTagFilterBar();combRender();});
+document.getElementById('tagFilterClear').addEventListener('click',()=>{activeTagFilter.clear();renderTagFilterBar();combRender();});
 document.getElementById('tagGroupReportBtn').addEventListener('click',()=>{
-  if(!activeTagFilter)return;
-  const group=combData.filter(d=>activeTagsForPerson(d.canonical).includes(activeTagFilter)).map(d=>d.canonical);
+  if(activeTagFilter.size===0)return;
+  const group=combData.filter(d=>{const tags=activeTagsForPerson(d.canonical);return tags.some(t=>activeTagFilter.has(t));}).map(d=>d.canonical);
   if(group.length>0)generateDetailedReport(group);
 });
 
@@ -1011,7 +1027,9 @@ function combRender(maxTotal){
   const totTL=data.reduce((s,d)=>s+d.tlHours,0),totAssessment=data.reduce((s,d)=>s+d.assessmentHours,0),totProj=data.reduce((s,d)=>s+d.projHours,0),totTut=data.reduce((s,d)=>s+d.tutHours,0),totMmi=data.reduce((s,d)=>s+d.mmiHours,0),totCit=data.reduce((s,d)=>s+d.citHours,0),totRes=data.reduce((s,d)=>s+(d.resHours||0),0),totPgr=data.reduce((s,d)=>s+d.pgrHours,0),totAob=data.reduce((s,d)=>s+(d.aobHours||0),0),totWw=data.reduce((s,d)=>s+(d.wwHours||0),0),totSim=data.reduce((s,d)=>s+(d.simHours||0),0),totPgt=data.reduce((s,d)=>s+(d.pgtHours||0),0),totPgtTraining=data.reduce((s,d)=>s+(d.pgrTrainingHours||0),0),totOpendays=data.reduce((s,d)=>s+(d.opendaysHours||0),0),totAll=data.reduce((s,d)=>s+d.total,0);
   const avgFte=data.length>0?Math.round(data.reduce((s,d)=>s+ftePct(d.canonical,d.total),0)/data.length):0;
   const avgCls=fteClass(avgFte);
-  const filterNote=(activeTagFilter?` <span style="font-size:0.72rem;font-weight:400;color:var(--gold);margin-left:6px">tag: ${activeTagFilter} (${data.length})</span>`:'')+(combTlOnly?` <span style="font-size:0.72rem;font-weight:400;color:var(--teal);margin-left:6px">teaching staff only (${data.length})</span>`:'');
+  const activeTagNames=[...activeTagFilter];
+  const tagNote=activeTagNames.length?` <span style="font-size:0.72rem;font-weight:400;color:var(--gold);margin-left:6px">tag: ${activeTagNames.join(' + ')} (${data.length})</span>`:'';
+  const filterNote=tagNote+(combTlOnly?` <span style="font-size:0.72rem;font-weight:400;color:var(--teal);margin-left:6px">teaching staff only (${data.length})</span>`:'');
   document.getElementById('combFoot').innerHTML=`<tr><td></td><td class="cn">Total${filterNote}</td><td></td><td class="num" data-col-group="teaching">${totTL.toFixed(1)}</td><td class="num" data-col-group="teaching">${totAssessment.toFixed(1)}</td><td class="num" data-col-group="teaching">${totProj.toFixed(1)}</td><td class="num" data-col-group="teaching">${totTut.toFixed(1)}</td><td class="num" data-col-group="citres">${totMmi.toFixed(1)}</td><td class="num" data-col-group="citres">${totCit.toFixed(1)}</td><td class="num" data-col-group="citres">${totRes.toFixed(1)}</td><td class="num" data-col-group="citres">${totPgr.toFixed(1)}</td><td class="num" data-col-group="other">${totAob.toFixed(1)}</td><td class="num" data-col-group="other">${totWw.toFixed(1)}</td><td class="num" data-col-group="other">${totSim.toFixed(1)}</td><td class="num" data-col-group="other">${totPgt.toFixed(1)}</td><td class="num" data-col-group="other">${totPgtTraining.toFixed(1)}</td><td class="num" data-col-group="other">${totOpendays.toFixed(1)}</td><td class="tot">${totAll.toFixed(1)}</td><td><span style="font-size:0.78rem;font-weight:600" class="fte-pct ${avgCls}">avg ${avgFte}%</span></td><td></td></tr>`;
   document.querySelectorAll('#combTbody .tag-x').forEach(x=>{
     x.addEventListener('click',e=>{e.stopPropagation();const c=decodeURIComponent(x.dataset.canonical),t=decodeURIComponent(x.dataset.tag);removeTag(c,t);recomputeCombData();renderTagFilterBar();renderRulesEditor();saveTagState();combRender();});

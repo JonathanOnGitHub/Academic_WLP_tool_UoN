@@ -39,6 +39,41 @@ from playwright.sync_api import (
 LOG = logging.getLogger("wlp")
 
 
+def _normalise_steps(raw: Any) -> list[dict[str, str]]:
+    """Accept preflight/postflight as either:
+       - a list of {"check": sel} / {"click": sel} dicts, or
+       - a list of bare selectors (treated as {"check": sel}).
+    Returns the canonical list-of-dicts form.
+    """
+    if not raw:
+        return []
+    out: list[dict[str, str]] = []
+    for item in raw:
+        if isinstance(item, str):
+            out.append({"check": item})
+        elif isinstance(item, dict):
+            out.append({k: v for k, v in item.items() if k in ("check", "click")})
+        else:
+            raise ValueError(f"preflight/postflight entries must be str or dict, got {type(item)}")
+    return [s for s in out if s]
+
+
+def run_steps(page: Page, steps: list[dict[str, str]], phase: str) -> None:
+    """Execute a sequence of {"check": sel} / {"click": sel} steps."""
+    for step in steps:
+        for action, selector in step.items():
+            if action == "check":
+                LOG.info("  → %s check %s", phase, selector)
+                loc = page.locator(selector)
+                if not loc.is_checked():
+                    loc.check(force=True)
+            elif action == "click":
+                LOG.info("  → %s click %s", phase, selector)
+                page.locator(selector).click(force=True, timeout=5000)
+            else:
+                LOG.warning("  unknown %s action '%s'", phase, action)
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # Config model
 # ──────────────────────────────────────────────────────────────────────────
@@ -63,6 +98,34 @@ class TabSpec:
     # all three with cross-category dedup.
     kind: str = "upload"
     paste: dict[str, Path] = field(default_factory=dict)
+    # Optional preflight / postflight hooks. Each is a list of actions,
+    # each action a {"check": selector} or {"click": selector} dict.
+    # preflight runs after file upload but before the action button click.
+    # postflight runs after the action click but before waiting for results.
+    preflight: list[dict[str, str]] = field(default_factory=list)
+    postflight: list[dict[str, str]] = field(default_factory=list)
+    # Optional fields used by kind="combined_tag_setup": define a new tag rule
+    # (rule_name with rule_reduction_pct % reduction) and apply it to the row
+    # whose displayed name matches apply_to_name.
+    rule_name: str = ""
+    rule_reduction_pct: int = 0
+    apply_to_name: str = ""
+    # If true, tick the 'Teaching staff only' checkbox (#combTlOnly) before
+    # searching for the named academic — useful when the target row appears
+    # in teaching data and you want to narrow the visible table.
+    teaching_staff_only: bool = False
+    # Optional fields used by kind="combined_tag_assignments": read an XLSX
+    # file with one row per academic, columns for each tag, and apply the
+    # tags whose cells match `assignments_apply_marker` (default "Y"). The
+    # tag rules themselves must already be defined (e.g. by a preceding
+    # `combined_tag_setup` entry) — this kind only applies existing tags,
+    # it does not define new ones. A tag without a matching rule is still
+    # stored on the academic but has no workload effect.
+    assignments_xlsx: str = ""
+    assignments_sheet: str = ""
+    assignments_name_column: int = 1
+    assignments_apply_marker: str = "Y"
+    assignments_tag_columns: dict[str, int] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, d: dict[str, Any], data_dir: Path) -> "TabSpec":
@@ -72,6 +135,8 @@ class TabSpec:
         files = [data_dir / f for f in files_raw]
         paste_raw = d.get("paste") or {}
         paste = {cat: data_dir / fname for cat, fname in paste_raw.items()}
+        preflight = _normalise_steps(d.get("preflight"))
+        postflight = _normalise_steps(d.get("postflight"))
         return cls(
             key=d["key"],
             enabled=bool(d.get("enabled", True)),
@@ -84,6 +149,17 @@ class TabSpec:
             notes=d.get("notes", "") or "",
             kind=d.get("kind", "upload"),
             paste=paste,
+            preflight=preflight,
+            postflight=postflight,
+            rule_name=d.get("rule_name", "") or "",
+            rule_reduction_pct=int(d.get("rule_reduction_pct", 0) or 0),
+            apply_to_name=d.get("apply_to_name", "") or "",
+            teaching_staff_only=bool(d.get("teaching_staff_only", False)),
+            assignments_xlsx=d.get("assignments_xlsx", "") or "",
+            assignments_sheet=d.get("assignments_sheet", "") or "",
+            assignments_name_column=int(d.get("assignments_name_column", 1) or 1),
+            assignments_apply_marker=d.get("assignments_apply_marker", "Y") or "Y",
+            assignments_tag_columns=dict(d.get("assignments_tag_columns", {}) or {}),
         )
 
 
@@ -414,6 +490,374 @@ def process_citizenship_paste_tab(page: Page, tab: TabSpec, cfg: AppConfig) -> t
     return True, summary
 
 
+def process_combined_tag_setup_tab(
+    page: Page, tab: TabSpec, cfg: AppConfig
+) -> tuple[bool, str]:
+    """Define a new tag rule on the Combined Totals tab and apply that tag to
+    a specific academic.
+
+    Requires that the combined table (#combTbody) is already populated — this
+    step is meant to run *after* the `combined` tab (which clicks the Merge &
+    Calculate button). The flow is:
+
+      1. Make sure we are on the Combined Totals tab and the table has rows.
+      2. Open the Tag Rules panel (it starts collapsed).
+      3. Fill in the new-rule form (Tag name + Reduction %) and click Add.
+      4. Find the row whose displayed name matches `apply_to_name` (normalised
+         so "Dr Jonathan Burley" finds "Burley, Jonathan Dr" and the like).
+      5. Click that row's '+ tag' button to open the tag popover.
+      6. Type the tag name and click Add to apply it.
+
+    Note: name matching does NOT collapse nicknames ("Jonathan" != "John"),
+    unlike the WLP tool's own fuzzy matcher. Keep `apply_to_name` close to the
+    spelling used in the data. If `apply_to_name` is empty, only the rule is
+    defined — no row is matched and no tag is applied. `rule_reduction_pct`
+    may be 0 (label-only tag) or positive (a workload allowance); negative
+    values are rejected.
+    """
+    if not tab.rule_name or tab.rule_reduction_pct < 0:
+        return False, "combined_tag_setup requires rule_name and rule_reduction_pct >= 0"
+
+    LOG.info(
+        "  (combined_tag_setup: rule=%r reduction=%d%% apply_to=%r)",
+        tab.rule_name,
+        tab.rule_reduction_pct,
+        tab.apply_to_name,
+    )
+
+    # Make sure we're on the Combined tab.
+    switch_main_tab(page, tab.main_tab)
+
+    # 1. Wait for the combined table to actually have rows.
+    deadline = time.monotonic() + cfg.result_timeout_s
+    while time.monotonic() < deadline:
+        n = page.evaluate("() => document.querySelectorAll('#combTbody tr').length")
+        if n and n > 0:
+            break
+        page.wait_for_timeout(150)
+    else:
+        return False, "Combined table did not populate (run the 'combined' tab first?)"
+
+    # 2. Open the rules panel body if it's collapsed (CSS display:none until .open).
+    page.evaluate(
+        "() => { const b = document.getElementById('rulesPanelBody');"
+        " if (b && !b.classList.contains('open'))"
+        " document.getElementById('rulesPanelHdr').click(); }"
+    )
+    page.wait_for_selector("#ruleNewTag", state="visible", timeout=5000)
+
+    # 3. Fill the new-rule form and click Add.
+    page.locator("#ruleNewTag").fill(tab.rule_name)
+    page.locator("#ruleNewFte").fill(str(tab.rule_reduction_pct))
+    page.locator("#ruleAddBtn").click()
+    LOG.info("  → added tag rule %r with %d%% reduction", tab.rule_name, tab.rule_reduction_pct)
+
+    # 3b. Optionally tick 'Teaching staff only' to narrow the visible table
+    # before searching for the named academic. Idempotent.
+    if tab.teaching_staff_only:
+        page.evaluate(
+            "() => { const cb = document.getElementById('combTlOnly');"
+            " if (cb && !cb.checked) { cb.click(); return true; }"
+            " return !!cb && cb.checked; }"
+        )
+        # Give the table a beat to re-render with the filter applied.
+        page.wait_for_timeout(200)
+        LOG.info("  → ticked 'Teaching staff only'")
+
+    # 4-6. If `apply_to_name` is set, find the named academic, open the tag
+    # popover, and apply the tag. Everything happens inside one
+    # page.evaluate() rather than going through Playwright's locator.click()
+    # because the popover is position:fixed and rendered near the anchor
+    # button. The tool's openTagPopover() guesses the popover height as
+    # ph=220px but the actual height is usually larger (Workload-allowance
+    # row + Part-Time row + existing tags + suggestions), so the popover
+    # overflows the viewport. Playwright's actionability checks then reject
+    # the Add button as "outside of the viewport" and on later retries see it
+    # as "not visible" (the document-level click handler closes the popover
+    # on the spurious clicks those retries generate).
+    #
+    # Driving both the row button and the popover Add button via JS .click()
+    # still goes through the real handlers (openTagPopover -> sets
+    # tagPopoverCanonical; Add -> addTag + recomputeCombData + saveTagState +
+    # combRender), so state and persistence are exactly what a human would get.
+    # The match logic mirrors the WLP tool's `normaliseName()` (strip title
+    # prefix, flip "Last, First" -> "First Last", lowercase, collapse
+    # whitespace) so "Dr Jonathan Burley" finds "Burley, Jonathan Dr".
+    applied_to: str | None = None
+    if tab.apply_to_name:
+        result = page.evaluate(
+            """({applyToName, ruleName}) => {
+                const norm = (s) => {
+                  const TITLE_RE = /\\b(prof\\.?|professor|dr\\.?|mr\\.?|mrs\\.?|ms\\.?|mx\\.?|rev\\.?|sir)\\b\\s*/i;
+                  let n = String(s || '').trim();
+                  const cm = n.match(/^([^,]+),\\s*(.+)$/);
+                  if (cm) n = cm[2] + ' ' + cm[1];
+                  let prev;
+                  do { prev = n; n = n.replace(TITLE_RE, ''); } while (n !== prev);
+                  return n.toLowerCase().replace(/[-.']/g, ' ').replace(/\\s+/g, ' ').trim();
+                };
+                const rows = document.querySelectorAll('#combTbody tr');
+                const needle = norm(applyToName);
+                const needleTokens = needle.split(' ').filter(Boolean);
+                let matched = null;
+                for (const r of rows) {
+                    const cn = r.querySelector('.cn');
+                    if (!cn) continue;
+                    const txt = norm(cn.textContent);
+                    if (!txt) continue;
+                    const txtTokens = txt.split(' ').filter(Boolean);
+                    if (txt === needle) { matched = r; break; }
+                    if (!matched) {
+                        const isSub = txt.includes(needle) || needle.includes(txt);
+                        const allTokensHit = needleTokens.length > 0 &&
+                            needleTokens.every(nt => txtTokens.includes(nt));
+                        if (isSub || allTokensHit) matched = r;
+                    }
+                }
+                if (!matched) return {ok: false, reason: 'no row matched'};
+                const btn = matched.querySelector('.comb-tag-add');
+                if (!btn) return {ok: false, reason: 'no +tag button on row'};
+                btn.click();
+                const pop = document.getElementById('tagPopover');
+                if (!pop || getComputedStyle(pop).display === 'none') {
+                    return {ok: false, reason: 'popover did not open'};
+                }
+                const input = document.getElementById('tagPopoverInput');
+                const addBtn = document.getElementById('tagPopoverAdd');
+                if (!input || !addBtn) return {ok: false, reason: 'popover inputs missing'};
+                input.value = ruleName;
+                addBtn.click();
+                return {ok: true, display: matched.querySelector('.cn').textContent.trim()};
+            }""",
+            arg={"applyToName": tab.apply_to_name, "ruleName": tab.rule_name},
+        )
+
+        if not result.get("ok"):
+            sample = page.evaluate(
+                "() => [...document.querySelectorAll('#combTbody .cn')].slice(0,15).map(t => t.textContent.trim())"
+            )
+            return False, (
+                f"Tag application failed ({result.get('reason', 'unknown')}). "
+                f"Sample names: {sample}"
+            )
+
+        applied_to = result["display"]
+        LOG.info("  → applied tag %r to %s", tab.rule_name, applied_to)
+
+        # Tidy up: close the popover (harmless if already closed, but cleaner).
+        page.evaluate(
+            "() => { const p = document.getElementById('tagPopover');"
+            " if (p) p.style.display = 'none'; }"
+        )
+    else:
+        LOG.info(
+            "  → rule %r defined (no apply_to_name, no row tagged)",
+            tab.rule_name,
+        )
+
+    if applied_to:
+        summary = (
+            f"rule {tab.rule_name!r} ({tab.rule_reduction_pct}% reduction) + "
+            f"applied to {applied_to!r}"
+        )
+    else:
+        summary = (
+            f"rule {tab.rule_name!r} ({tab.rule_reduction_pct}% reduction) defined"
+        )
+    if cfg.screenshot_dir:
+        out = Path(cfg.screenshot_dir).expanduser().resolve()
+        out.mkdir(parents=True, exist_ok=True)
+        shot = out / f"{tab.key}.png"
+        page.screenshot(path=str(shot), full_page=True)
+        LOG.info("  📸 %s", shot)
+    return True, summary
+
+
+def process_combined_tag_assignments_tab(
+    page: Page, tab: TabSpec, cfg: AppConfig
+) -> tuple[bool, str]:
+    """Apply tags to many academics at once from an XLSX file.
+
+    The XLSX must have:
+      * one row per academic (header on row 1),
+      * the academic's name in column `assignments_name_column` (1-indexed,
+        default 1),
+      * one column per tag whose header is the tag name — listed in
+        `assignments_tag_columns` (tag-name -> column-index).
+
+    If the cell value matches `assignments_apply_marker` (default "Y",
+    case-insensitive after trimming), that tag is applied to the academic.
+
+    For each (name, [tags]) row the script:
+      1. finds the academic's row in #combTbody (normalised match, same
+         logic as `combined_tag_setup_tab`),
+      2. clicks that row's '+ tag' button — this opens the tag popover and
+         sets tagPopoverCanonical,
+      3. types and Adds each tag inside the popover,
+      4. closes the popover before moving on.
+
+    All of one person's tags go in a single popover session, but each
+    person still needs its own row-find + popover-open, so this is N
+    page.evaluate() calls for N people. The matcher uses the same
+    normaliser as `combined_tag_setup_tab` so "Dr Jonathan Burley" still
+    finds "Burley, Jonathan Dr".
+
+    Tag rules must already exist (defined by a preceding
+    `combined_tag_setup` entry) for the tag to take effect on FTE. This
+    step only stores the tag on the academic via `addTag()`; without a
+    matching rule the tag is a label-only.
+    """
+    if not tab.assignments_xlsx:
+        return False, "combined_tag_assignments requires assignments_xlsx"
+    if not tab.assignments_tag_columns:
+        return False, "combined_tag_assignments requires assignments_tag_columns"
+
+    xlsx_path = Path(tab.assignments_xlsx).expanduser()
+    if not xlsx_path.exists():
+        return False, f"XLSX not found: {xlsx_path}"
+
+    # 1. Read the XLSX and build the assignments list.
+    try:
+        wb = load_workbook(str(xlsx_path), read_only=True, data_only=True)
+    except Exception as e:
+        return False, f"Could not open {xlsx_path}: {e}"
+
+    try:
+        ws = (
+            wb[tab.assignments_sheet]
+            if tab.assignments_sheet
+            else wb[wb.sheetnames[0]]
+        )
+        marker = tab.assignments_apply_marker.strip().upper()
+        assignments: list[tuple[str, list[str]]] = []
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if not row or tab.assignments_name_column > len(row):
+                continue
+            raw_name = row[tab.assignments_name_column - 1]
+            if not raw_name or not isinstance(raw_name, str):
+                continue
+            tags: list[str] = []
+            for tag_name, col_idx in tab.assignments_tag_columns.items():
+                if col_idx > len(row):
+                    continue
+                cell = row[col_idx - 1]
+                if cell is not None and str(cell).strip().upper() == marker:
+                    tags.append(tag_name)
+            if tags:
+                assignments.append((raw_name.strip(), tags))
+    finally:
+        wb.close()
+
+    if not assignments:
+        return True, "No assignments found in XLSX (nothing to apply)"
+
+    LOG.info(
+        "  (combined_tag_assignments: %d people, %d tags total)",
+        len(assignments),
+        sum(len(t) for _, t in assignments),
+    )
+
+    # 2. Make sure we're on the Combined tab and the table has rows.
+    switch_main_tab(page, tab.main_tab)
+    deadline = time.monotonic() + cfg.result_timeout_s
+    while time.monotonic() < deadline:
+        n = page.evaluate("() => document.querySelectorAll('#combTbody tr').length")
+        if n and n > 0:
+            break
+        page.wait_for_timeout(150)
+    else:
+        return False, "Combined table did not populate (run the 'combined' tab first?)"
+
+    # 3. For each (name, tags): find the row, open the popover, Add each tag.
+    applied_tags = 0
+    applied_people = 0
+    failures: list[tuple[str, str]] = []
+    for name, tags in assignments:
+        result = page.evaluate(
+            """({applyToName, tags}) => {
+                const norm = (s) => {
+                  const TITLE_RE = /\\b(prof\\.?|professor|dr\\.?|mr\\.?|mrs\\.?|ms\\.?|mx\\.?|rev\\.?|sir)\\b\\s*/i;
+                  let n = String(s || '').trim();
+                  const cm = n.match(/^([^,]+),\\s*(.+)$/);
+                  if (cm) n = cm[2] + ' ' + cm[1];
+                  let prev;
+                  do { prev = n; n = n.replace(TITLE_RE, ''); } while (n !== prev);
+                  return n.toLowerCase().replace(/[-.']/g, ' ').replace(/\\s+/g, ' ').trim();
+                };
+                const rows = document.querySelectorAll('#combTbody tr');
+                const needle = norm(applyToName);
+                const needleTokens = needle.split(' ').filter(Boolean);
+                let matched = null;
+                for (const r of rows) {
+                    const cn = r.querySelector('.cn');
+                    if (!cn) continue;
+                    const txt = norm(cn.textContent);
+                    if (!txt) continue;
+                    const txtTokens = txt.split(' ').filter(Boolean);
+                    if (txt === needle) { matched = r; break; }
+                    if (!matched) {
+                        const isSub = txt.includes(needle) || needle.includes(txt);
+                        const allTokensHit = needleTokens.length > 0 &&
+                            needleTokens.every(nt => txtTokens.includes(nt));
+                        if (isSub || allTokensHit) matched = r;
+                    }
+                }
+                if (!matched) return {ok: false, reason: 'no row matched'};
+                const btn = matched.querySelector('.comb-tag-add');
+                if (!btn) return {ok: false, reason: 'no +tag button'};
+                btn.click();
+                const pop = document.getElementById('tagPopover');
+                if (!pop || getComputedStyle(pop).display === 'none') {
+                    return {ok: false, reason: 'popover did not open'};
+                }
+                const input = document.getElementById('tagPopoverInput');
+                const addBtn = document.getElementById('tagPopoverAdd');
+                if (!input || !addBtn) return {ok: false, reason: 'popover inputs missing'};
+                const applied = [];
+                for (const tag of tags) {
+                    input.value = tag;
+                    addBtn.click();
+                    applied.push(tag);
+                }
+                pop.style.display = 'none';
+                return {ok: true, display: matched.querySelector('.cn').textContent.trim(), applied};
+            }""",
+            arg={"applyToName": name, "tags": tags},
+        )
+        if result.get("ok"):
+            applied_tags += len(result.get("applied", []))
+            applied_people += 1
+        else:
+            failures.append((name, result.get("reason", "unknown")))
+
+    LOG.info("  → applied %d tags to %d people", applied_tags, applied_people)
+    for fname, freason in failures[:5]:
+        LOG.warning("  ⚠ %s: %s", fname, freason)
+    if len(failures) > 5:
+        LOG.warning("  ⚠ (%d more unmatched)", len(failures) - 5)
+
+    if applied_tags == 0 and failures:
+        return False, (
+            f"No tags applied; first failure: {failures[0][0]!r} ({failures[0][1]}). "
+            f"{len(failures)} people unmatched in total."
+        )
+
+    summary_parts = [f"applied {applied_tags} tags to {applied_people} people"]
+    if failures:
+        summary_parts.append(
+            f"{len(failures)} unmatched (first: {failures[0][0]!r})"
+        )
+
+    if cfg.screenshot_dir:
+        out = Path(cfg.screenshot_dir).expanduser().resolve()
+        out.mkdir(parents=True, exist_ok=True)
+        shot = out / f"{tab.key}.png"
+        page.screenshot(path=str(shot), full_page=True)
+        LOG.info("  📸 %s", shot)
+
+    return True, "; ".join(summary_parts)
+
+
 def process_tab(page: Page, tab: TabSpec, cfg: AppConfig) -> tuple[bool, str]:
     """Run one tab end-to-end. Returns (success, summary_message)."""
     LOG.info("─" * 64)
@@ -426,6 +870,10 @@ def process_tab(page: Page, tab: TabSpec, cfg: AppConfig) -> tuple[bool, str]:
         ok, summary = process_citizenship_paste_tab(page, tab, cfg)
     elif tab.kind == "pgr_training_paste":
         ok, summary = process_pgr_training_paste_tab(page, tab, cfg)
+    elif tab.kind == "combined_tag_setup":
+        ok, summary = process_combined_tag_setup_tab(page, tab, cfg)
+    elif tab.kind == "combined_tag_assignments":
+        ok, summary = process_combined_tag_assignments_tab(page, tab, cfg)
     else:
         ok, summary = process_upload_tab(page, tab, cfg)
 
@@ -464,6 +912,10 @@ def process_upload_tab(page: Page, tab: TabSpec, cfg: AppConfig) -> tuple[bool, 
     else:
         LOG.info("  → no files configured for this tab")
 
+    # 3b. Preflight: tick boxes / click elements BEFORE the action button.
+    if tab.preflight:
+        run_steps(page, tab.preflight, "preflight")
+
     # 4. Click the action button if there is one.
     if tab.action:
         try:
@@ -489,6 +941,15 @@ def process_upload_tab(page: Page, tab: TabSpec, cfg: AppConfig) -> tuple[bool, 
             msg = f"Click on {tab.action} failed: {e}"
             LOG.error("  ✗ %s", msg)
             return False, msg
+
+        # 4b. Postflight: tick boxes / click elements AFTER the action
+        # button (e.g. the Teaching tab's #tlRecalcBtn to apply prep hours
+        # once the analyser page is rendered).
+        if tab.postflight:
+            # Give the page a moment to re-render after the action click
+            # before running postflight steps.
+            page.wait_for_timeout(300)
+            run_steps(page, tab.postflight, "postflight")
     else:
         LOG.info("  → no action button (results render automatically)")
 

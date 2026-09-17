@@ -241,13 +241,111 @@ tabs:
       - WLP_AoB_draft_1.xlsx
 
   - key: combined
-    enabled: false   # combined view is not driven by run.sh
+    enabled: true
     main_tab: combined
     sub_tab: ''
     action: '#combMergeBtn'
     wait_for: '#combTbody'
     files: []
     notes: >
-      Disabled. The combined view can still be opened and clicked in
-      the browser manually. Flip `enabled: true` to bring back
-      automated Merge + Calculate.
+      Click 'Merge & Calculate' on the Combined Totals tab and wait for the
+      per-academic table to populate. The merge + compute runs entirely
+      client-side and typically takes ~10s on the demo dataset, so the app's
+      `result_timeout_s` (currently 30s) is the ceiling. Must run BEFORE
+      `combined_tag_setup` so the table is populated when the tag rules are
+      applied.
+
+  - key: combined_tag_setup
+    kind: combined_tag_setup
+    enabled: true
+    main_tab: combined
+    # New tag rule to define in the 'Tag Rules' panel.
+    rule_name: "R&T"
+    rule_reduction_pct: 25
+    # Canonical / displayed name of the row in #combTbody to apply the tag to.
+    # Matched case-insensitively against the row's .cn text (substring match,
+    # so "Jonathan Burley" or "Burley" both work).
+    apply_to_name: "Dr Jonathan Burley"
+    # Tick the 'Teaching staff only' checkbox before searching for the row —
+    # narrows the table to staff who appear in the timetabled-teaching data.
+    # Requires the named academic to appear in teaching data; if not, the
+    # row won't be found and the step will fail with sample-names dump.
+    teaching_staff_only: true
+    notes: >
+      Define a tag rule named `rule_name` with `rule_reduction_pct`%
+      reduction, then click the matching row's '+ tag' button and add the
+      same tag. Requires the `combined` tab to have populated #combTbody
+      first (so the academin's row exists). Idempotent: re-running overwrites
+      the rule and the assignment.
+
+  - key: combined_tag_setup_T
+    kind: combined_tag_setup
+    enabled: true
+    main_tab: combined
+    # New tag rule: 10% workload allowance (reduction). NOT applied to any
+    # row — `apply_to_name` is intentionally left blank. Per the WLP tool's
+    # help text, reductions from multiple active tag rules on one person
+    # stack additively (e.g. R&T 25% + T 10% = 35% total reduction).
+    rule_name: "T"
+    rule_reduction_pct: 10
+    notes: >
+      Define a 'T' tag rule with 10% reduction. No row is tagged — apply it
+      manually in the Combined Totals view, or add another
+      `combined_tag_setup` entry with `apply_to_name` to do it from run.sh.
+
+  - key: combined_tag_setup_SoP
+    kind: combined_tag_setup
+    enabled: true
+    main_tab: combined
+    # Label-only tag: School of Pharmacy. 0% reduction means it has no
+    # effect on workload target — useful as a category/membership marker.
+    rule_name: "SoP"
+    rule_reduction_pct: 0
+    notes: >
+      Define a 'SoP' tag rule with no workload reduction. Label-only — use
+      it to mark staff as belonging to the School of Pharmacy.
+
+  - key: combined_tag_setup_SoLS
+    kind: combined_tag_setup
+    enabled: true
+    main_tab: combined
+    # Label-only tag: School of Life Sciences.
+    rule_name: "SoLS"
+    rule_reduction_pct: 0
+    notes: >
+      Define a 'SoLS' tag rule with no workload reduction. Label-only — use
+      it to mark staff as belonging to the School of Life Sciences.
+
+  - key: teaching_staff_tags
+    kind: combined_tag_assignments
+    enabled: true
+    main_tab: combined
+    # XLSX listing each staff member and which tags they should carry.
+    # Sheet "Teaching staff", columns:
+    #   1 = Name (display), e.g. "Dr Jonathan Burley"
+    #   2 = Name (raw, from timetable), e.g. "Burley, Jonathan Dr"
+    #   3 = Distinct raw forms (count, ignored)
+    #   4 = SoP     (Y = apply School-of-Pharmacy label)
+    #   5 = SoLS    (Y = apply School-of-Life-Sciences label)
+    #   6 = T       (Y = apply T tag — 10% workload allowance)
+    #   7 = R&T     (Y = apply R&T tag — 25% workload allowance)
+    #   8 = Non-academic (Y = apply Non-academic label; no rule, no effect)
+    # Any cell whose trimmed uppercase value equals `assignments_apply_marker`
+    # (default "Y") triggers the tag. Rules for SoP, SoLS, T, R&T must already
+    # be defined — see the `combined_tag_setup*` entries above. Non-academic
+    # has no rule yet, so it's stored as a label only.
+    assignments_xlsx: "/home/burley/Documents/Nottingham/Teaching/Timetable/230626/Academic_WLP_tool_UoN/automation/teaching_staff.xlsx"
+    assignments_sheet: "Teaching staff"
+    assignments_name_column: 1
+    assignments_apply_marker: "Y"
+    assignments_tag_columns:
+      SoP: 4
+      SoLS: 5
+      T: 6
+      "R&T": 7
+      "Non-academic": 8
+    notes: >
+      Apply the tags indicated in teaching_staff.xlsx to each academic in the
+      Combined Totals table. Tag rules must already exist (the preceding
+      `combined_tag_setup*` entries do this). Names that don't match anyone
+      in the table are reported in the run summary but don't fail the step.
