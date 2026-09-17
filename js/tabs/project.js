@@ -20,7 +20,9 @@ const PROJ_COL_MAP={
   poster1:['poster_assessor_1','poster1assessor','poster_1_assessor','poster1','posterassessor1'],
   poster2:['poster_assessor_2','poster2assessor','poster_2_assessor','poster2','posterassessor2'],
   dissertation1:['dissertation_assessor_1','dissertation1assessor','dissertation_1_assessor','diss1','dissertationassessor1'],
-  dissertation2:['dissertation_assessor_2','dissertation2assessor','dissertation_2_assessor','diss2','dissertationassessor2']
+  dissertation2:['dissertation_assessor_2','dissertation2assessor','dissertation_2_assessor','diss2','dissertationassessor2'],
+  firstName:['firstname','first_name','first','givenname','given_name','given'],
+  lastName:['lastname','last_name','last','surname','familyname','family_name']
 };
 
 function projFindCol(headers,key){const variants=PROJ_COL_MAP[key];for(let i=0;i<headers.length;i++){const h=projNormH(headers[i]);if(variants.some(v=>h===v))return i;}return -1;}
@@ -38,8 +40,12 @@ function projLoadFile(file){
       if(!headerRow){projShowError('Could not find header row.');return;}
       const iSup=projFindCol(headerRow,'supervisor');if(iSup===-1){projShowError('Could not find Supervisor column.');return;}
       const iTheme=projFindCol(headerRow,'theme'),iCoSup=projFindCol(headerRow,'cosupervisors'),iP1=projFindCol(headerRow,'poster1'),iP2=projFindCol(headerRow,'poster2'),iD1=projFindCol(headerRow,'dissertation1'),iD2=projFindCol(headerRow,'dissertation2');
+      const iFirst=projFindCol(headerRow,'firstName'),iLast=projFindCol(headerRow,'lastName');
       projRawProjects=[];
-      for(let i=headerIdx+1;i<raw.length;i++){const row=raw[i];if(row.every(c=>!String(c).trim()))continue;const get=idx=>idx!==-1?String(row[idx]||'').trim():'';const splitNames=s=>s.split(/[;,\/|&]+/).map(n=>n.trim()).filter(Boolean);projRawProjects.push({theme:get(iTheme),supervisors:splitNames(get(iSup)),cosupervisors:splitNames(get(iCoSup)),poster1:get(iP1),poster2:get(iP2),diss1:get(iD1),diss2:get(iD2)});}
+      for(let i=headerIdx+1;i<raw.length;i++){const row=raw[i];if(row.every(c=>!String(c).trim()))continue;const get=idx=>idx!==-1?String(row[idx]||'').trim():'';const splitNames=s=>s.split(/[;,\/|&]+/).map(n=>n.trim()).filter(Boolean);
+        const firstName=get(iFirst),lastName=get(iLast);
+        const studentName=[firstName,lastName].filter(Boolean).join(' ').trim();
+        projRawProjects.push({theme:get(iTheme),supervisors:splitNames(get(iSup)),cosupervisors:splitNames(get(iCoSup)),poster1:get(iP1),poster2:get(iP2),diss1:get(iD1),diss2:get(iD2),studentName});}
       if(projRawProjects.length===0){projShowError('No project rows found.');return;}
       projAnalyseBtn.disabled=false;projAnalyseBtn.textContent=`🎓 Calculate Project Workload (${projRawProjects.length} projects found) →`;
       WLP_SESSION.saveFile('project',file.name,e.target.result,file.type);
@@ -96,11 +102,47 @@ function projRenderTable(){
 
 function projOpenDetail(name){
   const r=projAllResults.find(x=>x.name===name);if(!r)return;
-  const pills=p=>`${p.supervisors.includes(name)?'<span class="role-pill pill-sup">Supervisor</span>':''}${p.cosupervisors.includes(name)?'<span class="role-pill pill-cosup">Co-supervisor</span>':''}${p.diss1===name||p.diss2===name?'<span class="role-pill pill-diss">Diss. Assessor</span>':''}${p.poster1===name||p.poster2===name?'<span class="role-pill pill-post">Poster Assessor</span>':''}`;
-  const allProjects=[...new Map([...r.supervised,...r.cosupervised,...r.diss_assessed,...r.poster_assessed].map(p=>[p.theme+p.supervisors.join(','),p])).values()];
+  // Bucket every project this staff is involved in by the role they play.
+  // A staff member can play multiple roles on the same project (e.g. both
+  // supervisor and diss-assessor), so we list the project once per role
+  // group they actually fill.
+  const supervised=r.supervised;
+  const cosupervised=r.cosupervised;
+  const dissAssessed=r.diss_assessed;
+  const postAssessed=r.poster_assessed;
+  const hasNames=supervised.some(p=>p.studentName)||cosupervised.some(p=>p.studentName)||dissAssessed.some(p=>p.studentName)||postAssessed.some(p=>p.studentName);
+  // Helper: render a list of student cards grouped under a role heading.
+  const roleSection=(heading,plist,rolePill)=>{
+    if(!plist||plist.length===0)return '';
+    const items=plist.map(p=>{
+      const student=p.studentName||'<em style="color:var(--muted)">(no student name in file)</em>';
+      const theme=p.theme?` <span style="color:var(--muted);font-size:0.78rem">— ${p.theme}</span>`:'';
+      return`<div class="proj-student"><div class="sn">${student}${theme}</div><div class="sr">${rolePill}</div></div>`;
+    }).join('');
+    return`<div class="panel-section"><h4>${heading} (${plist.length})</h4>${items}</div>`;
+  };
+  // Hours breakdown first (same as before).
   let html=`<div class="panel-section"><h4>Hours Breakdown</h4>${r.h_sup>0?`<div class="panel-row"><span class="k">Supervision (${Number.isInteger(r.nSup)?r.nSup:r.nSup.toFixed(2)} student share${r.nSup!==1?'s':''})</span><span class="v">${fmt(r.h_sup)}h</span></div>`:''}${r.h_cosup>0?`<div class="panel-row"><span class="k">Co-supervision (${r.nCoSup})</span><span class="v">${fmt(r.h_cosup)}h</span></div>`:''}${r.h_df>0?`<div class="panel-row"><span class="k">Dissertation feedback</span><span class="v">${fmt(r.h_df)}h</span></div>`:''}${r.h_dm>0?`<div class="panel-row"><span class="k">Dissertation marking (${r.nDissAss})</span><span class="v">${fmt(r.h_dm)}h</span></div>`:''}${r.h_pf>0?`<div class="panel-row"><span class="k">Poster feedback</span><span class="v">${fmt(r.h_pf)}h</span></div>`:''}${r.h_pm>0?`<div class="panel-row"><span class="k">Poster marking (${r.nPostAss})</span><span class="v">${fmt(r.h_pm)}h</span></div>`:''}<div class="panel-row" style="margin-top:4px"><span class="k"><strong>Total</strong></span><span class="v big">${fmt(r.total)}h</span></div></div>`;
-  if(allProjects.length>0){html+=`<div class="panel-section"><h4>Projects (${allProjects.length})</h4>`;for(const p of allProjects)html+=`<div class="proj-student"><div class="sn">${p.theme||'(No title)'}</div><div class="sr">${pills(p)}</div></div>`;html+='</div>';}
-  openPanel(name,`${fmt(r.total)}h total · ${allProjects.length} project${allProjects.length!==1?'s':''}`,html);
+  // Student lists grouped by role.
+  if(hasNames){
+    const totalStudents=new Set([...supervised,...cosupervised,...dissAssessed,...postAssessed].map(p=>p.studentName||`__notheme_${p.theme}`)).size;
+    html+=roleSection('Students supervised',supervised,'<span class="role-pill pill-sup">Supervisor</span>');
+    html+=roleSection('Students co-supervised',cosupervised,'<span class="role-pill pill-cosup">Co-supervisor</span>');
+    html+=roleSection('Students assessed (dissertation)',dissAssessed,'<span class="role-pill pill-diss">Diss. Assessor</span>');
+    html+=roleSection('Students assessed (poster)',postAssessed,'<span class="role-pill pill-post">Poster Assessor</span>');
+    openPanel(name,`${fmt(r.total)}h total · ${totalStudents} student${totalStudents!==1?'s':''}`,html);
+  }else{
+    // Fallback: file had no FirstName/LastName columns — keep the original
+    // project-list behaviour so the panel still shows something useful.
+    const allProjects=[...new Map([...supervised,...cosupervised,...dissAssessed,...postAssessed].map(p=>[p.theme+p.supervisors.join(','),p])).values()];
+    if(allProjects.length>0){
+      const pills=p=>`${p.supervisors.includes(name)?'<span class="role-pill pill-sup">Supervisor</span>':''}${p.cosupervisors.includes(name)?'<span class="role-pill pill-cosup">Co-supervisor</span>':''}${p.diss1===name||p.diss2===name?'<span class="role-pill pill-diss">Diss. Assessor</span>':''}${p.poster1===name||p.poster2===name?'<span class="role-pill pill-post">Poster Assessor</span>':''}`;
+      html+=`<div class="panel-section"><h4>Projects (${allProjects.length})</h4>`;
+      for(const p of allProjects)html+=`<div class="proj-student"><div class="sn">${p.theme||'(No title)'}</div><div class="sr">${pills(p)}</div></div>`;
+      html+='</div>';
+    }
+    openPanel(name,`${fmt(r.total)}h total · ${allProjects.length} project${allProjects.length!==1?'s':''}`,html);
+  }
 }
 
 projAnalyseBtn.addEventListener('click',()=>{
