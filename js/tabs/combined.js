@@ -1512,8 +1512,8 @@ function generateDetailedReport(canonicals){
       <div class="rpt-person-sub">Academic Workload Report · ${dateStr}</div>
     </div>
     <div style="display:flex;gap:1rem;flex-shrink:0">
-      <div class="rpt-total-badge">${d.total.toFixed(1)}<span>hrs total</span></div>
-      <div class="rpt-total-badge" style="font-size:1.4rem;background:rgba(255,255,255,0.08)">${ftePct(d.canonical,d.total)}%<span>of ${personalTarget(d.canonical).toFixed(0)}h target</span></div>
+      <div class="rpt-total-badge">${d.total.toFixed(1)}<span>hrs (incl. allowances)</span></div>
+      <div class="rpt-total-badge" style="font-size:1.4rem;background:rgba(255,255,255,0.08)">${ftePct(d.canonical,d.total)}%<span>of 1600h target</span></div>
     </div>
   </div>
   <div class="rpt-overview">
@@ -1906,8 +1906,8 @@ function generateCombinedReport(canonicals){
           <div class="rpt-person-sub">Academic Workload Report · ${dateStr}</div>
         </div>
         <div style="display:flex;gap:1rem;flex-shrink:0">
-          <div class="rpt-total-badge">${d.total.toFixed(1)}<span>hrs total</span></div>
-          <div class="rpt-total-badge" style="font-size:1.4rem;background:rgba(255,255,255,0.08)">${ftePct(d.canonical,d.total)}%<span>of ${personalTarget(d.canonical).toFixed(0)}h target</span></div>
+          <div class="rpt-total-badge">${d.total.toFixed(1)}<span>hrs (incl. allowances)</span></div>
+          <div class="rpt-total-badge" style="font-size:1.4rem;background:rgba(255,255,255,0.08)">${ftePct(d.canonical,d.total)}%<span>of 1600h target</span></div>
         </div>
       </div>
       <div class="rpt-overview">

@@ -56,6 +56,11 @@ tabs:
     files:
       - MPharm_Autumn_semester_as_of_010626.html
       - MPharm_Spring_semester_as_of_010626.html
+      - MSC_Drug_Discovery_autumn.html
+      - MSC_Drug_Discovery_spring.html
+      - MSC_Drug_Discovery_summer.html
+      - PharmSci MSci Sem1 2025-26.html
+      - PharmSci MSci Sem2 2025-26.html
     notes: >
       Teaching tab accepts multiple HTML timetable exports. Drop a couple
       in here and they will all be analysed together.
