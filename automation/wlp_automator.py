@@ -126,6 +126,15 @@ class TabSpec:
     assignments_name_column: int = 1
     assignments_apply_marker: str = "Y"
     assignments_tag_columns: dict[str, int] = field(default_factory=dict)
+    # Optional value-based tag mapping. For each entry, if a row's cell in
+    # the specified column exactly matches the expected value, apply the
+    # named tag. Use this when a column contains category values (e.g.
+    # "SoP" / "LS" in a Staff Indicator column) rather than Y/N markers.
+    # Works alongside assignments_tag_columns — both can be used in the
+    # same config to apply multiple tags to the same person.
+    #   SoP:  {column: 9, value: "SoP"}   # apply "SoP"  if col 9 == "SoP"
+    #   SoLS: {column: 9, value: "LS"}    # apply "SoLS" if col 9 == "LS"
+    assignments_value_columns: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, d: dict[str, Any], data_dir: Path) -> "TabSpec":
@@ -160,6 +169,10 @@ class TabSpec:
             assignments_name_column=int(d.get("assignments_name_column", 1) or 1),
             assignments_apply_marker=d.get("assignments_apply_marker", "Y") or "Y",
             assignments_tag_columns=dict(d.get("assignments_tag_columns", {}) or {}),
+            assignments_value_columns={
+                str(tag): {"column": int(spec.get("column", 0)), "value": str(spec.get("value", ""))}
+                for tag, spec in (d.get("assignments_value_columns") or {}).items()
+            },
         )
 
 
@@ -737,11 +750,23 @@ def process_combined_tag_assignments_tab(
             if not raw_name or not isinstance(raw_name, str):
                 continue
             tags: list[str] = []
+            # Y/N marker-based tags: cell in `col_idx` must match `marker`.
             for tag_name, col_idx in tab.assignments_tag_columns.items():
                 if col_idx > len(row):
                     continue
                 cell = row[col_idx - 1]
                 if cell is not None and str(cell).strip().upper() == marker:
+                    tags.append(tag_name)
+            # Value-based tags: cell in `column` must exactly match `value`.
+            # Lets one column drive several tags with different value→tag
+            # mappings (e.g. Staff Indicator "SoP" → SoP tag, "LS" → SoLS).
+            for tag_name, spec in tab.assignments_value_columns.items():
+                col_idx = spec.get("column", 0)
+                expected = spec.get("value", "")
+                if not col_idx or col_idx > len(row):
+                    continue
+                cell = row[col_idx - 1]
+                if cell is not None and str(cell).strip() == expected:
                     tags.append(tag_name)
             if tags:
                 assignments.append((raw_name.strip(), tags))
