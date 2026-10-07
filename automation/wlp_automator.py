@@ -722,8 +722,8 @@ def process_combined_tag_assignments_tab(
     """
     if not tab.assignments_xlsx:
         return False, "combined_tag_assignments requires assignments_xlsx"
-    if not tab.assignments_tag_columns:
-        return False, "combined_tag_assignments requires assignments_tag_columns"
+    if not tab.assignments_tag_columns and not tab.assignments_value_columns:
+        return False, "combined_tag_assignments requires assignments_tag_columns or assignments_value_columns"
 
     xlsx_path = Path(tab.assignments_xlsx).expanduser()
     if not xlsx_path.exists():
