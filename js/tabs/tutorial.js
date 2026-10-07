@@ -19,10 +19,36 @@ function tutProcessFile(file){
   const reader=new FileReader();
   reader.onload=e=>{
     try{
-      const wb=XLSX.read(e.target.result,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-      const headerRow=raw[5]||[];const norm=s=>String(s).toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,''),headers=headerRow.map(norm),col=key=>headers.indexOf(norm(key));
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const norm=s=>String(s).toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'');
+      // Find the sheet that contains the tutor data. The 2026-27 workbook
+      // puts a pivot table on Sheet1 and the raw data on the second sheet
+      // ("COMBINED TUTOR LIST"). Scan all sheets for one that has a "Tutor"
+      // column header in its first 10 rows — that sheet is the data sheet.
+      let raw=null,foundSheet=null;
+      for(const name of wb.SheetNames){
+        const candidate=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:''});
+        for(let r=0;r<Math.min(10,candidate.length);r++){
+          const headers=(candidate[r]||[]).map(norm);
+          if(headers.indexOf(norm('Tutor'))!==-1){raw=candidate;foundSheet=name;break;}
+        }
+        if(raw)break;
+      }
+      if(!raw){
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      }
+      const headerRow=raw[5]||[];const headers=headerRow.map(norm),col=key=>headers.indexOf(norm(key));
       const iYear=col('Year of Study'),iSurname=col('Surname'),iFirst=col('First Name'),iCourse=col('Course'),iEmail=col('UoN Email'),iTutor=col('Tutor'),iTutorEmail=col('Tutor email'),iStaff=col('Staff Indicator');
-      if(iTutor===-1){tutShowError('Could not find a "Tutor" column. Check headers are on row 6.');return;}
+      if(iTutor===-1){
+        const sheetList=wb.SheetNames.map((n,i)=>`${i}:"${n}"`).join(', ');
+        const headerPreview=headerRow.length?`Headers found on row 6: [${headerRow.map(h=>`"${h}"`).join(', ')}]`:'Row 6 was empty.';
+        tutShowError(`Could not find a "Tutor" column. Check headers are on row 6. Sheets: ${sheetList}. Using sheet "${foundSheet||wb.SheetNames[0]}". ${headerPreview}`);
+        return;
+      }
+      if(foundSheet&&foundSheet!==wb.SheetNames[0]){
+        console.log(`Tutorial data found in sheet "${foundSheet}" (not the first sheet).`);
+      }
       const tutorMap={};
       raw.slice(6).forEach(row=>{
         if(iStaff!==-1&&String(row[iStaff]).trim().toLowerCase()==='yes')return;

@@ -335,6 +335,7 @@ tabs:
     #   6 = T       (Y = apply T tag — 10% workload allowance)
     #   7 = R&T     (Y = apply R&T tag — 25% workload allowance)
     #   8 = Non-academic (Y = apply Non-academic label; no rule, no effect)
+    #   9 = ColumnI (Y = apply ColumnI label; staff indicator from master tutor list)
     # Any cell whose trimmed uppercase value equals `assignments_apply_marker`
     # (default "Y") triggers the tag. Rules for SoP, SoLS, T, R&T must already
     # be defined — see the `combined_tag_setup*` entries above. Non-academic
@@ -349,6 +350,7 @@ tabs:
       T: 6
       "R&T": 7
       "Non-academic": 8
+      "ColumnI": 9
     notes: >
       Apply the tags indicated in teaching_staff.xlsx to each academic in the
       Combined Totals table. Tag rules must already exist (the preceding

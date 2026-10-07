@@ -1,0 +1,259 @@
+app:
+  url: https://jonathanongithub.github.io/Academic_WLP_tool_UoN/
+  # Visible browser window — do NOT set headless: true. Chromium opens in a real
+  # window so you can watch progress and intervene if needed.
+  headless: false
+  # Slow down each Playwright action by this many ms. Helps you see what's
+  # happening. Set to 0 for maximum speed once you trust the script.
+  slow_mo_ms: 200
+  # How long to wait for each tab's result indicator to populate, in seconds.
+  result_timeout_s: 30
+  # Where to write per-tab screenshots after a successful upload. Leave blank
+  # to skip screenshots.
+  screenshot_dir: screenshots
+
+# Base directory containing all your data files. Each tab's `files` are
+# resolved relative to this.
+data_dir: /home/burley/Documents/Nottingham/Teaching/Timetable/2026-27 input data
+
+# Each entry is one tab to drive through. Fields:
+#   main_tab:    data-maingroup value of the top-level tab button to click
+#   sub_tab:     data-panel value of the sub-tab button (omit for tabs
+#                without sub-tabs, e.g. AoB)
+#   file_input:  CSS selector for the <input type="file">. Playwright's
+#                set_input_files() fires the native change event so the
+#                page's own JS does the parsing.
+#   action:      CSS selector for the Calculate/Analyse button. Omit or set
+#                to "" for tabs that render results automatically on file
+#                selection (Assessment, AoB).
+#   wait_for:    CSS selector whose content indicates the result is ready
+#                (e.g. the stats bar). The script waits until this element
+#                has visible non-empty text before moving on.
+#   files:       One or more filenames (resolved against data_dir). The
+#                Teaching tab accepts multiple HTML files.
+#   enabled:     Set to false to skip this tab without deleting the entry.
+#
+# MWE NOTE: This config only enables the tabs that have working files in the
+# 2026-27 data directory. Tabs are disabled (enabled: false) where either:
+#   1. The expected file is not in the 2026-27 directory, or
+#   2. The file exists but its format is incompatible with the current parser.
+#
+# Files in the 2026-27 data directory:
+#   - MPharm Sem 1/2 Module Teaching List.html (teaching_timetable)
+#   - MSc Drug Discovery Sem 1/2/3 Module Teaching List.html (teaching_timetable)
+#   - PharmSci Sem 1/2 Module Teaching List.html (teaching_timetable)
+#   - Master Tutor List for 2026-27.xlsx (PIVOT TABLE — format incompatible with tutorial parser)
+#   - 01 Staff Research Hours.xlsx (research_staff_hours)
+tabs:
+  - key: teaching_timetable
+    enabled: true
+    main_tab: teaching
+    sub_tab: panel-teaching
+    file_input: '#tlFileInput'
+    action: '#tlAnalyseBtn'
+    preflight:
+      - check: '#tlRealistic'
+    postflight:
+      - click: '#tlBtnSettings'
+      - check: '#tl_prep_enabled'
+      - click: '#tlRecalcBtn'
+    wait_for: '#tlStatsBar'
+    files:
+      - "MPharm Sem 1 Module Teaching List.html"
+      - "MPharm Sem 2 Module Teaching List.html"
+      - "MSc Drug Discovery Sem 1 Module Teaching List.html"
+      - "MSc Drug Discovery Sem 2 Module Teaching List.html"
+      - "MSc Drug Discovery Sem 3 Module Teaching List.html"
+      - "PharmSci Sem 1 Module Teaching List.html"
+      - "PharmSci Sem 2 Module Teaching List.html"
+    notes: >
+      Teaching tab accepts multiple HTML timetable exports from the 2026-27
+      data directory. All 7 files (MPharm Sems 1-2, MSc Drug Discovery Sems
+      1-3, PharmSci Sems 1-2) are uploaded and analysed together.
+
+  - key: research_staff_hours
+    enabled: true
+    main_tab: research
+    sub_tab: panel-research
+    file_input: '#resFileInput'
+    action: ''
+    wait_for: '#resStatsBar'
+    files:
+      - "01 Staff Research Hours.xlsx"
+    notes: >
+      Research staff hours from 2026-27 data. Auto-renders on file
+      selection. Headers expected on row 1 (the app scans the first 5
+      rows for a 'Name' column).
+
+  - key: citizenship_tutorials
+    enabled: true
+    main_tab: citizenship
+    sub_tab: panel-tutorial
+    file_input: '#tutFileInput'
+    action: ''
+    wait_for: '#tutMeta'
+    files:
+      - "Master Tutor List for 2026-27.xlsx"
+    notes: >
+      Auto-renders on file selection (no Analyse button). Result is read
+      from the meta line above the tutor table. The 2026-27 file has 8 sheets
+      with the raw data on the second sheet "COMBINED TUTOR LIST"; the parser
+      now scans all sheets for the one containing the "Tutor" column header
+      (see js/tabs/tutorial.js). Note: "Tutor email" column was removed in
+      2026-27, so tutor emails will appear as "—" in the UI.
+
+  - key: teaching_assessment
+    enabled: false
+    main_tab: teaching
+    sub_tab: panel-assessment
+    file_input: '#assessmentFileInput'
+    action: ''
+    wait_for: '#assessmentStatsBar'
+    files: []
+
+  - key: teaching_projects_ug
+    enabled: false
+    main_tab: teaching
+    sub_tab: panel-project
+    file_input: '#projFileInput'
+    action: '#projAnalyseBtn'
+    wait_for: '#projStatsBar'
+    files: []
+
+  - key: teaching_projects_pgt
+    enabled: false
+    main_tab: teaching
+    sub_tab: panel-researchpgt
+    file_input: '#pgtFileInput'
+    action: '#pgtAnalyseBtn'
+    wait_for: '#pgtStatsBar'
+    files: []
+
+  - key: teaching_simulations
+    enabled: false
+    main_tab: teaching
+    sub_tab: panel-simulation
+    file_input: '#simFileInput'
+    action: ''
+    wait_for: '#simStatsBar'
+    files: []
+
+  - key: teaching_welcome_week
+    enabled: false
+    main_tab: teaching
+    sub_tab: panel-welcomeweek
+    file_input: '#wwFileInput'
+    action: ''
+    wait_for: '#wwStatsBar'
+    files: []
+
+  - key: citizenship_mmi
+    enabled: false
+    main_tab: citizenship
+    sub_tab: panel-mmi
+    file_input: '#mmiFileInput'
+    action: '#mmiAnalyseBtn'
+    wait_for: '#mmiStatsBar'
+    files: []
+
+  - key: citizenship_school_roles
+    enabled: false
+    kind: citizenship_paste
+    main_tab: citizenship
+    sub_tab: panel-citizenship
+    action: '#citAnalyseBtn'
+    paste: {}
+
+  - key: citizenship_open_days
+    enabled: false
+    main_tab: citizenship
+    sub_tab: panel-opendays
+    file_input: '#odFileInput'
+    action: ''
+    wait_for: '#odStatsBar'
+    files: []
+
+  - key: citizenship_pgr_training
+    enabled: false
+    kind: pgr_training_paste
+    main_tab: citizenship
+    sub_tab: panel-pgr_training
+    action: '#pgrtrAnalyseBtn'
+    files: []
+
+  - key: research_pgr
+    enabled: false
+    main_tab: research
+    sub_tab: panel-pgr
+    file_input: '#pgrFileInput'
+    action: ''
+    wait_for: '#pgrStatsBar'
+    files: []
+
+  - key: aob
+    enabled: false
+    main_tab: aob
+    sub_tab: ''
+    file_input: '#aobFileInput'
+    action: ''
+    wait_for: '#aobStatsBar'
+    files: []
+
+  - key: combined
+    enabled: true
+    main_tab: combined
+    sub_tab: ''
+    action: '#combMergeBtn'
+    wait_for: '#combTbody'
+    files: []
+    notes: >
+      Click 'Merge & Calculate' on the Combined Totals tab and wait for the
+      per-academic table to populate. Must run AFTER the data tabs (above)
+      so the combined table has data to merge. The `teaching_timetable` and
+      `research_staff_hours` tabs feed into this; without the tutor data,
+      tutorial column will be empty in the combined view.
+
+  - key: combined_tag_setup
+    kind: combined_tag_setup
+    enabled: false
+    main_tab: combined
+    rule_name: "R&T"
+    rule_reduction_pct: 25
+    apply_to_name: ""
+
+  - key: combined_tag_setup_T
+    kind: combined_tag_setup
+    enabled: false
+    main_tab: combined
+    rule_name: "T"
+    rule_reduction_pct: 10
+
+  - key: combined_tag_setup_SoP
+    kind: combined_tag_setup
+    enabled: false
+    main_tab: combined
+    rule_name: "SoP"
+    rule_reduction_pct: 0
+
+  - key: combined_tag_setup_SoLS
+    kind: combined_tag_setup
+    enabled: false
+    main_tab: combined
+    rule_name: "SoLS"
+    rule_reduction_pct: 0
+
+  - key: teaching_staff_tags
+    kind: combined_tag_assignments
+    enabled: false
+    main_tab: combined
+    assignments_xlsx: "/home/burley/Documents/Nottingham/Teaching/Timetable/230626/Academic_WLP_tool_UoN/automation/teaching_staff.xlsx"
+    assignments_sheet: "Teaching staff"
+    assignments_name_column: 1
+    assignments_apply_marker: "Y"
+    assignments_tag_columns:
+      SoP: 4
+      SoLS: 5
+      T: 6
+      "R&T": 7
+      "Non-academic": 8
+      "ColumnI": 9
