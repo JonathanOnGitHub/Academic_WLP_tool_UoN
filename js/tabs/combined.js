@@ -22,6 +22,10 @@ function applyColGroupState(){
     el.classList.toggle('active',!!groupState[g]);
   });
   document.querySelectorAll('[data-col-group]').forEach(el=>{
+    // Keep the combined table's total row (tfoot) fully visible regardless
+    // of which column groups are toggled off — otherwise the row appears
+    // empty and the grand total loses its context.
+    if(el.closest('#combFoot'))return;
     const g=el.dataset.colGroup;
     el.classList.toggle('col-group-hidden',!groupState[g]);
   });
