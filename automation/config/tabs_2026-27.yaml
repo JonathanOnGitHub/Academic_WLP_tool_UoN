@@ -230,21 +230,21 @@ tabs:
 
   - key: combined_tag_setup_SoP
     kind: combined_tag_setup
-    enabled: true
+    enabled: false
     main_tab: combined
     rule_name: "SoP"
     rule_reduction_pct: 0
 
   - key: combined_tag_setup_SoLS
     kind: combined_tag_setup
-    enabled: true
+    enabled: false
     main_tab: combined
     rule_name: "SoLS"
     rule_reduction_pct: 0
 
   - key: staff_indicator_tags
     kind: combined_tag_assignments
-    enabled: true
+    enabled: false
     main_tab: combined
     # Read the 2026-27 Master Tutor List and apply SoP / SoLS tags to each
     # tutor in the Combined view based on the Staff Indicator column (col 9
@@ -265,12 +265,8 @@ tabs:
       SoP:  {column: 9, value: "SoP"}
       SoLS: {column: 9, value: "LS"}
     notes: >
-      Apply SoP/SoLS tags based on the Staff Indicator column of the
-      master tutor list. Each unique tutor name in the file is matched
-      against the Combined Totals table (same normalised match used by
-      the other combined_tag_assignments tabs). Names that don't match
-      anyone in the table are reported in the run summary but don't
-      fail the step.
+      DISABLED — tagging from the run is not the right approach for 2026-27.
+      Re-enable if a future workflow decides to drive tags from here.
 
   - key: teaching_staff_tags
     kind: combined_tag_assignments
