@@ -12,20 +12,80 @@ window.getPgrHoursTotals = function() {
   return totals;
 };
 
+// Parse a date-ish cell from the source XLSX into a Date. Handles:
+//   * Date objects (when sheet_to_json is called with cellDates: true)
+//   * Excel serial date numbers (days since 1900-01-01, including the
+//     famous 1900 leap-year bug — SheetJS treats 1 as 1900-01-01, so
+//     serial 1 = 1900-01-00, but the canonical mapping for dates after
+//     1900-02-28 is serial - 2 → day count from 1900-01-01)
+//   * DD/MM/YYYY UK-style strings (used in the ESD column of the 2026-27 file)
+//   * ISO YYYY-MM-DD strings (used in the Start date column)
+function pgrParseDate(v) {
+  if (v == null || v === '') return null;
+  if (v instanceof Date && !isNaN(v)) return v;
+  if (typeof v === 'number' && isFinite(v) && v > 0) {
+    // Excel serial → JS Date. Account for the 1900 leap-year bug: the
+    // serial 60 corresponds to 1900-02-29 (which never existed), so
+    // anything after serial 60 is effectively serial - 1 day.
+    const epoch = new Date(Date.UTC(1899, 11, 30));
+    const ms = v * 86400 * 1000;
+    return new Date(epoch.getTime() + ms);
+  }
+  if (typeof v === 'string') {
+    const s = v.trim();
+    const uk = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (uk) {
+      const d = parseInt(uk[1], 10), mo = parseInt(uk[2], 10) - 1, yr = parseInt(uk[3], 10);
+      const dt = new Date(yr, mo, d);
+      return isNaN(dt) ? null : dt;
+    }
+    const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (iso) {
+      const yr = parseInt(iso[1], 10), mo = parseInt(iso[2], 10) - 1, d = parseInt(iso[3], 10);
+      const dt = new Date(yr, mo, d);
+      return isNaN(dt) ? null : dt;
+    }
+  }
+  return null;
+}
+
+// Derive a school/department label from the plan/programme string. The
+// 2026-27 file has no School/Department column, so we infer it for the
+// school filter dropdown.
+function pgrInferSchool(plan) {
+  if (!plan) return 'Other';
+  const p = String(plan).toLowerCase();
+  if (p.includes('pharmacy')) return 'Pharmacy';
+  if (p.includes('chemistry')) return 'Chemistry';
+  if (p.includes('physics')) return 'Physics';
+  if (p.includes('engineering')) return 'Engineering';
+  if (p.includes('medicine') || p.includes('medical')) return 'Medicine';
+  if (p.includes('bioscience') || p.includes('biology')) return 'Biosciences';
+  if (p.includes('math')) return 'Mathematical Sciences';
+  if (p.includes('computer')) return 'Computer Science';
+  return 'Other';
+}
+
 function parsePgrCsv(file) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const wb = XLSX.read(e.target.result, { type: 'string' });
+      // Read as ArrayBuffer so XLSX can sniff XLSX (binary) vs CSV (text).
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', cellDates: true });
       if (rows.length < 2) throw new Error('No data rows found.');
 
-      // Find header row
+      // Find header row (scan first 5 rows for a known marker).
       let hdrIdx = 0;
       for (let i = 0; i < Math.min(5, rows.length); i++) {
         const lower = rows[i].map(c => String(c).toLowerCase().trim());
-        if (lower.some(c => c.includes('supervisor name') || c.includes('supervisor id'))) { hdrIdx = i; break; }
+        if (lower.some(c =>
+              c.includes('supervisor name') ||
+              c.includes('supervisor id') ||
+              c === 'pi' ||
+              c === 'first name'
+            )) { hdrIdx = i; break; }
       }
       const hdrs = rows[hdrIdx].map(c => String(c).toLowerCase().trim());
 
@@ -33,82 +93,143 @@ function parsePgrCsv(file) {
         const idx = hdrs.findIndex(h => keywords.some(k => h.includes(k)));
         return idx >= 0 ? idx : -1;
       }
+      function colExact(name) {
+        const idx = hdrs.findIndex(h => h === name);
+        return idx >= 0 ? idx : -1;
+      }
 
+      // Detect which layout this file uses.
+      //   * Legacy: one row per supervisor–student pair, with a single
+      //     "Supervisor Name" + "Supervision Percentage" column.
+      //   * 2026-27: one row per student, with up to 5 supervisor pairs
+      //     (PI, 2nd, 3rd, 4th, 5th) and matching % columns.
       const cSupervisorName = col(['supervisor name']);
-      const cSupervisorEmail = col(['supervisor email']);
-      const cSupervisorRole = col(['supervisor role']);
+      const cPercentLegacy = col(['supervision percentage', 'percentage', '%']);
+      const isLegacyLayout = cSupervisorName >= 0 && cPercentLegacy >= 0;
+
       const cStudentId = col(['student id']);
       const cFirstName = col(['firstname', 'first name', 'first']);
-      const cLastName = col(['lastname', 'last name', 'surname', 'last']);
-      const cSchool = col(['school/department', 'school', 'department']);
-      const cPlanTitle = col(['plan title']);
-      const cPlanCode = col(['plan code']);
+      const cLastName  = col(['lastname', 'last name', 'surname', 'last']);
+      const cSchool    = col(['school/department', 'school', 'department']);
+      const cPlanTitle = col(['plan title', 'plan/programme', 'plan / programme']);
+      const cPlanCode  = col(['plan code']);
       const cProgramTitle = col(['program title', 'programme title']);
-      const cProgramCode = col(['program code', 'programme code']);
+      const cProgramCode  = col(['program code', 'programme code']);
       const cStudentStatus = col(['student status']);
       const cResearchGroup = col(['research group']);
-      const cPercent = col(['supervision percentage', 'percentage', '%']);
+      const cStartDate = col(['start date']);
+      const cEndDate   = col(['end date']);
 
-      if (cSupervisorName < 0) throw new Error('Could not find a "Supervisor Name" column.');
-      if (cPercent < 0) throw new Error('Could not find a "Supervision Percentage" column.');
+      // 2026-27: index the supervisor / % pairs by their exact "PI",
+      // "2nd Supervisor", "% Supervisor 2" header text.
+      const supervisorPairs = isLegacyLayout ? [] : [
+        { role: 'PI',           name: colExact('pi'),                pct: colExact('% pi') },
+        { role: '2nd Supervisor', name: col(['2nd supervisor']),       pct: col(['% supervisor 2']) },
+        { role: '3rd Supervisor', name: col(['3rd supervisor']),       pct: col(['% supervisor 3']) },
+        { role: '4th Supervisor', name: col(['4th supervisor']),       pct: col(['% supervisor 4']) },
+        { role: '5th Supervisor', name: col(['5th supervisor']),       pct: col(['% supervisor 5']) },
+      ].filter(p => p.name >= 0 && p.pct >= 0);
+
+      if (isLegacyLayout) {
+        if (cSupervisorName < 0) throw new Error('Could not find a "Supervisor Name" column.');
+        if (cPercentLegacy < 0)  throw new Error('Could not find a "Supervision Percentage" column.');
+      } else if (supervisorPairs.length === 0) {
+        throw new Error('Could not find supervisor/percentage columns. Expected either a "Supervisor Name" + "Supervision Percentage" pair (legacy) or PI / 2nd Supervisor / 3rd Supervisor / 4th Supervisor / 5th Supervisor pairs (2026-27).');
+      }
 
       const data = [];
       const schools = new Set();
+      // Default filter: today (end date >= today). 2026-27 files have no
+      // status column, so we use the end date as the activity signal.
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
       for (let i = hdrIdx + 1; i < rows.length; i++) {
         const r = rows[i];
-        const supervisor = String(r[cSupervisorName] || '').trim();
-        const studentId = cStudentId >= 0 ? String(r[cStudentId] || '').trim() : '';
+        if (!r) continue;
         const firstName = cFirstName >= 0 ? String(r[cFirstName] || '').trim() : '';
-        const lastName = cLastName >= 0 ? String(r[cLastName] || '').trim() : '';
-        const studentName = (firstName + ' ' + lastName).trim() || studentId;
-        if (!supervisor || (!studentName && !studentId)) continue;
+        const lastName  = cLastName  >= 0 ? String(r[cLastName]  || '').trim() : '';
+        const studentName = (firstName + ' ' + lastName).trim();
+        const studentId = cStudentId >= 0 ? String(r[cStudentId] || '').trim() : '';
+        if (!studentName && !studentId) continue;
 
-        const school = cSchool >= 0 ? String(r[cSchool] || '').trim() : '';
+        // Active filter.
+        if (cStudentStatus >= 0) {
+          const status = String(r[cStudentStatus] || '').trim();
+          if (status && status !== 'Active in Programme') continue;
+        } else if (cEndDate >= 0) {
+          const endDate = pgrParseDate(r[cEndDate]);
+          if (endDate && endDate < today) continue; // past end date
+        }
+
+        const school = cSchool >= 0
+          ? String(r[cSchool] || '').trim()
+          : pgrInferSchool(cPlanTitle >= 0 ? r[cPlanTitle] : '');
         if (school) schools.add(school);
 
-        const percentStr = String(r[cPercent] || '').trim();
-        const percent = parseFloat(percentStr);
-        if (isNaN(percent) || percent <= 0) continue;
+        const planTitle = cPlanTitle >= 0 ? String(r[cPlanTitle] || '').trim() : '';
+        const programTitle = cProgramTitle >= 0 ? String(r[cProgramTitle] || '').trim() : '';
+        const researchGroup = cResearchGroup >= 0 ? String(r[cResearchGroup] || '').trim() : '';
+        const studentStatus = cStudentStatus >= 0 ? String(r[cStudentStatus] || '').trim() : '';
+        const startDate = cStartDate >= 0 ? String(r[cStartDate] || '').trim() : '';
+        const endDateStr = cEndDate >= 0 ? String(r[cEndDate] || '').trim() : '';
 
-        // Only include active students
-        const status = cStudentStatus >= 0 ? String(r[cStudentStatus] || '').trim() : '';
-        if (status && status !== 'Active in Programme') continue;
-
-        const hours = 100 * (percent / 100);
-
-        data.push({
-          studentName,
-          studentId,
-          supervisor,
-          supervisorEmail: cSupervisorEmail >= 0 ? String(r[cSupervisorEmail] || '').trim() : '',
-          supervisorRole: cSupervisorRole >= 0 ? String(r[cSupervisorRole] || '').trim() : '',
-          school,
-          planTitle: cPlanTitle >= 0 ? String(r[cPlanTitle] || '').trim() : '',
-          planCode: cPlanCode >= 0 ? String(r[cPlanCode] || '').trim() : '',
-          programTitle: cProgramTitle >= 0 ? String(r[cProgramTitle] || '').trim() : '',
-          programCode: cProgramCode >= 0 ? String(r[cProgramCode] || '').trim() : '',
-          studentStatus: status,
-          researchGroup: cResearchGroup >= 0 ? String(r[cResearchGroup] || '').trim() : '',
-          percent,
-          hours,
-        });
+        if (isLegacyLayout) {
+          // One supervisor per row.
+          const supervisor = String(r[cSupervisorName] || '').trim();
+          if (!supervisor) continue;
+          const percentStr = String(r[cPercentLegacy] || '').trim();
+          const percent = parseFloat(percentStr);
+          if (isNaN(percent) || percent <= 0) continue;
+          data.push({
+            studentName, studentId, supervisor,
+            supervisorRole: '',
+            school, planTitle, planCode: '',
+            programTitle, programCode: '',
+            studentStatus, researchGroup, percent,
+            hours: percent, // legacy: hours = percentage
+            startDate, endDate: endDateStr,
+          });
+        } else {
+          // 2026-27: expand into one record per non-empty supervisor.
+          let addedForStudent = false;
+          for (const p of supervisorPairs) {
+            const name = String(r[p.name] || '').trim();
+            if (!name) continue;
+            const pct = parseFloat(String(r[p.pct] || '').trim());
+            if (isNaN(pct) || pct <= 0) continue;
+            data.push({
+              studentName, studentId,
+              supervisor: name,
+              supervisorRole: p.role,
+              school, planTitle,
+              planCode: '', programTitle, programCode: '',
+              studentStatus, researchGroup,
+              percent: pct,
+              hours: pct, // hours = percentage (same convention as legacy)
+              startDate, endDate: endDateStr,
+            });
+            addedForStudent = true;
+          }
+          if (!addedForStudent) continue; // skip rows with no supervisors
+        }
       }
 
-      if (data.length === 0) throw new Error('No active PGR students found (all had 0% supervision or non-active status).');
+      if (data.length === 0) throw new Error('No active PGR students found (all had 0% supervision or were past their end date).');
 
       pgrAllData = data;
       populateSchoolFilter(schools);
       applySchoolFilterAndRender();
       document.getElementById('pgrError').style.display = 'none';
-      WLP_SESSION.saveFile('pgr',file.name,new TextEncoder().encode(e.target.result).buffer,'text/csv');
+      WLP_SESSION.saveFile('pgr', file.name, e.target.result,
+        file.name.toLowerCase().endsWith('.csv') ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     } catch(err) {
       const el = document.getElementById('pgrError');
       el.textContent = 'Error: ' + err.message;
       el.style.display = 'block';
     }
   };
-  reader.readAsText(file);
+  reader.readAsArrayBuffer(file);
 }
 
 function populateSchoolFilter(schools) {

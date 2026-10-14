@@ -46,6 +46,7 @@ data_dir: /home/burley/Documents/Nottingham/Teaching/Timetable/2026-27 input dat
 #   - 01 Staff Research Hours.xlsx (research_staff_hours)
 #   - Simulation Academic Support 26-27.xlsx (teaching_simulations)
 #   - MMI booking 26 and 27.xlsx (citizenship_mmi)
+#   - PGR Supervision_Oct26.xlsx (research_pgr)
 tabs:
   - key: teaching_timetable
     enabled: true
@@ -206,13 +207,25 @@ tabs:
     files: []
 
   - key: research_pgr
-    enabled: false
+    enabled: true
     main_tab: research
     sub_tab: panel-pgr
     file_input: '#pgrFileInput'
     action: ''
     wait_for: '#pgrStatsBar'
-    files: []
+    files:
+      - "PGR Supervision_Oct26.xlsx"
+    notes: >
+      2026-27 PGR supervision file. Single sheet (timestamped name like
+      "query - 2026-10-07T133125.542") with one row per student and up to
+      5 supervisor pairs: PI / 2nd Supervisor / 3rd Supervisor / 4th
+      Supervisor / 5th Supervisor, each with a matching % column. The
+      parser expands each student row into one record per non-empty
+      supervisor and stores the role label (PI / 2nd / 3rd / 4th / 5th).
+      No "Student Status" column — the active filter uses End date >=
+      today (14 Oct 2026), which drops 26 finished students from the 129
+      total. No "School/Department" column — school is inferred from the
+      Plan/Programme string (Pharmacy / Other).
 
   - key: aob
     enabled: false
