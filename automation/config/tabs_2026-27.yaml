@@ -45,6 +45,7 @@ data_dir: /home/burley/Documents/Nottingham/Teaching/Timetable/2026-27 input dat
 #   - Master Tutor List for 2026-27.xlsx (PIVOT TABLE — format incompatible with tutorial parser)
 #   - 01 Staff Research Hours.xlsx (research_staff_hours)
 #   - Simulation Academic Support 26-27.xlsx (teaching_simulations)
+#   - MMI booking 26 and 27.xlsx (citizenship_mmi)
 tabs:
   - key: teaching_timetable
     enabled: true
@@ -159,13 +160,25 @@ tabs:
     files: []
 
   - key: citizenship_mmi
-    enabled: false
+    enabled: true
     main_tab: citizenship
     sub_tab: panel-mmi
     file_input: '#mmiFileInput'
     action: '#mmiAnalyseBtn'
     wait_for: '#mmiStatsBar'
-    files: []
+    files:
+      - "MMI booking 26 and 27.xlsx"
+    notes: >
+      2026-27 MMI booking file. 17 visible sheets, each is one MMI session
+      with the time range in row 2 of the sheet (not in the tab name).
+      Sheet names use a date plus optional "(am)" / "(pm)" marker, e.g.
+      "15.12.26 (am)", " 13.04.27 (am)" (note leading space), and
+      "02.06 OR 09.0.27" (two possible dates — counted once on the first).
+      The parser reads the row-2 title to extract date+time, falls back
+      to the sheet name (legacy format). Leading-zero hours like "09.30"
+      are 24-hour; bare hours like "1.45" with a pm end time get the
+      +12 rollover to PM. All sessions in 2026-27 are 3h; no Reserve
+      markers.
 
   - key: citizenship_school_roles
     enabled: false
