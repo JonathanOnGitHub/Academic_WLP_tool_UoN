@@ -44,6 +44,7 @@ data_dir: /home/burley/Documents/Nottingham/Teaching/Timetable/2026-27 input dat
 #   - PharmSci Sem 1/2 Module Teaching List.html (teaching_timetable)
 #   - Master Tutor List for 2026-27.xlsx (PIVOT TABLE — format incompatible with tutorial parser)
 #   - 01 Staff Research Hours.xlsx (research_staff_hours)
+#   - Simulation Academic Support 26-27.xlsx (teaching_simulations)
 tabs:
   - key: teaching_timetable
     enabled: true
@@ -130,13 +131,23 @@ tabs:
     files: []
 
   - key: teaching_simulations
-    enabled: false
+    enabled: true
     main_tab: teaching
     sub_tab: panel-simulation
     file_input: '#simFileInput'
     action: ''
     wait_for: '#simStatsBar'
-    files: []
+    files:
+      - "Simulation Academic Support 26-27.xlsx"
+    notes: >
+      2026-27 Simulation Academic Support file. Two sheets (Semester 1,
+      Semester 2) with different layouts: Sem 1 has no Location column and
+      AM/PM staff in cols 8-10 / 12-14; Sem 2 adds a Location column and
+      shifts AM/PM to cols 9-11 / 13-15. The parser detects the layout from
+      the header row and counts hours per slot: Y3/Y4 sim = 3h AM + 3h PM,
+      Fishbowl sessions = 2h (parsed from the Time column, e.g. "1-3pm",
+      "9-11am", "11-1pm"). Combined view counts both as simulation hours
+      through getSimHoursTotals().
 
   - key: teaching_welcome_week
     enabled: false

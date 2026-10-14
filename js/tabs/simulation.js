@@ -11,12 +11,29 @@ window.getSimHoursTotals = function() {
   return totals;
 };
 
+// Default hours for the Y3 / Y4 sim half-day blocks. AM and PM are each 3h
+// because the timetabled session spans 9-12 (or 9.30-12) and 1-4 (or 1.30-4).
+const SIM_AM_HOURS = 3;
+const SIM_PM_HOURS = 3;
+
+// Parse the "Time" column of a Fishbowl row into hours. Inputs observed in
+// 2026-27: "1-3pm", "2-4pm", "9-11am", "11-1pm" — all 2h sessions. Anything
+// we can't parse defaults to 2h (the documented Fishbowl length).
+function fishbowlHours(timeStr) {
+  if (!timeStr) return 2;
+  const m = String(timeStr).match(/(\d{1,2})(?::(\d{2}))?\s*-\s*(\d{1,2})(?::(\d{2}))?/);
+  if (!m) return 2;
+  const start = parseInt(m[1], 10) + (m[2] ? parseInt(m[2], 10) / 60 : 0);
+  const end   = parseInt(m[3], 10) + (m[4] ? parseInt(m[4], 10) / 60 : 0);
+  if (!isFinite(start) || !isFinite(end) || end <= start) return 2;
+  return end - start;
+}
+
 function parseSimXlsx(file) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
       const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-      const AM_HOURS = 3, PM_HOURS = 3;
       const data = [];
 
       for (const sheetName of wb.SheetNames) {
@@ -24,90 +41,92 @@ function parseSimXlsx(file) {
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
         if (rows.length < 2) continue;
 
-        // Header row is row 1 (0-indexed: rows[0])
-        // Expect: Week, Date, Day, Year Group, Group, 9-12 noon (x3), (blank), 1-4pm (x3), Notes...
-        const hdrIdx = 0;
-        const hdrs = rows[hdrIdx].map(c => String(c).toLowerCase().trim());
+        const hdrs = rows[0].map(c => String(c).toLowerCase().trim());
 
-        // Find column indices by keyword matching
-        const cDate  = hdrs.findIndex(h => h.includes('date'));
-        const cDay   = hdrs.findIndex(h => h === 'day');
-        const cYrGrp = hdrs.findIndex(h => h.includes('year group') || h.includes('year'));
-        const cGrp   = hdrs.findIndex(h => h === 'group');
-        // AM columns: 3 consecutive "9-12 noon" headers
-        const cAmStart = hdrs.findIndex(h => h.includes('9-12') || h.includes('9-12 noon'));
-        // PM columns: 3 consecutive "1-4pm" headers
-        const cPmStart = hdrs.findIndex(h => h.includes('1-4pm') || h.includes('1-4'));
+        // 2026-27 layout differs between the two sheets. The AM/PM header
+        // labels in row 1 are unreliable (the "PM" cell is also the first
+        // PM staff slot in data rows), so detect the sheet layout by
+        // looking for known landmark headers instead:
+        //   * Sem 1 has a "Time to arrive at A25" column (idx 4)
+        //   * Sem 2 has a standalone "Location" column (idx 5)
+        const cDate   = hdrs.findIndex(h => h.includes('date'));
+        const cDay    = hdrs.findIndex(h => h === 'day');
+        const cYrGrp  = hdrs.findIndex(h => h.includes('year group') || h.includes('year'));
+        const cType   = hdrs.findIndex(h => h === 'type');
+        const hasLocation = cType > 0 && hdrs[cType - 1] === 'location';
 
-        if (cDate < 0 || cAmStart < 0 || cPmStart < 0) continue;
+        // Sem 1: AM at idx 7,8,9 and PM at idx 11,12,13 (idx 10 is blank).
+        // Sem 2: AM at idx 8,9,10 and PM at idx 12,13,14 (idx 11 is blank).
+        const layout = hasLocation
+          ? { amStart: 8, pmStart: 12, slots: 3 }
+          : { amStart: 7, pmStart: 11, slots: 3 };
 
-        for (let i = hdrIdx + 1; i < rows.length; i++) {
+        // Find the Time column for Fishbowl hour calculation (if any).
+        const cTime = hdrs.findIndex(h => h === 'time' || h.startsWith('time '));
+
+        if (cDate < 0) continue;
+
+        for (let i = 1; i < rows.length; i++) {
           const r = rows[i];
           const rawDate = String(r[cDate] || '').trim();
-          if (!rawDate || /^(week|date)$/i.test(rawDate)) continue;
+          if (!rawDate) continue;
+          // Skip duplicate header rows and footer notes (no numeric Week).
+          const weekCell = String(r[0] || '').trim();
+          if (!weekCell || !/^\d+$/.test(weekCell)) continue;
 
-          const week    = String(r[0] || '').trim();
-          const day     = cDay >= 0 ? String(r[cDay] || '').trim() : '';
+          const day     = cDay   >= 0 ? String(r[cDay]   || '').trim() : '';
           const yrGrp   = cYrGrp >= 0 ? String(r[cYrGrp] || '').trim() : '';
-          const grp     = cGrp >= 0 ? String(r[cGrp] || '').trim() : '';
+          const timeStr = cTime  >= 0 ? String(r[cTime]  || '').trim() : '';
+          const typeStr = cType  >= 0 ? String(r[cType]  || '').trim() : '';
           const semester = sheetName;
+          // No dedicated "Group" column in 2026-27; embed the session type
+          // (e.g. "Y4 sim", "Fishbowl 1") so the activity string still
+          // distinguishes them.
+          const grp = typeStr;
 
-          // Helper: clean a staff name
+          const isFishbowl = /^fishbowl/i.test(typeStr);
+          const amHours = isFishbowl ? fishbowlHours(timeStr) : SIM_AM_HOURS;
+          const pmHours = isFishbowl ? fishbowlHours(timeStr) : SIM_PM_HOURS;
+          const typeLabel = isFishbowl
+            ? `Fishbowl ${typeStr.replace(/^fishbowl\s*/i, '').trim() || ''}`.trim()
+            : (typeStr || 'Simulation');
+
           function clean(n) {
             let s = String(n).trim();
-            // Strip trailing parenthetical notes
             s = s.replace(/\s*\([^)]*\)\s*$/, '').trim();
-            // Strip trailing "DNA" marker
             s = s.replace(/\s+DNA\s*$/i, '').trim();
-            // Strip trailing whitespace/punctuation
             s = s.replace(/[,\s]+$/, '');
             return s;
           }
-
-          // Extract AM staff (3 columns starting at cAmStart)
-          for (let ci = cAmStart; ci < cAmStart + 3 && ci < r.length; ci++) {
-            const raw = r[ci];
-            if (raw === null || raw === undefined || String(raw).trim() === '') continue;
-            const name = clean(raw);
-            if (!name || /^(9-12|1-4|noon|pm)/i.test(name)) continue;
-            // Skip cells that are clearly notes not names
-            if (/^(no\s|none|tbc|dna)/i.test(name)) continue;
-            data.push({
-              name,
-              date: rawDate,
-              day,
-              yearGroup: yrGrp,
-              group: grp,
-              timeSlot: 'AM',
-              hours: AM_HOURS,
-              semester,
-              activity: `Simulation (${semester}) — ${rawDate} ${yrGrp} ${grp} AM`.replace(/\s+/g, ' ')
-            });
+          function pushSlot(slot, hours) {
+            const start = slot === 'AM' ? layout.amStart : layout.pmStart;
+            for (let ci = start; ci < start + layout.slots && ci < r.length; ci++) {
+              const raw = r[ci];
+              if (raw === null || raw === undefined || String(raw).trim() === '') continue;
+              const name = clean(raw);
+              if (!name) continue;
+              if (/^(9-12|1-4|noon|pm|am|fishbowl)/i.test(name)) continue;
+              if (/^(no\s|none|tbc|dna|n\/a)$/i.test(name)) continue;
+              if (!/[A-Za-z]/.test(name)) continue;
+              data.push({
+                name,
+                date: rawDate,
+                day,
+                yearGroup: yrGrp,
+                group: grp,
+                timeSlot: slot,
+                hours,
+                semester,
+                activity: `${typeLabel} (${semester}) — ${rawDate} ${yrGrp} ${slot}`.replace(/\s+/g, ' ').trim()
+              });
+            }
           }
-
-          // Extract PM staff (3 columns starting at cPmStart)
-          for (let ci = cPmStart; ci < cPmStart + 3 && ci < r.length; ci++) {
-            const raw = r[ci];
-            if (raw === null || raw === undefined || String(raw).trim() === '') continue;
-            const name = clean(raw);
-            if (!name || /^(9-12|1-4|noon|pm)/i.test(name)) continue;
-            if (/^(no\s|none|tbc|dna)/i.test(name)) continue;
-            data.push({
-              name,
-              date: rawDate,
-              day,
-              yearGroup: yrGrp,
-              group: grp,
-              timeSlot: 'PM',
-              hours: PM_HOURS,
-              semester,
-              activity: `Simulation (${semester}) — ${rawDate} ${yrGrp} ${grp} PM`.replace(/\s+/g, ' ')
-            });
-          }
+          pushSlot('AM', amHours);
+          pushSlot('PM', pmHours);
         }
       }
 
-      if (data.length === 0) throw new Error('No valid data rows found. Ensure the file has sheets with columns: Week, Date, Day, Year Group, Group, 9-12 noon (×3), 1-4pm (×3).');
+      if (data.length === 0) throw new Error('No valid data rows found. Ensure each sheet has columns: Week, Date, Day, Year Group and staff columns for AM and PM slots.');
       renderSim(data);
       document.getElementById('simError').classList.remove('show');
       WLP_SESSION.saveFile('simulation',file.name,e.target.result,file.type);
