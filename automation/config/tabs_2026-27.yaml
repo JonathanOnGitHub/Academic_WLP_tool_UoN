@@ -214,18 +214,15 @@ tabs:
     action: ''
     wait_for: '#pgrStatsBar'
     files:
-      - "PGR Supervision_Oct26.xlsx"
+      - "Students with supervisors WS_data.csv"
     notes: >
-      2026-27 PGR supervision file. Single sheet (timestamped name like
-      "query - 2026-10-07T133125.542") with one row per student and up to
-      5 supervisor pairs: PI / 2nd Supervisor / 3rd Supervisor / 4th
-      Supervisor / 5th Supervisor, each with a matching % column. The
-      parser expands each student row into one record per non-empty
-      supervisor and stores the role label (PI / 2nd / 3rd / 4th / 5th).
-      No "Student Status" column — the active filter uses End date >=
-      today (14 Oct 2026), which drops 26 finished students from the 129
-      total. No "School/Department" column — school is inferred from the
-      Plan/Programme string (Pharmacy / Other).
+      2026-27 PGR supervision export from the supervisor workload system.
+      Legacy layout: one row per supervisor–student pair with a single
+      "Supervisor Name" + "Supervision Percentage" column (plus extra
+      metadata columns: Supervisor ID / Email / Primary Org / Role /
+      Primary Supervisor Flag). The legacy branch of pgr.js expands these
+      rows directly. Active filter is "Student Status = Active in
+      Programme".
 
   - key: aob
     enabled: false
@@ -309,6 +306,9 @@ tabs:
     kind: combined_tag_assignments
     enabled: false
     main_tab: combined
+    # NOT tracked in git: this workbook contains real staff names and is
+    # gitignored. Keep a local copy at the path below (or point
+    # assignments_xlsx at your own copy) if you re-enable this step.
     assignments_xlsx: "/home/burley/Documents/Nottingham/Teaching/Timetable/230626/Academic_WLP_tool_UoN/automation/teaching_staff.xlsx"
     assignments_sheet: "Teaching staff"
     assignments_name_column: 1

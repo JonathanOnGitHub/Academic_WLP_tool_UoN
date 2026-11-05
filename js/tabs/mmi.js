@@ -235,14 +235,31 @@ function mmiAnalyse(){
     for(let i=4;i<raw.length;i++){
       const name=String(raw[i][1]||'').trim();if(!name)continue;
       if(/^(name|staff|reserve|assessor)/i.test(name))continue;
-      staff.push({name,isReserve:i>=reserveRowIdx});
+      // Per-staff station info from columns C/D/E of the source sheet.
+      // The 2026-27 layout leaves the title-row label empty, so we surface
+      // room + station number + station name on the staff entry and let
+      // the report fall back to it.
+      const room=String(raw[i][2]||'').trim();
+      const stationNumber=String(raw[i][3]||'').trim();
+      const stationName=String(raw[i][4]||'').trim();
+      const staffLabel=[room&&`Room ${room}`,stationNumber&&`Station ${stationNumber}`,stationName].filter(Boolean).join(' · ');
+      staff.push({name,isReserve:i>=reserveRowIdx,room,stationNumber,stationName,label:info.label||staffLabel});
     }
     if(staff.length>0)sessions.push({sheetName,...info,staff});
   }
   if(sessions.length===0){mmiShowError('No staff names found in any session sheets. Ensure staff names are in column B from row 5.');return;}
   mmiSessions=sessions;
   const map={};
-  for(const sess of sessions){for(const{name,isReserve}of sess.staff){if(!map[name])map[name]={name,sessions:[],totalHours:0,isActiveStaff:false};map[name].sessions.push({...sess,isReserve});if(!isReserve){map[name].totalHours+=sess.durationH;map[name].isActiveStaff=true;}}}
+  for(const sess of sessions){for(const{name,isReserve,room,stationNumber,stationName,label:staffLabel} of sess.staff){
+    if(!map[name])map[name]={name,sessions:[],totalHours:0,isActiveStaff:false};
+    // Per-staff session record. Carry the session-level info, but use the
+    // staff's own row label (room · station number · station name) as the
+    // label so the report's "Label" column reflects what this person
+    // actually did at that station rather than the (often empty) session
+    // title.
+    map[name].sessions.push({sheetName:sess.sheetName,dateStr:sess.dateStr,startH:sess.startH,endH:sess.endH,durationH:sess.durationH,label:staffLabel,isReserve});
+    if(!isReserve){map[name].totalHours+=sess.durationH;map[name].isActiveStaff=true;}
+  }}
   mmiResults=Object.values(map).sort((a,b)=>b.totalHours-a.totalHours);
   const activeResults=mmiResults.filter(r=>r.isActiveStaff);
   const totalH=activeResults.reduce((s,r)=>s+r.totalHours,0);

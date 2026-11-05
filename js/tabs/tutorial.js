@@ -64,7 +64,16 @@ function tutProcessFile(file){
       tutRawMap=tutorMap;
       tutAllTutors=Object.values(tutorMap).map(t=>{
         const extraHours=t.year1.filter(s=>courseCodes.includes(s.course.toUpperCase())).length*extra + t.other.filter(s=>courseCodes.includes(s.course.toUpperCase())).length*extra;
-        return {...t,totalTutees:t.year1.length+t.other.length,hours:t.year1.length*y1h+t.other.length*oh+extraHours,extraHours};
+        // Other-year tutees: sort by year (numeric) ascending, then by name.
+        const otherSorted=[...t.other].sort((a,b)=>{
+          const ya=parseInt(a.year,10),yb=parseInt(b.year,10);
+          if(isNaN(ya)&&isNaN(yb))return a.name.localeCompare(b.name);
+          if(isNaN(ya))return 1;
+          if(isNaN(yb))return -1;
+          if(ya!==yb)return ya-yb;
+          return a.name.localeCompare(b.name);
+        });
+        return {...t,year1:[...t.year1].sort((a,b)=>a.name.localeCompare(b.name)),other:otherSorted,totalTutees:t.year1.length+t.other.length,hours:t.year1.length*y1h+t.other.length*oh+extraHours,extraHours};
       });
       if(tutAllTutors.length===0){tutShowError('No tutee records found.');return;}
       tutMaxHours=Math.max(...tutAllTutors.map(t=>t.hours));

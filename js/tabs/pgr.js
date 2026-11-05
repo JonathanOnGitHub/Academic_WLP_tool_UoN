@@ -104,7 +104,13 @@ function parsePgrCsv(file) {
       //   * 2026-27: one row per student, with up to 5 supervisor pairs
       //     (PI, 2nd, 3rd, 4th, 5th) and matching % columns.
       const cSupervisorName = col(['supervisor name']);
-      const cPercentLegacy = col(['supervision percentage', 'percentage', '%']);
+      // For the percentage column we want "Supervision Percentage" /
+      // "% Supervisor 2" etc. but NOT "Percentage format" (which also
+      // contains a "%" token). Prefer an exact match, then longest
+      // keyword, then any.
+      const cPercentLegacy =
+        colExact('supervision percentage') >= 0 ? colExact('supervision percentage') :
+        col(['supervision percentage', 'percentage', '%']);
       const isLegacyLayout = cSupervisorName >= 0 && cPercentLegacy >= 0;
 
       const cStudentId = col(['student id']);
@@ -243,7 +249,10 @@ function populateSchoolFilter(schools) {
     opt.textContent = s;
     sel.appendChild(opt);
   });
-  if (sorted.includes('Pharmacy')) sel.value = 'Pharmacy';
+  // Default to "All Schools" so a whole-university export isn't hidden
+  // behind the first Pharmacy entry. (Previously defaulted to 'Pharmacy'
+  // for Pharmacy-only 2026-27 files.)
+  sel.value = '__all__';
 }
 
 function getPgrSelectedSchool() {
@@ -266,7 +275,7 @@ function applySchoolFilterAndRender() {
   renderPgr(getPgrFilteredData());
 }
 
-function pgrGetSorted() {
+function pgrSupGetSorted() {
   const data = getPgrFilteredData();
   const selected = getPgrSelectedSchool();
   const q = document.getElementById('pgrSearch')?.value.toLowerCase() || '';
@@ -310,7 +319,7 @@ function pgrGetSorted() {
 }
 
 function renderPgrTable() {
-  const data = pgrGetSorted();
+  const data = pgrSupGetSorted();
   const selected = getPgrSelectedSchool();
   const isAll = selected === '__all__';
   const maxHours = Math.max(...data.map(r => r.hours), 1);

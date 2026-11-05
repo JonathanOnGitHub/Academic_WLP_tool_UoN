@@ -326,6 +326,9 @@ tabs:
     enabled: true
     main_tab: combined
     # XLSX listing each staff member and which tags they should carry.
+    # NOT tracked in git: this workbook contains real staff names and is
+    # gitignored. Keep a local copy at the path below (or point
+    # assignments_xlsx at your own copy) for this step to run.
     # Sheet "Teaching staff", columns:
     #   1 = Name (display), e.g. "Dr Jonathan Burley"
     #   2 = Name (raw, from timetable), e.g. "Burley, Jonathan Dr"

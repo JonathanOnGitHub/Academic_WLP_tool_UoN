@@ -1,1 +1,5 @@
 node_modules/
+screenshots/
+
+# Contains real staff names / personal data — local only, never commit.
+automation/teaching_staff.xlsx
