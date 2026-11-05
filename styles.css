@@ -172,6 +172,8 @@ main{max-width:1600px;margin:0 auto;padding:2rem;}
 .sort-bar label{font-size:0.78rem;color:var(--muted);font-weight:500;}
 .btn-sort{background:var(--light-blue);border:1px solid var(--border);border-radius:4px;padding:4px 10px;font-size:0.78rem;cursor:pointer;color:var(--navy);font-family:'IBM Plex Sans',sans-serif;}
 .btn-sort:hover{background:#d0dffa;}
+.btn-sort.active{background:var(--mid-blue);border-color:var(--mid-blue);color:white;font-weight:600;}
+.btn-sort.active:hover{background:#0052a8;}
 .sort-info{font-size:0.72rem;color:var(--muted);font-style:italic;}
 
 /* HEATMAP GRID */

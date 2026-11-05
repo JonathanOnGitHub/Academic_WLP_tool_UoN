@@ -7,6 +7,15 @@ let tlAllWeeks=[],tlAllStaff=[],tlAllModules=[],tlAllTypes=[];
 let tlStaffSort={col:'total',dir:-1},tlModSort={col:'total',dir:-1},tlTypeSort={col:'total',dir:-1};
 let tlPrepRatio=0;
 
+// The three grids (staff / modules / types) each have a sort bar with a
+// "By Name" and a "By Total" button, plus a caption showing the current
+// sort. This maps a grid key to the ids of its controls.
+const TL_SORT_UI={
+  staff:{name:'tlSortStaffName',total:'tlSortStaffTotal',info:'tlStaffSortInfo'},
+  module:{name:'tlSortModName',total:'tlSortModTotal',info:'tlModSortInfo'},
+  type:{name:'tlSortTypeName',total:'tlSortTypeTotal',info:'tlTypeSortInfo'}
+};
+
 const tlFileInput=document.getElementById('tlFileInput'),tlDropZone=document.getElementById('tlDropZone'),tlFileList=document.getElementById('tlFileList'),tlAnalyseBtn=document.getElementById('tlAnalyseBtn');
 
 function tlUpdateFileList(){
@@ -162,9 +171,49 @@ function tlRenderGrid(id,dataMap,allEntities,weeks,sortCfg,realistic,legendId,pr
   tlAttachGridEvents(wrap,dataMap,id.includes('Staff')?'staff':id.includes('Mod')?'module':'type');
 }
 
-function tlRenderStaffGrid(){tlRenderGrid('tlStaffGridWrap',tlStaffData,tlAllStaff,tlAllWeeks,tlStaffSort,tlRealisticMode,'tlStaffLegend',tlPrepRatio);document.getElementById('tlStaffSortInfo').textContent=`Sorted by: ${tlStaffSort.col==='name'?'Name':tlStaffSort.col==='total'?'Total':'Week '+tlStaffSort.col} (${tlStaffSort.dir>0?'asc':'desc'})${tlPrepRatio>0?' · '+tlPrepRatio.toFixed(1)+'h flat prep per activity':''}`;}
-function tlRenderModGrid(){tlRenderGrid('tlModGridWrap',tlModuleData,modTagFilteredModules(),tlAllWeeks,tlModSort,tlRealisticMode,'tlModLegend',tlPrepRatio);renderModuleTagChips();}
-function tlRenderTypeGrid(){tlRenderGrid('tlTypeGridWrap',tlTypeData,tlAllTypes,tlAllWeeks,tlTypeSort,tlRealisticMode,'tlTypeLegend',tlPrepRatio);}
+// ── SORTING ────────────────────────────────────────────────
+// One code path for both the "By Name"/"By Total" buttons and the
+// clickable column headers, so the two can never disagree.
+//
+// Each grid has its own sort state: {col, dir}. `col` is 'name',
+// 'total' or a week number; `dir` is 1 for ascending, -1 for
+// descending. Clicking the column that is already active flips the
+// direction; clicking a different column starts it in that column's
+// natural order (names A→Z, hours highest→lowest).
+
+function tlSortState(key){return key==='staff'?tlStaffSort:key==='module'?tlModSort:tlTypeSort;}
+function tlRenderGridFor(key){if(key==='staff')tlRenderStaffGrid();else if(key==='module')tlRenderModGrid();else tlRenderTypeGrid();}
+
+function tlApplySort(key,col){
+  const s=tlSortState(key);
+  if(s.col===col)s.dir*=-1;
+  else{s.col=col;s.dir=col==='name'?1:-1;}
+  tlRenderGridFor(key);
+}
+
+// Reflect the current sort in the grid's sort bar: the caption, the
+// arrow on the button in use, and the 'active' class on that button.
+function tlUpdateSortUI(key){
+  const s=tlSortState(key),ui=TL_SORT_UI[key];
+  const colLabel=s.col==='name'?'Name':s.col==='total'?'Total':'Week '+s.col;
+  const info=document.getElementById(ui.info);
+  if(info)info.textContent=`Sorted by: ${colLabel} (${s.dir>0?'asc':'desc'})${tlPrepRatio>0?' · '+tlPrepRatio.toFixed(1)+'h flat prep per activity':''}`;
+  const nameBtn=document.getElementById(ui.name),totalBtn=document.getElementById(ui.total);
+  if(nameBtn){
+    const on=s.col==='name';
+    nameBtn.classList.toggle('active',on);
+    nameBtn.textContent='By Name'+(on?(s.dir>0?' ↑':' ↓'):'');
+  }
+  if(totalBtn){
+    const on=s.col==='total';
+    totalBtn.classList.toggle('active',on);
+    totalBtn.textContent='By Total'+(on?(s.dir>0?' ↑':' ↓'):'');
+  }
+}
+
+function tlRenderStaffGrid(){tlRenderGrid('tlStaffGridWrap',tlStaffData,tlAllStaff,tlAllWeeks,tlStaffSort,tlRealisticMode,'tlStaffLegend',tlPrepRatio);tlUpdateSortUI('staff');}
+function tlRenderModGrid(){tlRenderGrid('tlModGridWrap',tlModuleData,modTagFilteredModules(),tlAllWeeks,tlModSort,tlRealisticMode,'tlModLegend',tlPrepRatio);renderModuleTagChips();tlUpdateSortUI('module');}
+function tlRenderTypeGrid(){tlRenderGrid('tlTypeGridWrap',tlTypeData,tlAllTypes,tlAllWeeks,tlTypeSort,tlRealisticMode,'tlTypeLegend',tlPrepRatio);tlUpdateSortUI('type');}
 
 // Collect, per staff member, every session they are timetabled for.
 // Used as the clash SEARCH scope: a clash can involve any session of that
@@ -290,10 +339,8 @@ function tlAttachGridEvents(wrap,dataMap,type){
   if(thead)thead.addEventListener('click',e=>{
     const th=e.target.closest('th');if(!th)return;
     const col=th.dataset.sort,w=th.dataset.sortWeek?+th.dataset.sortWeek:null;
-    const s=type==='staff'?tlStaffSort:type==='module'?tlModSort:tlTypeSort;
-    const render=type==='staff'?tlRenderStaffGrid:type==='module'?tlRenderModGrid:tlRenderTypeGrid;
-    if(col){if(s.col===col)s.dir*=-1;else{s.col=col;s.dir=-1;}render();}
-    else if(w!==null){if(s.col===w)s.dir*=-1;else{s.col=w;s.dir=-1;}render();}
+    if(col)tlApplySort(type,col);
+    else if(w!==null)tlApplySort(type,w);
   });
 }
 
@@ -331,7 +378,15 @@ document.getElementById('tlRecalcBtn').addEventListener('click',()=>{const enabl
 document.getElementById('tl_prep_enabled').addEventListener('change',()=>{document.getElementById('tl_prep_ratio').disabled=!document.getElementById('tl_prep_enabled').checked;});
 document.querySelectorAll('[data-tltab]').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('[data-tltab]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const t=btn.dataset.tltab;['staff','modules','types'].forEach(x=>document.getElementById(`tl-tab-${x}`).style.display=x===t?'':'none');});});
 document.getElementById('tlBtnBack').addEventListener('click',()=>{document.getElementById('tl-landing').style.display='';document.getElementById('tl-analyser').style.display='none';});
-['tlSortStaffName','tlSortStaffTotal','tlSortModName','tlSortModTotal','tlSortTypeName','tlSortTypeTotal'].forEach(id=>{document.getElementById(id).addEventListener('click',()=>{const[,,type,col]=id.match(/tlSort(Staff|Mod|Type)(Name|Total)/),s=type==='Staff'?tlStaffSort:type==='Mod'?tlModSort:tlTypeSort,c=col==='Name'?'name':'total';if(s.col===c)s.dir*=-1;else{s.col=c;s.dir=col==='Name'?1:-1;}if(type==='Staff')tlRenderStaffGrid();else if(type==='Mod')tlRenderModGrid();else tlRenderTypeGrid();});});
+// Sort buttons: "By Name" and "By Total" for each of the three grids.
+// The id tells us which grid and which column, so the wiring is a
+// plain lookup rather than a fragile regex destructure.
+Object.entries(TL_SORT_UI).forEach(([key,ui])=>{
+  [['name',ui.name],['total',ui.total]].forEach(([col,id])=>{
+    const btn=document.getElementById(id);if(!btn)return;
+    btn.addEventListener('click',()=>tlApplySort(key,col));
+  });
+});
 document.getElementById('modTagFilterClear').addEventListener('click',()=>{moduleTagFilter=null;renderModuleTagFilterBar();tlRenderModGrid();});
 
 document.getElementById('tlBtnExport').addEventListener('click',()=>{
