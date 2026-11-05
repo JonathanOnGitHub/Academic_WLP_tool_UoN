@@ -469,6 +469,22 @@ td.tutor-name{font-weight:500;font-family:'Source Serif 4',serif;font-size:0.88r
 .sc-hours{background:var(--light-blue);color:var(--mid-blue);border-radius:10px;padding:2px 8px;font-size:0.72rem;font-weight:600;white-space:nowrap;}
 .sc-meta{display:flex;flex-wrap:wrap;gap:6px;font-size:0.75rem;color:var(--muted);}
 .sc-tag{background:var(--light-blue);color:var(--mid-blue);border-radius:4px;padding:1px 6px;font-size:0.72rem;margin-right:4px;}
+
+/* ═══ Timetable clashes (double-booked) ═══ */
+:root{
+  --clash:#b8860b;
+  --clash-light:#fffbe6;
+  --clash-border:#e8c766;
+}
+.sc-title-right{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.sc-clash{background:var(--clash-light);color:#8a6300;border:1px solid var(--clash-border);border-radius:10px;padding:2px 8px;font-size:0.72rem;font-weight:600;white-space:nowrap;}
+.session-card-clash{background:var(--clash-light);border-left:4px solid var(--clash);}
+.session-card-clash .sc-tag{background:#fff;border:1px solid var(--clash-border);color:#8a6300;}
+.clash-detail{margin-top:6px;padding:6px 8px;background:#fff;border:1px solid var(--clash-border);border-radius:6px;font-size:0.75rem;color:#8a6300;line-height:1.45;}
+.clash-detail strong{font-weight:600;}
+.clash-note{background:var(--clash-light);border:1px solid var(--clash-border);border-radius:6px;padding:0.6rem 0.8rem;margin-bottom:0.8rem;font-size:0.78rem;color:#8a6300;line-height:1.45;}
+.modal-stat-clash{background:var(--clash-light);}
+.modal-stat-clash .ms-value{color:#8a6300;}
 .modal-stat-row{display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;}
 .modal-stat{background:var(--light-blue);border-radius:8px;padding:0.7rem 1rem;min-width:80px;}
 .ms-value{font-family:'IBM Plex Mono',monospace;font-size:1.3rem;font-weight:500;color:var(--mid-blue);}

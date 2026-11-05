@@ -369,6 +369,102 @@ function deduplicateSessions(sessions){
   return[...seen.values()];
 }
 
+// ═══════════════════════════════════════════════════════════
+// TIMETABLE CLASHES — same staff booked in two places at once
+// ═══════════════════════════════════════════════════════════
+// A clash is two sessions for the SAME staff member that overlap in
+// time on the same day, in a shared week. Sessions with no usable
+// start/end time are ignored (we can't prove an overlap without them).
+//
+// Two sessions overlap when a.start < b.end AND b.start < a.end.
+// Touching sessions (end == start) are NOT a clash — back-to-back
+// teaching in different rooms is a travel problem, not a conflict.
+//
+// The result is advisory only: it never changes any hour calculation.
+// Each session in the input gains a `clashes` array listing the other
+// sessions it collides with, so the UI can flag the individual card.
+
+const CLASH_DAY_ORDER={monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6,sunday:7};
+
+// Normalise a day label so "Mon", "Monday", "MON" compare equal.
+function clashDayKey(day){
+  const d=String(day||'').trim().toLowerCase();
+  if(!d)return '';
+  const full=d.slice(0,3);
+  const map={mon:'monday',tue:'tues',wed:'wednesday',thu:'thursday',fri:'friday',sat:'saturday',sun:'sunday'};
+  if(map[full])return map[full];
+  if(d==='tues')return 'tuesday';
+  return d;
+}
+
+// True when the two sessions overlap on a shared day+week.
+function sessionsOverlap(a,b){
+  if(clashDayKey(a.day)!==clashDayKey(b.day))return false;
+  if(!a.day)return false;
+  const as=timeToHours(a.start),ae=timeToHours(a.end);
+  const bs=timeToHours(b.start),be=timeToHours(b.end);
+  // Need positive durations on both sides to reason about an overlap.
+  if(!(ae>as)||!(be>bs))return false;
+  if(!(as<be&&bs<ae))return false;
+  // Must share at least one week.
+  const aw=new Set(a.weeks||[]),bw=new Set(b.weeks||[]);
+  for(const w of aw)if(bw.has(w))return true;
+  return false;
+}
+
+// Detect clashes for a set of sessions belonging to ONE staff member.
+// Returns a Map<session, Array<competingSession>>.
+function detectStaffClashes(sessions){
+  const map=new Map();
+  const list=sessions||[];
+  for(let i=0;i<list.length;i++){
+    for(let j=i+1;j<list.length;j++){
+      const a=list[i],b=list[j];
+      if(!sessionsOverlap(a,b))continue;
+      if(!map.has(a))map.set(a,[]);
+      if(!map.has(b))map.set(b,[]);
+      map.get(a).push(b);
+      map.get(b).push(a);
+    }
+  }
+  return map;
+}
+
+// Convenience: group sessions by staff member, then find clashes within
+// each staff member's own list. Returns Map<staffName, Map<session, clashes[]>>.
+function detectClashesByStaff(staffSessions){
+  const out=new Map();
+  for(const[name,sessions]of Object.entries(staffSessions||{})){
+    const m=detectStaffClashes(sessions);
+    if(m.size>0)out.set(name,m);
+  }
+  return out;
+}
+
+// The weeks in which two sessions actually overlap. Empty if they don't
+// share a week, or don't overlap in time on their shared day.
+function sharedClashWeeks(a,b){
+  const out=[];
+  const aw=new Set(a.weeks||[]);
+  for(const w of(b.weeks||[])){
+    if(!aw.has(w))continue;
+    if(!sessionsOverlap(a,b))continue;
+    // sessionsOverlap checks ANY shared week, so confirm this one too.
+    const sa=a.weeks.includes(w),sb=b.weeks.includes(w);
+    if(sa&&sb)out.push(w);
+  }
+  return out;
+}
+
+// Human-readable label for a session, used in clash explanations.
+function clashSessionLabel(s){
+  const title=s.moduleCode?`${s.moduleCode}${s.moduleTitle?' '+s.moduleTitle:''}`:(s.moduleTitle||s.sessionTitle||s.activity||'Session');
+  const bits=[];
+  if(s.location)bits.push(s.location);
+  if(s.start&&s.end)bits.push(`${s.start}–${s.end}`);
+  return bits.length?`${title} (${bits.join(', ')})`:title;
+}
+
 function formatWeekRange(weeks){
   if(!weeks||weeks.length===0)return'—';
   const sorted=[...weeks].sort((a,b)=>a-b);

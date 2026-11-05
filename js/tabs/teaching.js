@@ -166,6 +166,59 @@ function tlRenderStaffGrid(){tlRenderGrid('tlStaffGridWrap',tlStaffData,tlAllSta
 function tlRenderModGrid(){tlRenderGrid('tlModGridWrap',tlModuleData,modTagFilteredModules(),tlAllWeeks,tlModSort,tlRealisticMode,'tlModLegend',tlPrepRatio);renderModuleTagChips();}
 function tlRenderTypeGrid(){tlRenderGrid('tlTypeGridWrap',tlTypeData,tlAllTypes,tlAllWeeks,tlTypeSort,tlRealisticMode,'tlTypeLegend',tlPrepRatio);}
 
+// Collect, per staff member, every session they are timetabled for.
+// Used as the clash SEARCH scope: a clash can involve any session of that
+// person, even one outside the current deep-dive view (e.g. a clash
+// between two different modules when viewing the Modules grid).
+//
+// Returns Map<staffName, Array<session>>.
+function tlCollectStaffSessions(entities,weeks,dataMap){
+  const byStaff=new Map();
+  const addForStaff=(staff,sessions)=>{
+    if(!byStaff.has(staff))byStaff.set(staff,[]);
+    const arr=byStaff.get(staff);
+    for(const s of sessions)if(!arr.includes(s))arr.push(s);
+  };
+  for(const e of entities){
+    for(const w of weeks){
+      const arr=dataMap[e]?.[w]||[];
+      // Prefer the authoritative staffMap when present (module/type grids).
+      if(arr.staffMap&&arr.staffMap.size>0){
+        for(const[staff,sessions]of arr.staffMap)addForStaff(staff,sessions);
+      }else{
+        // Staff grid (and any map without staffMap): the entity is the staff name.
+        addForStaff(e,arr);
+      }
+    }
+  }
+  return byStaff;
+}
+
+// Build a map of clashing sessions for the current deep dive.
+//
+// `searchSessions` is a Map<session, staffName> covering the staff
+// members' whole timetables. Clashes are detected within each staff
+// member's own sessions, so a card can name a competing session that
+// lives outside the current view.
+//
+// Returns Map<session, Array<clashingSession>>.
+function tlBuildClashMap(searchSessions){
+  const clashMap=new Map();
+  const byStaff=new Map();
+  for(const[sess,staff]of searchSessions){
+    if(!byStaff.has(staff))byStaff.set(staff,[]);
+    byStaff.get(staff).push(sess);
+  }
+  for(const[staff,sessions]of byStaff){
+    const m=detectStaffClashes(sessions);
+    for(const[s,clashes]of m){
+      if(!clashMap.has(s))clashMap.set(s,[]);
+      clashMap.get(s).push(...clashes);
+    }
+  }
+  return clashMap;
+}
+
 function tlAttachGridEvents(wrap,dataMap,type){
   wrap.querySelectorAll('.data-cell,.name-cell').forEach(cell=>{
     cell.addEventListener('click',()=>{
@@ -176,7 +229,28 @@ function tlAttachGridEvents(wrap,dataMap,type){
       let totalH=0,rawS=[];
       for(const e of entities)for(const w of weeks){totalH+=calcHours(dataMap[e]?.[w],applyR);rawS.push(...(dataMap[e]?.[w]||[]));}
       const unique=deduplicateSessions(rawS),realH=calcHours(unique,true);
-      let html=`<div class="modal-stat-row"><div class="modal-stat"><div class="ms-value">${totalH.toFixed(1)}</div><div class="ms-label">Staff-hours</div></div><div class="modal-stat"><div class="ms-value">${realH.toFixed(1)}</div><div class="ms-label">Deduped hrs</div></div><div class="modal-stat"><div class="ms-value">${unique.length}</div><div class="ms-label">Sessions</div></div></div><div>`;
+      // Detect clashes. The SEARCH scope is each staff member's whole
+      // timetable (all weeks), so a clash with a session outside the
+      // current view is still found and can be named on the card. The
+      // DISPLAY scope stays the sessions actually listed in this panel.
+      //
+      // First work out WHICH staff members this view involves (the view
+      // may be a staff name, a module code or a session type), then pull
+      // their full timetables from tlStaffData.
+      const viewed=tlCollectStaffSessions(entities,weeks,dataMap);
+      const searchSessions=new Map();
+      for(const[staff,sessions]of viewed){
+        const full=tlStaffData[staff]||{};
+        for(const w of Object.keys(full))for(const s of full[w])searchSessions.set(s,staff);
+      }
+      const clashMap=tlBuildClashMap(searchSessions);
+      // Only count clashes among sessions actually shown in this panel.
+      const clashSessionCount=unique.filter(s=>clashMap.has(s)).length;
+      let html=`<div class="modal-stat-row"><div class="modal-stat"><div class="ms-value">${totalH.toFixed(1)}</div><div class="ms-label">Staff-hours</div></div><div class="modal-stat"><div class="ms-value">${realH.toFixed(1)}</div><div class="ms-label">Deduped hrs</div></div><div class="modal-stat"><div class="ms-value">${unique.length}</div><div class="ms-label">Sessions</div></div>`;
+      if(clashSessionCount>0)html+=`<div class="modal-stat modal-stat-clash"><div class="ms-value">${clashSessionCount}</div><div class="ms-label">Clashing sessions</div></div>`;
+      html+='</div>';
+      if(clashSessionCount>0)html+=`<div class="clash-note">⚠ ${clashSessionCount} session${clashSessionCount===1?'':'s'} clash with another session for the same staff member (double-booked). Hours below are unchanged — this is a flag for review.</div>`;
+      html+='<div>';
       const dayOrder={monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6,sunday:7};
       const sorted=unique.slice().sort((a,b)=>{
         const aWeek=Math.min(...a.weeks),bWeek=Math.min(...b.weeks);
@@ -189,7 +263,24 @@ function tlAttachGridEvents(wrap,dataMap,type){
       for(const s of sorted){
         const dur=sessionDuration(s);
         const weekStr=s.weeksRaw||(s.weeks.length?'W'+s.weeks.join(','):'');
-        html+=`<div class="session-card"><div class="sc-title">${s.moduleCode?`<span class="sc-tag">${s.moduleCode}</span>`:''} ${s.moduleTitle||s.sessionTitle||s.activity||'Session'}<span class="sc-hours">${dur.toFixed(1)}h</span></div><div class="sc-meta">${s.day?`<span>📅 ${s.day}</span>`:''} ${weekStr?`<span>📆 ${weekStr}</span>`:''} ${s.start&&s.end?`<span>🕐 ${s.start}–${s.end}</span>`:''} ${s.location?`<span>📍 ${s.location}</span>`:''}</div></div>`;
+        const clashes=clashMap.get(s)||[];
+        const hasClash=clashes.length>0;
+        // Build the list of competing sessions (deduped by identity).
+        const others=[];const seenOther=new Set();
+        for(const c of clashes){if(seenOther.has(c))continue;seenOther.add(c);others.push(c);}
+        // For each competing session, note the weeks where the overlap
+        // actually happens — helpful when the clash is in a different week
+        // to the one being viewed.
+        const clashParts=others.map(o=>{
+          const shared=sharedClashWeeks(s,o);
+          const when=shared.length?` — week${shared.length===1?'':'s'} ${shared.join(', ')}`:'';
+          return `<strong>${clashSessionLabel(o)}</strong>${when}`;
+        });
+        const clashNote=hasClash
+          ? `<div class="clash-detail">⚠ Clashes with ${clashParts.join(' and ')}</div>`
+          : '';
+        const clashBadge=hasClash?`<span class="sc-clash" title="Double-booked: overlaps another session for this staff member">⚠ Clash</span>`:'';
+        html+=`<div class="session-card${hasClash?' session-card-clash':''}"><div class="sc-title">${s.moduleCode?`<span class="sc-tag">${s.moduleCode}</span>`:''} ${s.moduleTitle||s.sessionTitle||s.activity||'Session'}<span class="sc-title-right">${clashBadge}<span class="sc-hours">${dur.toFixed(1)}h</span></span></div><div class="sc-meta">${s.day?`<span>📅 ${s.day}</span>`:''} ${weekStr?`<span>📆 ${weekStr}</span>`:''} ${s.start&&s.end?`<span>🕐 ${s.start}–${s.end}</span>`:''} ${s.location?`<span>📍 ${s.location}</span>`:''}</div>${clashNote}</div>`;
       }
       html+='</div>';
       openPanel(entity==='all'?'Grand Total':entity,week==='total'?'All weeks':`Week ${week}`,html);
